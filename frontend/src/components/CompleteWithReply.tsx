@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import Icon from './Icon'
 
 interface Props {
   title: string
@@ -51,10 +52,11 @@ export default function CompleteWithReply({ title, recipient, onSubmit, onCancel
         </p>
       )}
       <div className="reply-form-actions">
-        <button type="submit" disabled={!response.trim() || sending}>
+        <button type="submit" className="button send" disabled={!response.trim() || sending}>
+          <Icon name="send" />
           {sending ? 'Sending…' : 'Send reply and complete'}
         </button>
-        <button type="button" className="secondary" onClick={onCancel} disabled={sending}>
+        <button type="button" className="button ghost" onClick={onCancel} disabled={sending}>
           Cancel
         </button>
       </div>

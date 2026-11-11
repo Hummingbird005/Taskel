@@ -1,73 +1,72 @@
 import type { TaskItem } from '../api/tasks'
-
-/** Today's date as YYYY-MM-DD in the user's own time zone. */
-function todayIso(): string {
-  const now = new Date()
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-}
-
-/** Formats YYYY-MM-DD for display without shifting it across time zones. */
-function formatDueDate(iso: string): string {
-  const [year, month, day] = iso.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  const sameYear = year === new Date().getFullYear()
-  return date.toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: sameYear ? undefined : 'numeric',
-  })
-}
+import { formatDueDate } from '../lib/dates'
+import { isOverdue } from '../lib/taskViews'
+import Icon from './Icon'
 
 interface Props {
   task: TaskItem
+  today: string
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
   onTagClick: (tag: string) => void
 }
 
-export default function TaskRow({ task, onToggle, onEdit, onDelete, onTagClick }: Props) {
-  const overdue = !task.isCompleted && task.dueDate !== null && task.dueDate < todayIso()
+export default function TaskRow({ task, today, onToggle, onEdit, onDelete, onTagClick }: Props) {
+  const overdue = isOverdue(task, today)
+  const dueLabel = task.dueDate === today ? 'Today' : task.dueDate ? formatDueDate(task.dueDate) : null
 
   return (
-    <li className={task.isCompleted ? 'done' : ''}>
+    <li className={`task${task.isCompleted ? ' done' : ''}`}>
+      <input
+        type="checkbox"
+        className="task-check"
+        checked={task.isCompleted}
+        onChange={onToggle}
+        aria-label={`${task.isCompleted ? 'Reopen' : 'Complete'} ${task.title}`}
+      />
       <div className="task-body">
-        <label>
-          <input type="checkbox" checked={task.isCompleted} onChange={onToggle} />
-          <span className="task-title">{task.title}</span>
-        </label>
+        <span className="task-title">{task.title}</span>
         <div className="task-meta">
           {task.priority !== 'medium' && (
-            <span className={`badge priority-${task.priority}`}>
+            <span className={`chip priority-${task.priority}`}>
+              <Icon name="flag" size={13} />
               {task.priority === 'high' ? 'High' : 'Low'} priority
             </span>
           )}
-          {task.dueDate && (
-            <span className={`badge due${overdue ? ' overdue' : ''}`}>
+          {dueLabel && (
+            <span className={`chip due${overdue ? ' overdue' : ''}`}>
+              <Icon name="calendar" size={13} />
               {overdue ? 'Overdue: ' : 'Due '}
-              {formatDueDate(task.dueDate)}
+              {dueLabel}
+            </span>
+          )}
+          {task.sourceEmailAddress && (
+            <span className="chip" title={`From an email sent by ${task.sourceEmailAddress}`}>
+              <Icon name="mail" size={13} />
+              {task.sourceEmailAddress}
             </span>
           )}
           {task.sourceEmailAddress && !task.isCompleted && (
-            <span className="badge" title={`Completing this task sends a reply to ${task.sourceEmailAddress}`}>
-              ↩ Reply required
+            <span className="chip reply" title={`Completing this task sends a reply to ${task.sourceEmailAddress}`}>
+              <Icon name="reply" size={13} />
+              Reply required
             </span>
           )}
           {task.tags.map((tag) => (
             <button
               key={tag}
               type="button"
-              className="badge tag"
+              className="chip tag"
               onClick={() => onTagClick(tag)}
-              title={`Show only "${tag}"`}
+              title={`Show only #${tag}`}
             >
               #{tag}
             </button>
           ))}
         </div>
         {task.isCompleted && task.completionResponse && (
-          <details className="task-description">
+          <details className="task-details">
             <summary>
               {task.sourceEmailAddress ? `Reply sent to ${task.sourceEmailAddress}` : 'Completion note'}
             </summary>
@@ -75,18 +74,18 @@ export default function TaskRow({ task, onToggle, onEdit, onDelete, onTagClick }
           </details>
         )}
         {task.description && (
-          <details className="task-description">
+          <details className="task-details">
             <summary>Notes</summary>
             <p>{task.description}</p>
           </details>
         )}
       </div>
       <div className="task-actions">
-        <button type="button" className="icon" onClick={onEdit} aria-label={`Edit ${task.title}`}>
-          ✎
+        <button type="button" onClick={onEdit} aria-label={`Edit ${task.title}`} title="Edit">
+          <Icon name="edit" />
         </button>
-        <button type="button" className="icon delete" onClick={onDelete} aria-label={`Delete ${task.title}`}>
-          ✕
+        <button type="button" className="danger" onClick={onDelete} aria-label={`Delete ${task.title}`} title="Delete">
+          <Icon name="trash" />
         </button>
       </div>
     </li>

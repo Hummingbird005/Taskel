@@ -1,10 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { tokensApi, type ApiToken, type CreatedApiToken } from '../api/tokens'
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-}
+import { formatTimestamp as formatDate } from '../lib/dates'
 
 export default function Integrations({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [tokens, setTokens] = useState<ApiToken[]>([])
@@ -67,11 +64,12 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
 
   return (
     <section className="panel" aria-labelledby="integrations-title">
-      <h2 id="integrations-title">Integrations</h2>
+      <h2 id="integrations-title">Outlook</h2>
       <p className="muted">
         Send emails from Outlook to Taskel as tasks. Install the macro from{' '}
         <code>integrations/outlook</code> in the Taskel repository, then give it an API token created here.
       </p>
+      <h3>API tokens</h3>
 
       <form onSubmit={create} className="token-form">
         <input
@@ -81,7 +79,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
           maxLength={50}
           aria-label="Token name"
         />
-        <button type="submit" disabled={!name.trim()}>
+        <button type="submit" className="button primary" disabled={!name.trim()}>
           New token
         </button>
       </form>
@@ -99,7 +97,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
           </p>
           <div className="token-value">
             <code>{created.token}</code>
-            <button type="button" className="secondary" onClick={copy}>
+            <button type="button" className="button ghost" onClick={copy}>
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
@@ -119,7 +117,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
                   {token.lastUsedAt ? `last used ${formatDate(token.lastUsedAt)}` : 'never used'}
                 </small>
               </div>
-              <button type="button" className="secondary" onClick={() => revoke(token)}>
+              <button type="button" className="button ghost" onClick={() => revoke(token)}>
                 Revoke
               </button>
             </li>
