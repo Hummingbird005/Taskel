@@ -25,6 +25,8 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             task.HasKey(t => t.Id);
             task.Property(t => t.Title).HasMaxLength(200).IsRequired();
             task.Property(t => t.Description).HasMaxLength(2000);
+            task.Property(t => t.Priority).HasDefaultValue(TaskPriority.Medium).HasSentinel((TaskPriority)(-1));
+            task.Property(t => t.Tags).HasColumnType("text[]").HasDefaultValueSql("'{}'");
             task.Property(t => t.CreatedAt).IsRequired();
             task.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
             task.HasIndex(t => new { t.UserId, t.CreatedAt });

@@ -25,7 +25,10 @@ public class TasksController(ITaskRepository repository) : ControllerBase
         {
             UserId = User.GetUserId(),
             Title = request.Title.Trim(),
-            Description = request.Description?.Trim()
+            Description = request.Description?.Trim(),
+            DueDate = request.DueDate,
+            Priority = request.Priority,
+            Tags = TagList.Normalize(request.Tags)
         }, ct);
         return CreatedAtAction(nameof(Get), new { id = task.Id }, task);
     }
@@ -39,6 +42,9 @@ public class TasksController(ITaskRepository repository) : ControllerBase
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
         task.IsCompleted = request.IsCompleted;
+        task.DueDate = request.DueDate;
+        task.Priority = request.Priority;
+        task.Tags = TagList.Normalize(request.Tags);
         await repository.UpdateAsync(task, ct);
         return Ok(task);
     }
