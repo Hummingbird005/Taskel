@@ -61,6 +61,12 @@ export default function TaskRow({ task, onToggle, onEdit, onDelete, onTagClick }
             </button>
           ))}
         </div>
+        {task.description && (
+          <details className="task-description">
+            <summary>Notes</summary>
+            <p>{task.description}</p>
+          </details>
+        )}
       </div>
       <div className="task-actions">
         <button type="button" className="icon" onClick={onEdit} aria-label={`Edit ${task.title}`}>

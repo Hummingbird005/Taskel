@@ -33,14 +33,25 @@ export default function TaskList({ onSessionExpired }: { onSessionExpired: () =>
   }
 
   useEffect(() => {
-    tasksApi
-      .list()
-      .then(setTasks)
-      .catch((err) => {
-        if (err instanceof ApiError && err.status === 401) onSessionExpired()
-        else setError('Could not load tasks. Is the backend running?')
-      })
-      .finally(() => setLoading(false))
+    function load() {
+      tasksApi
+        .list()
+        .then((loaded) => {
+          setTasks(loaded)
+          setError(null)
+        })
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 401) onSessionExpired()
+          else setError('Could not load tasks. Is the backend running?')
+        })
+        .finally(() => setLoading(false))
+    }
+
+    load()
+    // Tasks can be added from outside this page (e.g. the Outlook macro),
+    // so pick them up when the user comes back to it.
+    window.addEventListener('focus', load)
+    return () => window.removeEventListener('focus', load)
   }, [onSessionExpired])
 
   const visibleTasks = useMemo(() => {

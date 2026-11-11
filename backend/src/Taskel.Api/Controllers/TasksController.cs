@@ -33,6 +33,14 @@ public class TasksController(ITaskRepository repository) : ControllerBase
         return CreatedAtAction(nameof(Get), new { id = task.Id }, task);
     }
 
+    /// <summary>Creates a task from an email, e.g. sent by the Outlook macro.</summary>
+    [HttpPost("from-email")]
+    public async Task<ActionResult<TaskItem>> CreateFromEmail(CreateTaskFromEmailRequest request, CancellationToken ct)
+    {
+        var task = await repository.AddAsync(EmailTaskFactory.Create(User.GetUserId(), request), ct);
+        return CreatedAtAction(nameof(Get), new { id = task.Id }, task);
+    }
+
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<TaskItem>> Update(Guid id, UpdateTaskRequest request, CancellationToken ct)
     {

@@ -49,7 +49,7 @@ h1 { margin: 0; }
 }
 .task-form-details .tags-field { flex: 1; min-width: 160px; }
 .task-form-details .tags-field input { flex: 1; min-width: 0; }
-.task-form input, .task-form select, .list-controls select {
+.task-form input, .task-form select, .task-form textarea, .list-controls select, .token-form input {
   padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
   background: var(--card); color: var(--text); font-size: 0.9rem; font-family: inherit;
 }
@@ -96,3 +96,28 @@ button.icon.delete:hover { color: var(--danger); }
 button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 6px 12px; font-size: 0.9rem; }
 .task-form-main button.secondary { padding: 10px 16px; font-size: 1rem; }
 button.link { background: none; color: var(--accent); padding: 0; font-size: inherit; text-decoration: underline; }
+.task-form textarea { resize: vertical; width: 100%; line-height: 1.4; }
+.task-list li.editing textarea { background: var(--bg); }
+.task-description { padding-left: 28px; font-size: 0.85rem; color: var(--muted); }
+.task-description summary { cursor: pointer; width: fit-content; }
+.task-description p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.panel {
+  display: flex; flex-direction: column; gap: 12px; padding: 20px; margin-bottom: 24px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+}
+.panel h2 { margin: 0; font-size: 1.15rem; }
+.panel p { margin: 0; }
+.panel code { font-size: 0.85em; overflow-wrap: anywhere; }
+.token-form { display: flex; gap: 8px; }
+.token-form input { flex: 1; min-width: 0; background: var(--bg); }
+.new-token {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  border: 1px solid var(--accent); border-radius: 8px;
+}
+.token-value { display: flex; align-items: center; gap: 8px; }
+.token-value code { flex: 1; min-width: 0; padding: 8px; background: var(--bg); border-radius: 6px; user-select: all; }
+.token-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.token-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.token-list li > div { display: flex; flex-direction: column; min-width: 0; }
+.token-name { overflow-wrap: anywhere; }
+.task-list li { align-items: flex-start; }

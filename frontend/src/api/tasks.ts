@@ -15,7 +15,7 @@ export interface TaskItem {
 }
 
 /** The editable fields of a task. */
-export type TaskDraft = Pick<TaskItem, 'title' | 'dueDate' | 'priority' | 'tags'>
+export type TaskDraft = Pick<TaskItem, 'title' | 'dueDate' | 'priority' | 'tags'> & { description?: string | null }
 
 export const tasksApi = {
   list: () => request<TaskItem[]>('/tasks'),
