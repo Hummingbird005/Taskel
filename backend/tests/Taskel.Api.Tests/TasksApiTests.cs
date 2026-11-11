@@ -1,11 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Tests;
 
-public class TasksApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public class TasksApiTests(TaskelApiFactory factory) : IClassFixture<TaskelApiFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
 
@@ -38,5 +37,24 @@ public class TasksApiTests(WebApplicationFactory<Program> factory) : IClassFixtu
     {
         var response = await _client.PostAsJsonAsync("/api/tasks", new { title = "" });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Created_Task_Is_Persisted_And_Listed()
+    {
+        var created = await _client.PostAsJsonAsync("/api/tasks", new CreateTaskRequest("Persist me", "in postgres"));
+        var task = await created.Content.ReadFromJsonAsync<TaskItem>();
+
+        var all = await _client.GetFromJsonAsync<List<TaskItem>>("/api/tasks");
+        Assert.Contains(all!, t => t.Id == task!.Id && t.Description == "in postgres");
+    }
+
+    [Fact]
+    public async Task Update_And_Delete_Unknown_Task_Return_NotFound()
+    {
+        var id = Guid.NewGuid();
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await _client.PutAsJsonAsync($"/api/tasks/{id}", new UpdateTaskRequest("x", null, false))).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.DeleteAsync($"/api/tasks/{id}")).StatusCode);
     }
 }

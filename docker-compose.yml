@@ -1,0 +1,21 @@
+# Local PostgreSQL for development: `docker compose up -d`
+services:
+  postgres:
+    image: postgres:17
+    container_name: taskel-postgres
+    environment:
+      POSTGRES_USER: taskel
+      POSTGRES_PASSWORD: taskel
+      POSTGRES_DB: taskel
+    ports:
+      - "5432:5432"
+    volumes:
+      - taskel-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskel -d taskel"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  taskel-pgdata:
