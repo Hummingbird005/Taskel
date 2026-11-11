@@ -16,8 +16,15 @@ Taskel/
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Node.js](https://nodejs.org/) 22+
+- PostgreSQL 16+ — easiest via Docker: `docker compose up -d` (uses `docker-compose.yml`)
 
 ## Running locally
+
+**Database**:
+
+```bash
+docker compose up -d          # PostgreSQL on localhost:5432 (user/password/db: taskel)
+```
 
 **Backend** (http://localhost:5000):
 
@@ -25,6 +32,8 @@ Taskel/
 cd backend
 dotnet run --project src/Taskel.Api
 ```
+
+In Development the API applies EF Core migrations automatically on startup.
 
 **Frontend** (http://localhost:5173) — in a second terminal:
 
@@ -50,9 +59,24 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 
 The OpenAPI document is available at `/openapi/v1.json` in Development.
 
-> Storage is currently in-memory (`InMemoryTaskRepository`) — data resets on restart. Swap in a database-backed `ITaskRepository` (e.g. EF Core) when ready.
+## Database (EF Core + PostgreSQL)
+
+- `TaskelDbContext` lives in `backend/src/Taskel.Api/Data/`, migrations in `Data/Migrations/`.
+- Connection string: `ConnectionStrings:Taskel` (Development value in `appsettings.Development.json`).
+  In other environments set it via the `ConnectionStrings__Taskel` environment variable.
+- Migrations run on startup in Development. Elsewhere set `Database__MigrateOnStartup=true`, or apply them explicitly:
+
+```bash
+cd backend
+dotnet tool restore
+dotnet ef migrations add <Name> -p src/Taskel.Api -o Data/Migrations   # after changing the model
+dotnet ef database update -p src/Taskel.Api                             # apply to the database
+```
 
 ## Tests
+
+Backend tests run against a real PostgreSQL database `taskel_test` (recreated on each run).
+Override with the `TASKEL_TEST_CONNECTION` environment variable.
 
 ```bash
 cd backend && dotnet test

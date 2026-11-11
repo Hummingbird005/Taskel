@@ -9,36 +9,38 @@ namespace Taskel.Api.Controllers;
 public class TasksController(ITaskRepository repository) : ControllerBase
 {
     [HttpGet]
-    public ActionResult<IEnumerable<TaskItem>> GetAll() => Ok(repository.GetAll());
+    public async Task<ActionResult<IEnumerable<TaskItem>>> GetAll(CancellationToken ct) =>
+        Ok(await repository.GetAllAsync(ct));
 
     [HttpGet("{id:guid}")]
-    public ActionResult<TaskItem> Get(Guid id) =>
-        repository.Get(id) is { } task ? Ok(task) : NotFound();
+    public async Task<ActionResult<TaskItem>> Get(Guid id, CancellationToken ct) =>
+        await repository.GetAsync(id, ct) is { } task ? Ok(task) : NotFound();
 
     [HttpPost]
-    public ActionResult<TaskItem> Create(CreateTaskRequest request)
+    public async Task<ActionResult<TaskItem>> Create(CreateTaskRequest request, CancellationToken ct)
     {
-        var task = repository.Add(new TaskItem
+        var task = await repository.AddAsync(new TaskItem
         {
             Title = request.Title.Trim(),
             Description = request.Description?.Trim()
-        });
+        }, ct);
         return CreatedAtAction(nameof(Get), new { id = task.Id }, task);
     }
 
     [HttpPut("{id:guid}")]
-    public ActionResult<TaskItem> Update(Guid id, UpdateTaskRequest request)
+    public async Task<ActionResult<TaskItem>> Update(Guid id, UpdateTaskRequest request, CancellationToken ct)
     {
-        var task = repository.Get(id);
+        var task = await repository.GetAsync(id, ct);
         if (task is null) return NotFound();
 
         task.Title = request.Title.Trim();
         task.Description = request.Description?.Trim();
         task.IsCompleted = request.IsCompleted;
-        repository.Update(task);
+        await repository.UpdateAsync(task, ct);
         return Ok(task);
     }
 
     [HttpDelete("{id:guid}")]
-    public IActionResult Delete(Guid id) => repository.Delete(id) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
+        await repository.DeleteAsync(id, ct) ? NoContent() : NotFound();
 }
