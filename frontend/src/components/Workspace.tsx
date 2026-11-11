@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import { DEFAULT_DASHBOARD_SETTINGS, dashboardApi, type DashboardSettings } from '../api/dashboard'
 import { tasksApi, type TaskDraft, type TaskItem } from '../api/tasks'
 import { todayIso } from '../lib/dates'
+import { tasksLabel } from '../lib/text'
 import {
   emptyMessage,
   groupTasks,
@@ -23,6 +24,23 @@ import Integrations from './Integrations'
 import Sidebar from './Sidebar'
 import TaskForm from './TaskForm'
 import TaskRow from './TaskRow'
+
+/** What to tell the user when completing an email task with a reply failed. */
+function replyErrorText(err: unknown): string {
+  if (!(err instanceof ApiError)) return 'Nu am putut contacta serverul Taskel. Task-ul nu a fost finalizat.'
+  switch (err.status) {
+    case 503:
+      return 'Trimiterea de emailuri nu este configurată pe serverul Taskel, deci răspunsul nu poate fi trimis. Task-ul nu a fost finalizat.'
+    case 502:
+      return 'Emailul de răspuns nu a putut fi trimis. Task-ul nu a fost finalizat. Încearcă din nou.'
+    case 409:
+      return 'Task-ul este deja finalizat.'
+    case 400:
+      return 'Răspunsul este obligatoriu și poate avea cel mult 4000 de caractere.'
+    default:
+      return 'A apărut o eroare. Task-ul nu a fost finalizat.'
+  }
+}
 
 interface Props {
   user: User
@@ -50,7 +68,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
   /** Shows the failure, or returns to the sign-in screen when the session is gone. */
   function handleFailure(err: unknown, fallback: string) {
     if (err instanceof ApiError && err.status === 401) onSessionExpired()
-    else setError(err instanceof ApiError ? err.message : fallback)
+    else setError(fallback)
   }
 
   useEffect(() => {
@@ -67,7 +85,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
         .catch((err) => {
           if (cancelled) return
           if (err instanceof ApiError && err.status === 401) onSessionExpired()
-          else setError('Could not load tasks. Is the backend running?')
+          else setError('Nu am putut încărca task-urile. Verifică dacă serverul este pornit.')
         })
     }
 
@@ -85,7 +103,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       .catch((err) => {
         if (cancelled) return
         if (err instanceof ApiError && err.status === 401) onSessionExpired()
-        else setError('Could not load tasks. Is the backend running?')
+        else setError('Nu am putut încărca task-urile. Verifică dacă serverul este pornit.')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -138,7 +156,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       setError(null)
     } catch (err) {
       setSettings(previous)
-      handleFailure(err, 'Could not save your dashboard.')
+      handleFailure(err, 'Nu am putut salva dashboard-ul.')
     }
   }
 
@@ -149,7 +167,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       setError(null)
       return true
     } catch (err) {
-      handleFailure(err, 'Failed to add task.')
+      handleFailure(err, 'Nu am putut adăuga task-ul.')
       return false
     }
   }
@@ -161,7 +179,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       setError(null)
       return true
     } catch (err) {
-      handleFailure(err, 'Failed to update task.')
+      handleFailure(err, 'Nu am putut salva task-ul.')
       return false
     }
   }
@@ -188,7 +206,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
         onSessionExpired()
         return null
       }
-      return err instanceof ApiError ? err.message : 'Could not reach Taskel. The task was not completed.'
+      return replyErrorText(err)
     }
   }
 
@@ -197,7 +215,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       await tasksApi.remove(id)
       setTasks((prev) => prev.filter((t) => t.id !== id))
     } catch (err) {
-      handleFailure(err, 'Failed to delete task.')
+      handleFailure(err, 'Nu am putut șterge task-ul.')
     }
   }
 
@@ -219,8 +237,8 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
         <li key={task.id} className="task-editor">
           <TaskForm
             initial={task}
-            submitLabel="Save"
-            placeholder="Task title"
+            submitLabel="Salvează"
+            placeholder="Titlul task-ului"
             onCancel={() => setEditingId(null)}
             onSubmit={async (draft) => {
               const saved = await save(task, draft)
@@ -265,7 +283,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       <button
         type="button"
         className="sidebar-backdrop"
-        aria-label="Close menu"
+        aria-label="Închide meniul"
         tabIndex={sidebarOpen ? 0 : -1}
         onClick={() => setSidebarOpen(false)}
       />
@@ -275,7 +293,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
           <button
             type="button"
             className="menu-button"
-            aria-label="Open menu"
+            aria-label="Deschide meniul"
             aria-expanded={sidebarOpen}
             onClick={() => setSidebarOpen(true)}
           >
@@ -288,7 +306,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
             </h1>
             {showsTasks && !loading && (
               <span className="main-subtitle">
-                {visibleCount} {visibleCount === 1 ? 'task' : 'tasks'}
+                {tasksLabel(visibleCount)}
               </span>
             )}
           </div>
@@ -301,7 +319,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
                 onClick={() => setCustomizing((on) => !on)}
               >
                 <Icon name="settings" />
-                {customizing ? 'Done' : 'Customize'}
+                {customizing ? 'Gata' : 'Personalizează'}
               </button>
             </div>
           )}
@@ -313,16 +331,16 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search tasks"
-                  aria-label="Search tasks"
+                  placeholder="Caută task-uri"
+                  aria-label="Caută task-uri"
                 />
               </label>
               <label className="sort">
-                <span className="visually-hidden">Sort tasks by</span>
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} aria-label="Sort tasks by">
-                  <option value="dueDate">By due date</option>
-                  <option value="priority">By priority</option>
-                  <option value="created">By created</option>
+                <span className="visually-hidden">Sortează task-urile</span>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} aria-label="Sortează task-urile">
+                  <option value="dueDate">După termen</option>
+                  <option value="priority">După prioritate</option>
+                  <option value="created">După data creării</option>
                 </select>
               </label>
             </div>
@@ -333,7 +351,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
           {error && (
             <div className="banner" role="alert">
               <span>{error}</span>
-              <button type="button" onClick={() => setError(null)} aria-label="Dismiss">
+              <button type="button" onClick={() => setError(null)} aria-label="Închide mesajul">
                 <Icon name="close" />
               </button>
             </div>
@@ -342,7 +360,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
           {view.kind === 'integrations' ? (
             <Integrations onSessionExpired={onSessionExpired} />
           ) : loading ? (
-            <p className="empty">Loading…</p>
+            <p className="empty">Se încarcă…</p>
           ) : isDashboard ? (
             <Dashboard
               tasks={tasks}
@@ -376,8 +394,8 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
             <TaskForm
               key={composerKey}
               initial={composerDefaults}
-              submitLabel="Add"
-              placeholder={view.kind === 'tag' ? `Add a task to #${view.tag}` : 'Add a task'}
+              submitLabel="Adaugă"
+              placeholder={view.kind === 'tag' ? `Adaugă un task în #${view.tag}` : 'Adaugă un task'}
               onSubmit={add}
             />
           </footer>

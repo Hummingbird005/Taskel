@@ -4,6 +4,18 @@ import { ApiError } from '../api/client'
 
 type Mode = 'login' | 'register'
 
+function errorText(err: unknown, isRegister: boolean): string {
+  if (!(err instanceof ApiError)) return 'Nu am putut contacta serverul Taskel.'
+  if (err.status === 401) return 'Email sau parolă greșită.'
+  if (err.status === 409) return 'Există deja un cont cu acest email.'
+  if (err.status === 400) {
+    return isRegister
+      ? 'Verifică adresa de email și parola (cel puțin 8 caractere).'
+      : 'Completează emailul și parola.'
+  }
+  return 'A apărut o eroare. Încearcă din nou.'
+}
+
 export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
   const [mode, setMode] = useState<Mode>('login')
   const [email, setEmail] = useState('')
@@ -23,7 +35,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
         : await authApi.login(email, password)
       onAuthenticated(user)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not reach the Taskel API.')
+      setError(errorText(err, isRegister))
     } finally {
       setSubmitting(false)
     }
@@ -36,7 +48,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
 
   return (
     <form onSubmit={handleSubmit} className="auth-form">
-      <h2>{isRegister ? 'Create your account' : 'Sign in to Taskel'}</h2>
+      <h2>{isRegister ? 'Creează-ți contul' : 'Conectează-te la Taskel'}</h2>
       <label>
         Email
         <input
@@ -48,7 +60,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
         />
       </label>
       <label>
-        Password
+        Parolă
         <input
           type="password"
           value={password}
@@ -57,7 +69,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
           minLength={isRegister ? 8 : undefined}
           required
         />
-        {isRegister && <small className="muted">At least 8 characters.</small>}
+        {isRegister && <small className="muted">Cel puțin 8 caractere.</small>}
       </label>
       {error && (
         <p className="error" role="alert">
@@ -65,12 +77,12 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
         </p>
       )}
       <button type="submit" className="button primary" disabled={submitting}>
-        {isRegister ? 'Create account' : 'Sign in'}
+        {isRegister ? 'Creează contul' : 'Conectare'}
       </button>
       <p className="muted">
-        {isRegister ? 'Already have an account?' : 'No account yet?'}{' '}
+        {isRegister ? 'Ai deja un cont?' : 'Nu ai încă un cont?'}{' '}
         <button type="button" className="link" onClick={switchMode}>
-          {isRegister ? 'Sign in' : 'Create one'}
+          {isRegister ? 'Conectează-te' : 'Creează unul'}
         </button>
       </p>
     </form>

@@ -3,6 +3,7 @@ import type { TaskItem } from '../api/tasks'
 import { hiddenWidgets, visibleWidgets, type WidgetInfo } from '../lib/dashboard'
 import { formatLongDate } from '../lib/dates'
 import { isOverdue, type View } from '../lib/taskViews'
+import { tasksLabel } from '../lib/text'
 import DashboardWidget from './DashboardWidget'
 import Icon from './Icon'
 
@@ -20,9 +21,9 @@ function summary(tasks: TaskItem[], today: string): string {
   const open = tasks.filter((t) => !t.isCompleted)
   const dueToday = open.filter((t) => t.dueDate === today).length
   const overdue = open.filter((t) => isOverdue(t, today)).length
-  if (open.length === 0) return 'You have no open tasks.'
-  const parts = [`${dueToday} due today`, `${overdue} overdue`]
-  return `${open.length} open ${open.length === 1 ? 'task' : 'tasks'}: ${parts.join(', ')}.`
+  if (open.length === 0) return 'Nu ai niciun task deschis.'
+  const overdueText = overdue === 1 ? '1 întârziat' : `${overdue} întârziate`
+  return `${tasksLabel(open.length)} ${open.length === 1 ? 'deschis' : 'deschise'}: ${dueToday} cu termen azi, ${overdueText}.`
 }
 
 /** The home screen: the user's chosen widgets, in their chosen order. */
@@ -47,18 +48,18 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
       </div>
 
       {customizing && (
-        <section className="customize" aria-label="Customize dashboard">
+        <section className="customize" aria-label="Personalizează dashboard-ul">
           <div className="customize-head">
             <div>
-              <h3>Customize your dashboard</h3>
-              <p className="muted">Reorder or remove widgets below, and add more from the list. Changes are saved as you go.</p>
+              <h3>Personalizează-ți dashboard-ul</h3>
+              <p className="muted">Reordonează sau elimină widget-urile de mai jos și adaugă altele din listă. Modificările se salvează pe loc.</p>
             </div>
             <div className="customize-actions">
               <button type="button" className="button ghost" onClick={() => onChange({ ...settings, widgets: null })}>
-                Reset to default
+                Revino la varianta implicită
               </button>
               <button type="button" className="button primary" onClick={onDone}>
-                Done
+                Gata
               </button>
             </div>
           </div>
@@ -68,7 +69,7 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
               checked={settings.showDueAlert}
               onChange={(e) => onChange({ ...settings, showDueAlert: e.target.checked })}
             />
-            Show a reminder for overdue and due-today tasks when I open Taskel
+            Arată-mi o atenționare pentru task-urile întârziate și cele cu termen azi când deschid Taskel
           </label>
           {hidden.length > 0 && (
             <ul className="available-widgets">
@@ -82,10 +83,10 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
                     type="button"
                     className="button ghost"
                     onClick={() => setWidgets([...visible, widget])}
-                    aria-label={`Add ${widget.title}`}
+                    aria-label={`Adaugă: ${widget.title}`}
                   >
                     <Icon name="plus" />
-                    Add
+                    Adaugă
                   </button>
                 </li>
               ))}
@@ -95,7 +96,7 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
       )}
 
       {visible.length === 0 ? (
-        <p className="empty">Your dashboard is empty. {customizing ? 'Add a widget from the list above.' : 'Use Customize to add widgets.'}</p>
+        <p className="empty">Dashboard-ul tău este gol. {customizing ? 'Adaugă un widget din lista de mai sus.' : 'Folosește „Personalizează” ca să adaugi widget-uri.'}</p>
       ) : (
         <div className="widget-grid">
           {visible.map((widget, index) => {
@@ -109,8 +110,8 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
                         type="button"
                         onClick={() => move(index, -1)}
                         disabled={index === 0}
-                        aria-label={`Move ${widget.title} earlier`}
-                        title="Move earlier"
+                        aria-label={`Mută mai devreme: ${widget.title}`}
+                        title="Mută mai devreme"
                       >
                         <Icon name="arrowLeft" />
                       </button>
@@ -118,8 +119,8 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
                         type="button"
                         onClick={() => move(index, 1)}
                         disabled={index === visible.length - 1}
-                        aria-label={`Move ${widget.title} later`}
-                        title="Move later"
+                        aria-label={`Mută mai târziu: ${widget.title}`}
+                        title="Mută mai târziu"
                       >
                         <Icon name="arrowRight" />
                       </button>
@@ -127,8 +128,8 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
                         type="button"
                         className="danger"
                         onClick={() => setWidgets(visible.filter((w) => w.id !== widget.id))}
-                        aria-label={`Remove ${widget.title}`}
-                        title="Remove"
+                        aria-label={`Elimină: ${widget.title}`}
+                        title="Elimină"
                       >
                         <Icon name="close" />
                       </button>

@@ -3,6 +3,7 @@ import type { TaskItem, TaskPriority } from '../api/tasks'
 import { completedPerDay, recentlyCompleted, type WidgetId } from '../lib/dashboard'
 import { addDaysIso, formatDueDate, formatLongDate, formatWeekday } from '../lib/dates'
 import { isOverdue, tagCounts, type View } from '../lib/taskViews'
+import { LOCALE } from '../lib/text'
 import Icon, { type IconName } from './Icon'
 
 interface WidgetProps {
@@ -36,9 +37,9 @@ function TaskLines({
           <li key={task.id}>
             <button type="button" className="widget-line" onClick={() => onOpen(view)}>
               {task.priority === 'high' && (
-                <span className="line-flag" title="High priority">
+                <span className="line-flag" title="Prioritate ridicată">
                   <Icon name="flag" size={13} />
-                  <span className="visually-hidden">High priority: </span>
+                  <span className="visually-hidden">Prioritate ridicată: </span>
                 </span>
               )}
               <span className="line-title">{task.title}</span>
@@ -49,7 +50,7 @@ function TaskLines({
       </ul>
       {more > 0 && (
         <button type="button" className="widget-more" onClick={() => onOpen(view)}>
-          View all {tasks.length}
+          Vezi toate cele {tasks.length}
         </button>
       )}
     </>
@@ -75,11 +76,11 @@ function Stats({ tasks, today, onOpen }: WidgetProps) {
   )
 
   return (
-    <div className="stats" title={`Completed counts tasks finished since ${formatDueDate(weekAgo)}`}>
-      {tile('Open', open.length, 'inbox', { kind: 'all' })}
-      {tile('Due today', open.filter((t) => t.dueDate === today).length, 'sun', { kind: 'today' })}
-      {tile('Overdue', overdue, 'alert', { kind: 'overdue' }, overdue > 0 ? 'danger' : undefined)}
-      {tile('Completed, 7 days', completedThisWeek, 'checkCircle', { kind: 'completed' })}
+    <div className="stats" title={`„Finalizate” numără task-urile încheiate începând cu ${formatDueDate(weekAgo)}`}>
+      {tile('Deschise', open.length, 'inbox', { kind: 'all' })}
+      {tile('Cu termen azi', open.filter((t) => t.dueDate === today).length, 'sun', { kind: 'today' })}
+      {tile('Întârziate', overdue, 'alert', { kind: 'overdue' }, overdue > 0 ? 'danger' : undefined)}
+      {tile('Finalizate, 7 zile', completedThisWeek, 'checkCircle', { kind: 'completed' })}
     </div>
   )
 }
@@ -89,7 +90,7 @@ function Overdue({ tasks, today, onOpen }: WidgetProps) {
     .filter((t) => isOverdue(t, today))
     .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))
   return (
-    <TaskLines tasks={overdue} empty="Nothing is overdue." view={{ kind: 'overdue' }} meta={dueMeta} onOpen={onOpen} />
+    <TaskLines tasks={overdue} empty="Nimic întârziat." view={{ kind: 'overdue' }} meta={dueMeta} onOpen={onOpen} />
   )
 }
 
@@ -98,7 +99,7 @@ function Today({ tasks, today, onOpen }: WidgetProps) {
   return (
     <TaskLines
       tasks={due}
-      empty="Nothing due today."
+      empty="Nimic cu termen azi."
       view={{ kind: 'today' }}
       meta={(task) => (task.tags.length > 0 ? `#${task.tags[0]}` : '')}
       onOpen={onOpen}
@@ -114,7 +115,7 @@ function Upcoming({ tasks, today, onOpen }: WidgetProps) {
   return (
     <TaskLines
       tasks={upcoming}
-      empty="Nothing due in the next 7 days."
+      empty="Nimic cu termen în următoarele 7 zile."
       view={{ kind: 'upcoming' }}
       meta={dueMeta}
       onOpen={onOpen}
@@ -127,7 +128,7 @@ function ReplyRequired({ tasks, onOpen }: WidgetProps) {
   return (
     <TaskLines
       tasks={waiting}
-      empty="No email tasks are waiting for a reply."
+      empty="Niciun task din email nu așteaptă răspuns."
       view={{ kind: 'tag', tag: 'email' }}
       meta={(task) => task.sourceEmailAddress}
       onOpen={onOpen}
@@ -136,21 +137,21 @@ function ReplyRequired({ tasks, onOpen }: WidgetProps) {
 }
 
 const PRIORITIES: { priority: TaskPriority; label: string }[] = [
-  { priority: 'high', label: 'High' },
-  { priority: 'medium', label: 'Medium' },
-  { priority: 'low', label: 'Low' },
+  { priority: 'high', label: 'Ridicată' },
+  { priority: 'medium', label: 'Medie' },
+  { priority: 'low', label: 'Scăzută' },
 ]
 
 /** One bar per priority on a shared scale: the bar carries magnitude, the label carries identity. */
 function Priority({ tasks }: WidgetProps) {
   const open = tasks.filter((t) => !t.isCompleted)
-  if (open.length === 0) return <p className="widget-empty">No open tasks.</p>
+  if (open.length === 0) return <p className="widget-empty">Niciun task deschis.</p>
   const rows = PRIORITIES.map((row) => ({ ...row, count: open.filter((t) => t.priority === row.priority).length }))
   const max = Math.max(...rows.map((row) => row.count))
   return (
     <ul className="meter-list">
       {rows.map((row) => (
-        <li key={row.priority} title={`${row.label}: ${row.count} of ${open.length} open tasks`}>
+        <li key={row.priority} title={`${row.label}: ${row.count} din ${open.length} task-uri deschise`}>
           <span className="meter-name">{row.label}</span>
           <span className="meter-track">
             <span className="meter-bar" style={{ width: `${(row.count / max) * 100}%` }} />
@@ -165,7 +166,7 @@ function Priority({ tasks }: WidgetProps) {
 function CompletedWeek({ tasks, today }: WidgetProps) {
   const days = completedPerDay(tasks, today)
   const total = days.reduce((sum, day) => sum + day.count, 0)
-  if (total === 0) return <p className="widget-empty">No tasks completed in the last 7 days.</p>
+  if (total === 0) return <p className="widget-empty">Niciun task finalizat în ultimele 7 zile.</p>
   const max = Math.max(...days.map((day) => day.count))
   return (
     <>
@@ -183,17 +184,17 @@ function CompletedWeek({ tasks, today }: WidgetProps) {
                 {labelled && <span className="column-value">{day.count}</span>}
                 <span className="column-bar" style={{ height: `${(day.count / max) * 100}%` }} />
               </span>
-              <span className={`column-label${isToday ? ' today' : ''}`}>{isToday ? 'Today' : formatWeekday(day.date)}</span>
+              <span className={`column-label${isToday ? ' today' : ''}`}>{isToday ? 'Azi' : formatWeekday(day.date)}</span>
             </div>
           )
         })}
       </div>
       <table className="visually-hidden">
-        <caption>Tasks completed per day, last 7 days ({total} in total)</caption>
+        <caption>Task-uri finalizate pe zi, ultimele 7 zile ({total} în total)</caption>
         <thead>
           <tr>
-            <th scope="col">Day</th>
-            <th scope="col">Completed</th>
+            <th scope="col">Zi</th>
+            <th scope="col">Finalizate</th>
           </tr>
         </thead>
         <tbody>
@@ -213,7 +214,7 @@ function Tags({ tasks, onOpen }: WidgetProps) {
   const tags = tagCounts(tasks)
     .sort((a, b) => b.open - a.open || a.tag.localeCompare(b.tag))
     .slice(0, 10)
-  if (tags.length === 0) return <p className="widget-empty">Add tags to tasks to see them here.</p>
+  if (tags.length === 0) return <p className="widget-empty">Adaugă etichete pe task-uri ca să le vezi aici.</p>
   return (
     <ul className="tag-cloud">
       {tags.map(({ tag, open }) => (
@@ -231,11 +232,11 @@ function Recent({ tasks, onOpen }: WidgetProps) {
   return (
     <TaskLines
       tasks={recentlyCompleted(tasks).slice(0, MAX_ROWS)}
-      empty="No completed tasks yet."
+      empty="Niciun task finalizat încă."
       view={{ kind: 'completed' }}
       meta={(task) =>
         task.completedAt
-          ? new Date(task.completedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+          ? new Date(task.completedAt).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' })
           : ''
       }
       onOpen={onOpen}

@@ -1,6 +1,7 @@
 # Taskel
 
 Task management app with an **ASP.NET Core (.NET 10)** backend and a **React + Vite + TypeScript** frontend (Node.js).
+The interface is in Romanian; code, API and documentation are in English.
 
 
 ![Taskel dashboard: at-a-glance counts, overdue, due today, upcoming, priority and weekly completion widgets](docs/screenshots/dashboard.png)
@@ -126,7 +127,7 @@ Clients that cannot use the browser session send a personal API token instead:
 Authorization: Bearer tsk_…
 ```
 
-- Create and revoke tokens in the app under **Integrations** (up to 10 per user). A token is shown once;
+- Create and revoke tokens in the app under **Integrări** (Integrations; up to 10 per user). A token is shown once;
   only its SHA-256 hash is stored.
 - A token gives access to its owner's tasks. It cannot list, create or revoke tokens.
 
@@ -138,15 +139,15 @@ date and body as notes. See [integrations/outlook/README.md](integrations/outloo
 
 ## Dashboard and reminders
 
-The app opens on **Home**, a dashboard built from widgets: at-a-glance counts, overdue, due today, next 7 days,
+The app opens on **Acasă** (Home), a dashboard built from widgets: at-a-glance counts, overdue, due today, next 7 days,
 email tasks waiting for a reply, open tasks by priority, tasks completed over the last 7 days, tags, and recently
 completed.
 
-- **Customize** (top right) lets each user remove, add and reorder widgets, or reset to the default layout.
+- **Personalizează** (Customize, top right) lets each user remove, add and reorder widgets, or reset to the default layout.
   Changes are saved to the user's account as they are made (`PUT /api/dashboard`), so they follow the user
   across browsers.
 - When the app is opened and there are tasks that are overdue or due today, a reminder dialog lists them, with
-  shortcuts to the Overdue and Today views. It is shown once per visit and can be turned off under Customize.
+  shortcuts to the overdue and today views. It is shown once per visit and can be turned off under Personalizează.
 - Preferences are `{ "widgets": ["stats", "overdue", …] | null, "showDueAlert": true }`. `null` means the default
   layout. Widget ids are defined by the frontend (`frontend/src/lib/dashboard.ts`); the API only checks their shape.
 - "Completed, last 7 days" counts by completion time, which is recorded since the completion-reply feature; tasks

@@ -32,7 +32,7 @@ export default function DueAlert({ overdue, dueToday, onOpen, onClose }: Props) 
             <span className="line-meta">{meta(task)}</span>
           </li>
         ))}
-        {more > 0 && <li className="muted">and {more} more</li>}
+        {more > 0 && <li className="muted">și încă {more}</li>}
       </ul>
     )
   }
@@ -44,11 +44,11 @@ export default function DueAlert({ overdue, dueToday, onOpen, onClose }: Props) 
           <Icon name="bell" size={22} />
         </span>
         <div>
-          <h2 id="due-alert-title">Tasks that need your attention</h2>
+          <h2 id="due-alert-title">Task-uri care au nevoie de atenția ta</h2>
           <p className="muted">
-            {overdue.length > 0 && `${overdue.length} overdue`}
+            {overdue.length > 0 && (overdue.length === 1 ? '1 întârziat' : `${overdue.length} întârziate`)}
             {overdue.length > 0 && dueToday.length > 0 && ' · '}
-            {dueToday.length > 0 && `${dueToday.length} due today`}
+            {dueToday.length > 0 && `${dueToday.length} cu termen azi`}
           </p>
         </div>
       </div>
@@ -56,24 +56,24 @@ export default function DueAlert({ overdue, dueToday, onOpen, onClose }: Props) 
       {overdue.length > 0 && (
         <section className="alert-section danger">
           <h3>
-            <Icon name="alert" /> Overdue
+            <Icon name="alert" /> Întârziate
           </h3>
-          {list(overdue, (task) => (task.dueDate ? `was due ${formatDueDate(task.dueDate)}` : ''))}
+          {list(overdue, (task) => (task.dueDate ? `termen: ${formatDueDate(task.dueDate)}` : ''))}
         </section>
       )}
       {dueToday.length > 0 && (
         <section className="alert-section">
           <h3>
-            <Icon name="sun" /> Due today
+            <Icon name="sun" /> Cu termen azi
           </h3>
-          {list(dueToday, (task) => (task.priority === 'high' ? 'High priority' : ''))}
+          {list(dueToday, (task) => (task.priority === 'high' ? 'Prioritate ridicată' : ''))}
         </section>
       )}
 
       <div className="alert-actions">
         {overdue.length > 0 && (
           <button type="button" className="button primary" onClick={() => onOpen({ kind: 'overdue' })}>
-            View overdue
+            Vezi întârziatele
           </button>
         )}
         {dueToday.length > 0 && (
@@ -82,14 +82,14 @@ export default function DueAlert({ overdue, dueToday, onOpen, onClose }: Props) 
             className={`button ${overdue.length > 0 ? 'ghost' : 'primary'}`}
             onClick={() => onOpen({ kind: 'today' })}
           >
-            View today
+            Vezi task-urile de azi
           </button>
         )}
         <button type="button" className="button ghost" onClick={onClose}>
-          Dismiss
+          Închide
         </button>
       </div>
-      <p className="alert-note muted">You can turn this reminder off under Home → Customize.</p>
+      <p className="alert-note muted">Poți dezactiva această atenționare din Acasă → Personalizează.</p>
     </dialog>
   )
 }

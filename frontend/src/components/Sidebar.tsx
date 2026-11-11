@@ -41,7 +41,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
   }
 
   return (
-    <nav className="sidebar" aria-label="Views">
+    <nav className="sidebar" aria-label="Vederi">
       <div className="sidebar-brand">
         <span className="brand-mark" aria-hidden="true">
           ✓
@@ -51,25 +51,25 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
 
       <div className="sidebar-scroll">
         <ul className="nav-list">
-          {item({ kind: 'dashboard' }, 'home', 'Home')}
-          {item({ kind: 'all' }, 'inbox', 'All tasks', counts.all)}
-          {item({ kind: 'today' }, 'sun', 'Today', counts.today)}
-          {item({ kind: 'upcoming' }, 'calendar', 'Upcoming', counts.upcoming)}
-          {item({ kind: 'overdue' }, 'alert', 'Overdue', counts.overdue, 'danger')}
-          {item({ kind: 'completed' }, 'checkCircle', 'Completed')}
+          {item({ kind: 'dashboard' }, 'home', 'Acasă')}
+          {item({ kind: 'all' }, 'inbox', 'Toate task-urile', counts.all)}
+          {item({ kind: 'today' }, 'sun', 'Azi', counts.today)}
+          {item({ kind: 'upcoming' }, 'calendar', 'Urmează', counts.upcoming)}
+          {item({ kind: 'overdue' }, 'alert', 'Întârziate', counts.overdue, 'danger')}
+          {item({ kind: 'completed' }, 'checkCircle', 'Finalizate')}
         </ul>
 
-        <h2 className="nav-heading">Tags</h2>
+        <h2 className="nav-heading">Etichete</h2>
         {tags.length === 0 ? (
-          <p className="nav-empty">Tags you add to tasks show up here.</p>
+          <p className="nav-empty">Etichetele pe care le pui pe task-uri apar aici.</p>
         ) : (
           <ul className="nav-list">
             {tags.map(({ tag, open }) => item({ kind: 'tag', tag }, 'hash', tag, open))}
           </ul>
         )}
 
-        <h2 className="nav-heading">Apps</h2>
-        <ul className="nav-list">{item({ kind: 'integrations' }, 'plug', 'Integrations')}</ul>
+        <h2 className="nav-heading">Aplicații</h2>
+        <ul className="nav-list">{item({ kind: 'integrations' }, 'plug', 'Integrări')}</ul>
       </div>
 
       <div className="sidebar-user">
@@ -79,7 +79,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
         <span className="sidebar-email" title={user.email}>
           {user.email}
         </span>
-        <button type="button" className="sidebar-icon-button" onClick={onLogout} aria-label="Sign out" title="Sign out">
+        <button type="button" className="sidebar-icon-button" onClick={onLogout} aria-label="Deconectare" title="Deconectare">
           <Icon name="logout" />
         </button>
       </div>

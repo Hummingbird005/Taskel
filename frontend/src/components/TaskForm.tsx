@@ -2,6 +2,9 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { TaskDraft, TaskPriority } from '../api/tasks'
 import Icon from './Icon'
 
+const MAX_TAGS = 10
+const MAX_TAG_LENGTH = 30
+
 const EMPTY: TaskDraft = { title: '', dueDate: null, priority: 'medium', tags: [] }
 
 /** Splits "work, Home ,work" into ["work", "home"], matching the API's normalization. */
@@ -26,7 +29,7 @@ interface Props {
 
 export default function TaskForm({
   initial = EMPTY,
-  placeholder = 'Add a task',
+  placeholder = 'Adaugă un task',
   submitLabel,
   onSubmit,
   onCancel,
@@ -37,6 +40,7 @@ export default function TaskForm({
   const [tags, setTags] = useState(initial.tags.join(', '))
   const [description, setDescription] = useState(initial.description ?? '')
   const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const isEditing = Boolean(onCancel)
 
@@ -44,12 +48,24 @@ export default function TaskForm({
     e.preventDefault()
     const trimmed = title.trim()
     if (!trimmed || submitting) return
+
+    // Same limits as the API, checked here so the message can be specific.
+    const parsedTags = parseTags(tags)
+    if (parsedTags.length > MAX_TAGS) {
+      setFormError(`Un task poate avea cel mult ${MAX_TAGS} etichete.`)
+      return
+    }
+    if (parsedTags.some((tag) => tag.length > MAX_TAG_LENGTH)) {
+      setFormError(`O etichetă poate avea cel mult ${MAX_TAG_LENGTH} de caractere.`)
+      return
+    }
+    setFormError(null)
     setSubmitting(true)
     const saved = await onSubmit({
       title: trimmed,
       dueDate: dueDate || null,
       priority,
-      tags: parseTags(tags),
+      tags: parsedTags,
       // Notes are only editable in edit mode; new tasks start without any.
       ...(isEditing ? { description: description.trim() || null } : {}),
     })
@@ -74,7 +90,7 @@ export default function TaskForm({
         onChange={(e) => setTitle(e.target.value)}
         placeholder={placeholder}
         maxLength={200}
-        aria-label="Task title"
+        aria-label="Titlul task-ului"
         autoFocus={isEditing}
       />
       {isEditing && (
@@ -82,45 +98,50 @@ export default function TaskForm({
           className="composer-notes"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Notes"
+          placeholder="Note"
           maxLength={2000}
           rows={4}
-          aria-label="Notes"
+          aria-label="Note"
         />
+      )}
+      {formError && (
+        <p className="composer-error" role="alert">
+          {formError}
+        </p>
       )}
       <div className="composer-bar">
         <label className="composer-field">
           <Icon name="calendar" />
-          <span className="visually-hidden">Due date</span>
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} aria-label="Due date" />
+          <span className="visually-hidden">Termen</span>
+          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} aria-label="Termen" />
         </label>
         <label className="composer-field">
           <Icon name="flag" />
-          <span className="visually-hidden">Priority</span>
+          <span className="visually-hidden">Prioritate</span>
           <select
             value={priority}
             onChange={(e) => setPriority(e.target.value as TaskPriority)}
-            aria-label="Priority"
+            aria-label="Prioritate"
           >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
+            <option value="low">Scăzută</option>
+            <option value="medium">Medie</option>
+            <option value="high">Ridicată</option>
           </select>
         </label>
         <label className="composer-field composer-tags">
           <Icon name="hash" />
-          <span className="visually-hidden">Tags</span>
+          <span className="visually-hidden">Etichete</span>
           <input
             value={tags}
             onChange={(e) => setTags(e.target.value)}
-            placeholder="tags, comma separated"
-            aria-label="Tags, comma separated"
+            placeholder="etichete, separate prin virgulă"
+            aria-label="Etichete, separate prin virgulă"
           />
         </label>
         <div className="composer-actions">
           {onCancel && (
             <button type="button" className="button ghost" onClick={onCancel}>
-              Cancel
+              Anulează
             </button>
           )}
           <button type="submit" className="button send" disabled={!title.trim() || submitting}>

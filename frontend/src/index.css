@@ -481,3 +481,4 @@ button.chip.tag:hover { background: var(--accent); color: var(--on-accent); }
   .welcome-points { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+.composer-error { margin: 0; padding: 0 14px 8px; color: var(--danger); font-size: 0.88rem; }

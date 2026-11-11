@@ -49,18 +49,18 @@ export default function App() {
           </span>
           Taskel
         </div>
-        <p className="welcome-tagline">Your tasks, organised like a conversation.</p>
+        <p className="welcome-tagline">Task-urile tale, organizate ca o conversație.</p>
         <ul className="welcome-points">
-          <li>Views for today, upcoming and overdue work</li>
-          <li>Tags that work like channels</li>
-          <li>Turn Outlook emails into tasks, and reply when they are done</li>
+          <li>Vederi pentru ce ai de făcut azi, ce urmează și ce a întârziat</li>
+          <li>Etichete care funcționează ca niște canale</li>
+          <li>Transformi emailurile din Outlook în task-uri și răspunzi când sunt gata</li>
         </ul>
       </aside>
       <main className="welcome-main">
-        {session.status === 'loading' && <p className="empty">Loading…</p>}
+        {session.status === 'loading' && <p className="empty">Se încarcă…</p>}
         {session.status === 'unreachable' && (
           <p className="error" role="alert">
-            Could not reach the Taskel API. Is the backend running?
+            Nu am putut contacta serverul Taskel. Verifică dacă este pornit.
           </p>
         )}
         {session.status === 'signedOut' && (

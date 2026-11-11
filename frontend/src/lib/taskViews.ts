@@ -54,9 +54,9 @@ export function matchesSearch(task: TaskItem, query: string): boolean {
 
 const PRIORITY_RANK: Record<TaskPriority, number> = { high: 0, medium: 1, low: 2 }
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
-  high: 'High priority',
-  medium: 'Medium priority',
-  low: 'Low priority',
+  high: 'Prioritate ridicată',
+  medium: 'Prioritate medie',
+  low: 'Prioritate scăzută',
 }
 
 const byDueDate = (a: TaskItem, b: TaskItem) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999')
@@ -85,15 +85,15 @@ export function groupTasks(tasks: TaskItem[], sortBy: SortBy, today: string): Ta
     const tomorrow = addDaysIso(today, 1)
     const sorted = [...open].sort((a, b) => byDueDate(a, b) || byPriority(a, b))
     groups.push(
-      { key: 'overdue', label: 'Overdue', tone: 'danger', tasks: sorted.filter((t) => isOverdue(t, today)) },
-      { key: 'today', label: 'Today', tasks: sorted.filter((t) => t.dueDate === today) },
-      { key: 'tomorrow', label: 'Tomorrow', tasks: sorted.filter((t) => t.dueDate === tomorrow) },
-      { key: 'later', label: 'Later', tasks: sorted.filter((t) => t.dueDate !== null && t.dueDate > tomorrow) },
-      { key: 'none', label: 'No due date', tasks: sorted.filter((t) => t.dueDate === null) },
+      { key: 'overdue', label: 'Întârziate', tone: 'danger', tasks: sorted.filter((t) => isOverdue(t, today)) },
+      { key: 'today', label: 'Azi', tasks: sorted.filter((t) => t.dueDate === today) },
+      { key: 'tomorrow', label: 'Mâine', tasks: sorted.filter((t) => t.dueDate === tomorrow) },
+      { key: 'later', label: 'Mai târziu', tasks: sorted.filter((t) => t.dueDate !== null && t.dueDate > tomorrow) },
+      { key: 'none', label: 'Fără termen', tasks: sorted.filter((t) => t.dueDate === null) },
     )
   }
 
-  groups.push({ key: 'completed', label: 'Completed', tasks: completed })
+  groups.push({ key: 'completed', label: 'Finalizate', tasks: completed })
 
   const nonEmpty = groups.filter((group) => group.tasks.length > 0)
   // A single section needs no divider above it.
@@ -121,38 +121,38 @@ export function tagCounts(tasks: TaskItem[]): TagCount[] {
 export function viewTitle(view: View): string {
   switch (view.kind) {
     case 'dashboard':
-      return 'Home'
+      return 'Acasă'
     case 'all':
-      return 'All tasks'
+      return 'Toate task-urile'
     case 'today':
-      return 'Today'
+      return 'Azi'
     case 'upcoming':
-      return 'Upcoming'
+      return 'Urmează'
     case 'overdue':
-      return 'Overdue'
+      return 'Întârziate'
     case 'completed':
-      return 'Completed'
+      return 'Finalizate'
     case 'tag':
       return view.tag
     case 'integrations':
-      return 'Integrations'
+      return 'Integrări'
   }
 }
 
 export function emptyMessage(view: View, searching: boolean): string {
-  if (searching) return 'No tasks match your search.'
+  if (searching) return 'Niciun task nu se potrivește căutării.'
   switch (view.kind) {
     case 'today':
-      return 'Nothing due today.'
+      return 'Nimic cu termen azi.'
     case 'upcoming':
-      return 'Nothing coming up.'
+      return 'Nimic în perioada următoare.'
     case 'overdue':
-      return 'Nothing is overdue. Nice.'
+      return 'Nimic întârziat. Bravo!'
     case 'completed':
-      return 'No completed tasks yet.'
+      return 'Niciun task finalizat încă.'
     case 'tag':
-      return `No tasks tagged #${view.tag}.`
+      return `Niciun task cu eticheta #${view.tag}.`
     default:
-      return 'No tasks yet. Add your first one below.'
+      return 'Niciun task încă. Adaugă primul mai jos.'
   }
 }

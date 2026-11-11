@@ -12,7 +12,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
 
   function handleFailure(err: unknown, fallback: string) {
     if (err instanceof ApiError && err.status === 401) onSessionExpired()
-    else setError(err instanceof ApiError && err.status === 400 ? err.message : fallback)
+    else setError(fallback)
   }
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
       .then(setTokens)
       .catch((err) => {
         if (err instanceof ApiError && err.status === 401) onSessionExpired()
-        else setError('Could not load API tokens.')
+        else setError('Nu am putut încărca token-urile API.')
       })
   }, [onSessionExpired])
 
@@ -36,18 +36,23 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
       setTokens((prev) => [...prev, { ...token, lastUsedAt: null }])
       setError(null)
     } catch (err) {
-      handleFailure(err, 'Failed to create the token.')
+      handleFailure(
+        err,
+        err instanceof ApiError && err.status === 400
+          ? 'Poți avea cel mult 10 token-uri API. Revocă unul mai întâi.'
+          : 'Nu am putut crea token-ul.',
+      )
     }
   }
 
   async function revoke(token: ApiToken) {
-    if (!window.confirm(`Revoke "${token.name}"? Anything using this token will stop working.`)) return
+    if (!window.confirm(`Revoci „${token.name}”? Tot ce folosește acest token nu va mai funcționa.`)) return
     try {
       await tokensApi.revoke(token.id)
       setTokens((prev) => prev.filter((t) => t.id !== token.id))
       if (created?.id === token.id) setCreated(null)
     } catch (err) {
-      handleFailure(err, 'Failed to revoke the token.')
+      handleFailure(err, 'Nu am putut revoca token-ul.')
     }
   }
 
@@ -58,7 +63,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
       setCopied(true)
     } catch {
       setCopied(false)
-      setError('Could not copy automatically. Select the token and copy it manually.')
+      setError('Nu am putut copia automat. Selectează token-ul și copiază-l manual.')
     }
   }
 
@@ -66,21 +71,21 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
     <section className="panel" aria-labelledby="integrations-title">
       <h2 id="integrations-title">Outlook</h2>
       <p className="muted">
-        Send emails from Outlook to Taskel as tasks. Install the macro from{' '}
-        <code>integrations/outlook</code> in the Taskel repository, then give it an API token created here.
+        Trimite emailuri din Outlook în Taskel, ca task-uri. Instalează macro-ul din{' '}
+        <code>integrations/outlook</code> din repository-ul Taskel, apoi dă-i un token API creat aici.
       </p>
-      <h3>API tokens</h3>
+      <h3>Token-uri API</h3>
 
       <form onSubmit={create} className="token-form">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Token name, e.g. Outlook"
+          placeholder="Numele token-ului, de ex. Outlook"
           maxLength={50}
-          aria-label="Token name"
+          aria-label="Numele token-ului"
         />
         <button type="submit" className="button primary" disabled={!name.trim()}>
-          New token
+          Token nou
         </button>
       </form>
 
@@ -93,19 +98,19 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
       {created && (
         <div className="new-token" role="status">
           <p>
-            <strong>Copy this token now.</strong> It will not be shown again.
+            <strong>Copiază acum acest token.</strong> Nu va mai fi afișat.
           </p>
           <div className="token-value">
             <code>{created.token}</code>
             <button type="button" className="button ghost" onClick={copy}>
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? 'Copiat' : 'Copiază'}
             </button>
           </div>
         </div>
       )}
 
       {tokens.length === 0 ? (
-        <p className="muted">No API tokens yet.</p>
+        <p className="muted">Niciun token API încă.</p>
       ) : (
         <ul className="token-list">
           {tokens.map((token) => (
@@ -113,12 +118,12 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
               <div>
                 <span className="token-name">{token.name}</span>
                 <small className="muted">
-                  Created {formatDate(token.createdAt)} ·{' '}
-                  {token.lastUsedAt ? `last used ${formatDate(token.lastUsedAt)}` : 'never used'}
+                  Creat pe {formatDate(token.createdAt)} ·{' '}
+                  {token.lastUsedAt ? `folosit ultima dată pe ${formatDate(token.lastUsedAt)}` : 'nefolosit'}
                 </small>
               </div>
               <button type="button" className="button ghost" onClick={() => revoke(token)}>
-                Revoke
+                Revocă
               </button>
             </li>
           ))}
