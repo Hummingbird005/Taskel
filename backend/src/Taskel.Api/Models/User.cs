@@ -9,6 +9,11 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Ids of the dashboard widgets the user shows, in order. Null means the default layout.</summary>
+    public List<string>? DashboardWidgets { get; set; }
+    /// <summary>Whether to show the overdue / due-today reminder when the user opens the app.</summary>
+    public bool ShowDueAlert { get; set; } = true;
 }
 
 public record RegisterRequest(

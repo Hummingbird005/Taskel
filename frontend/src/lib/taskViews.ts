@@ -2,6 +2,7 @@ import type { TaskItem, TaskPriority } from '../api/tasks'
 import { addDaysIso } from './dates'
 
 export type View =
+  | { kind: 'dashboard' }
   | { kind: 'all' }
   | { kind: 'today' }
   | { kind: 'upcoming' }
@@ -36,6 +37,7 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
       return tasks.filter((t) => t.isCompleted)
     case 'tag':
       return tasks.filter((t) => t.tags.includes(view.tag))
+    case 'dashboard':
     case 'integrations':
       return []
     default:
@@ -118,6 +120,8 @@ export function tagCounts(tasks: TaskItem[]): TagCount[] {
 
 export function viewTitle(view: View): string {
   switch (view.kind) {
+    case 'dashboard':
+      return 'Home'
     case 'all':
       return 'All tasks'
     case 'today':

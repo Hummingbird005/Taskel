@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
+import { DEFAULT_DASHBOARD_SETTINGS, dashboardApi, type DashboardSettings } from '../api/dashboard'
 import { tasksApi, type TaskDraft, type TaskItem } from '../api/tasks'
 import { todayIso } from '../lib/dates'
 import {
@@ -15,6 +16,8 @@ import {
   type View,
 } from '../lib/taskViews'
 import CompleteWithReply from './CompleteWithReply'
+import Dashboard from './Dashboard'
+import DueAlert from './DueAlert'
 import Icon from './Icon'
 import Integrations from './Integrations'
 import Sidebar from './Sidebar'
@@ -27,17 +30,20 @@ interface Props {
   onSessionExpired: () => void
 }
 
-/** The signed-in app: sidebar with views, the task list for the selected view, and the composer. */
+/** The signed-in app: sidebar with views, the dashboard or task list for the selected view, and the composer. */
 export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<View>({ kind: 'all' })
+  const [view, setView] = useState<View>({ kind: 'dashboard' })
   const [sortBy, setSortBy] = useState<SortBy>('dueDate')
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [settings, setSettings] = useState<DashboardSettings>(DEFAULT_DASHBOARD_SETTINGS)
+  const [customizing, setCustomizing] = useState(false)
+  const [alertOpen, setAlertOpen] = useState(false)
 
   const today = todayIso()
 
@@ -48,25 +54,50 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
   }
 
   useEffect(() => {
-    function load() {
+    let cancelled = false
+
+    function reload() {
       tasksApi
         .list()
         .then((loaded) => {
+          if (cancelled) return
           setTasks(loaded)
           setError(null)
         })
         .catch((err) => {
+          if (cancelled) return
           if (err instanceof ApiError && err.status === 401) onSessionExpired()
           else setError('Could not load tasks. Is the backend running?')
         })
-        .finally(() => setLoading(false))
     }
 
-    load()
+    // First load: tasks and dashboard preferences together, so the reminder can be decided once.
+    // Preferences that fail to load fall back to the defaults rather than blocking the app.
+    Promise.all([tasksApi.list(), dashboardApi.get().catch(() => DEFAULT_DASHBOARD_SETTINGS)])
+      .then(([loaded, loadedSettings]) => {
+        if (cancelled) return
+        setTasks(loaded)
+        setSettings(loadedSettings)
+        const now = todayIso()
+        const needsAttention = loaded.some((t) => !t.isCompleted && t.dueDate !== null && t.dueDate <= now)
+        setAlertOpen(loadedSettings.showDueAlert && needsAttention)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 401) onSessionExpired()
+        else setError('Could not load tasks. Is the backend running?')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
     // Tasks can be added from outside this page (e.g. the Outlook macro),
     // so pick them up when the user comes back to it.
-    window.addEventListener('focus', load)
-    return () => window.removeEventListener('focus', load)
+    window.addEventListener('focus', reload)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', reload)
+    }
   }, [onSessionExpired])
 
   const counts = useMemo(() => {
@@ -94,6 +125,21 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
     setEditingId(null)
     setCompletingId(null)
     setSidebarOpen(false)
+    setCustomizing(false)
+    setAlertOpen(false)
+  }
+
+  /** Applies a dashboard change right away and saves it; a failed save is undone. */
+  async function changeSettings(next: DashboardSettings) {
+    const previous = settings
+    setSettings(next)
+    try {
+      await dashboardApi.save(next)
+      setError(null)
+    } catch (err) {
+      setSettings(previous)
+      handleFailure(err, 'Could not save your dashboard.')
+    }
   }
 
   async function add(draft: TaskDraft): Promise<boolean> {
@@ -163,8 +209,9 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
     tags: view.kind === 'tag' ? [view.tag] : [],
   }
   const composerKey = view.kind === 'tag' ? `tag:${view.tag}` : view.kind
-  const showsTasks = view.kind !== 'integrations'
-  const canAdd = showsTasks && view.kind !== 'completed' && view.kind !== 'overdue'
+  const isDashboard = view.kind === 'dashboard'
+  const showsTasks = !isDashboard && view.kind !== 'integrations'
+  const canAdd = (showsTasks && view.kind !== 'completed' && view.kind !== 'overdue') || (isDashboard && !customizing)
 
   function renderTask(task: TaskItem) {
     if (editingId === task.id) {
@@ -245,6 +292,19 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
               </span>
             )}
           </div>
+          {isDashboard && !loading && (
+            <div className="main-tools">
+              <button
+                type="button"
+                className="button ghost"
+                aria-pressed={customizing}
+                onClick={() => setCustomizing((on) => !on)}
+              >
+                <Icon name="settings" />
+                {customizing ? 'Done' : 'Customize'}
+              </button>
+            </div>
+          )}
           {showsTasks && (
             <div className="main-tools">
               <label className="search">
@@ -279,10 +339,20 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
             </div>
           )}
 
-          {!showsTasks ? (
+          {view.kind === 'integrations' ? (
             <Integrations onSessionExpired={onSessionExpired} />
           ) : loading ? (
             <p className="empty">Loading…</p>
+          ) : isDashboard ? (
+            <Dashboard
+              tasks={tasks}
+              today={today}
+              settings={settings}
+              customizing={customizing}
+              onChange={changeSettings}
+              onDone={() => setCustomizing(false)}
+              onOpen={selectView}
+            />
           ) : visibleCount === 0 ? (
             <p className="empty">{emptyMessage(view, search.trim().length > 0)}</p>
           ) : (
@@ -313,6 +383,15 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
           </footer>
         )}
       </main>
+
+      {alertOpen && (
+        <DueAlert
+          overdue={tasks.filter((t) => isOverdue(t, today)).sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))}
+          dueToday={tasks.filter((t) => !t.isCompleted && t.dueDate === today)}
+          onOpen={selectView}
+          onClose={() => setAlertOpen(false)}
+        />
+      )}
     </div>
   )
 }

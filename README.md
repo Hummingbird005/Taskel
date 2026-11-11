@@ -59,6 +59,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/auth/tokens`   | session | List your API tokens                       |
 | POST   | `/api/auth/tokens`   | session | Create an API token (shown once)           |
 | DELETE | `/api/auth/tokens/{id}` | session | Revoke an API token                     |
+| GET    | `/api/dashboard`     | ✓    | Your dashboard preferences                    |
+| PUT    | `/api/dashboard`     | ✓    | Save your dashboard preferences               |
 | GET    | `/api/tasks`         | ✓    | List your tasks                               |
 | GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
@@ -118,6 +120,22 @@ Authorization: Bearer tsk_…
 `integrations/outlook` contains a VBA macro for classic Outlook on Windows that sends the selected emails to
 `POST /api/tasks/from-email`; each becomes a task tagged `email`, with the subject as title and the sender,
 date and body as notes. See [integrations/outlook/README.md](integrations/outlook/README.md) for setup.
+
+## Dashboard and reminders
+
+The app opens on **Home**, a dashboard built from widgets: at-a-glance counts, overdue, due today, next 7 days,
+email tasks waiting for a reply, open tasks by priority, tasks completed over the last 7 days, tags, and recently
+completed.
+
+- **Customize** (top right) lets each user remove, add and reorder widgets, or reset to the default layout.
+  Changes are saved to the user's account as they are made (`PUT /api/dashboard`), so they follow the user
+  across browsers.
+- When the app is opened and there are tasks that are overdue or due today, a reminder dialog lists them, with
+  shortcuts to the Overdue and Today views. It is shown once per visit and can be turned off under Customize.
+- Preferences are `{ "widgets": ["stats", "overdue", …] | null, "showDueAlert": true }`. `null` means the default
+  layout. Widget ids are defined by the frontend (`frontend/src/lib/dashboard.ts`); the API only checks their shape.
+- "Completed, last 7 days" counts by completion time, which is recorded since the completion-reply feature; tasks
+  completed before that are not counted.
 
 ## Completing email tasks with a reply
 

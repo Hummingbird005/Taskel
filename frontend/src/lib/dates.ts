@@ -34,3 +34,13 @@ export function formatDueDate(iso: string): string {
 export function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
+
+/** "Wednesday, 11 November". */
+export function formatLongDate(iso: string): string {
+  return fromIso(iso).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+/** Short weekday name, e.g. "Wed". */
+export function formatWeekday(iso: string): string {
+  return fromIso(iso).toLocaleDateString(undefined, { weekday: 'short' })
+}
