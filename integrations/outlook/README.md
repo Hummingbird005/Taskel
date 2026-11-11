@@ -10,6 +10,7 @@ click **Send to Taskel**, and each email becomes a task:
 | Body             | Notes (plain text; the whole description is cut at 2000 characters) |
 | Importance       | Priority (low / normal / high → low / medium / high)        |
 | –                | Tag `email`                                                 |
+| Sender address, Message-ID | Kept so Taskel can reply to the sender (see below) |
 
 It is a VBA macro, so it works with any account type (Gmail, IMAP, POP, Exchange). It does **not**
 work in the new Outlook for Windows, Outlook on the web or Outlook for Mac, which cannot run VBA.
@@ -39,6 +40,16 @@ confirms how many tasks were added. Switch to Taskel in the browser; the list re
 window gets focus.
 
 Sending the same email twice creates two tasks.
+
+## Reply on completion
+
+A task created from an email can only be completed in Taskel by writing a response. Taskel emails that
+response to the sender as a reply to the original email, then marks the task as completed. This needs an SMTP
+mailbox configured on the Taskel server; see "Email (SMTP) configuration" in the main README.
+
+If you installed the macro before this feature existed, import `TaskelOutlook.bas` again (remove the old
+`TaskelOutlook` module first: right-click it in the VBA editor → **Remove**, answer **No** to exporting).
+Tasks sent by the old macro still get a reply, but it may not be threaded with the original email.
 
 ## Troubleshooting
 

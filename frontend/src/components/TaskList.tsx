@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ApiError } from '../api/client'
 import { tasksApi, type TaskDraft, type TaskItem, type TaskPriority } from '../api/tasks'
+import CompleteWithReply from './CompleteWithReply'
 import TaskForm from './TaskForm'
 import TaskRow from './TaskRow'
 
@@ -23,13 +24,14 @@ export default function TaskList({ onSessionExpired }: { onSessionExpired: () =>
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [completingId, setCompletingId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortBy>('created')
   const [tagFilter, setTagFilter] = useState<string | null>(null)
 
   /** Shows the failure, or returns to the sign-in screen when the session is gone. */
   function handleFailure(err: unknown, fallback: string) {
     if (err instanceof ApiError && err.status === 401) onSessionExpired()
-    else setError(err instanceof ApiError && err.status === 400 ? err.message : fallback)
+    else setError(err instanceof ApiError ? err.message : fallback)
   }
 
   useEffect(() => {
@@ -80,6 +82,32 @@ export default function TaskList({ onSessionExpired }: { onSessionExpired: () =>
     } catch (err) {
       handleFailure(err, 'Failed to update task.')
       return false
+    }
+  }
+
+  /** Email tasks are completed through a reply; everything else toggles directly. */
+  function toggle(task: TaskItem) {
+    if (!task.isCompleted && task.sourceEmailAddress) {
+      setEditingId(null)
+      setCompletingId(task.id)
+    } else {
+      void save(task, { isCompleted: !task.isCompleted })
+    }
+  }
+
+  async function completeWithReply(task: TaskItem, response: string): Promise<string | null> {
+    try {
+      const updated = await tasksApi.complete(task.id, response)
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      setCompletingId(null)
+      setError(null)
+      return null
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onSessionExpired()
+        return null
+      }
+      return err instanceof ApiError ? err.message : 'Could not reach Taskel. The task was not completed.'
     }
   }
 
@@ -142,12 +170,24 @@ export default function TaskList({ onSessionExpired }: { onSessionExpired: () =>
                   }}
                 />
               </li>
+            ) : completingId === task.id && task.sourceEmailAddress ? (
+              <li key={task.id} className="editing">
+                <CompleteWithReply
+                  title={task.title}
+                  recipient={task.sourceEmailAddress}
+                  onCancel={() => setCompletingId(null)}
+                  onSubmit={(response) => completeWithReply(task, response)}
+                />
+              </li>
             ) : (
               <TaskRow
                 key={task.id}
                 task={task}
-                onToggle={() => save(task, { isCompleted: !task.isCompleted })}
-                onEdit={() => setEditingId(task.id)}
+                onToggle={() => toggle(task)}
+                onEdit={() => {
+                  setCompletingId(null)
+                  setEditingId(task.id)
+                }}
                 onDelete={() => remove(task.id)}
                 onTagClick={setTagFilter}
               />
