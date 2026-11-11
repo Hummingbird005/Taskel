@@ -40,11 +40,20 @@ h1 { margin: 0; }
   background: var(--bg); color: var(--text); font-size: 1rem;
 }
 .auth-form p { margin: 0; }
-.add-form { display: flex; gap: 8px; margin-bottom: 16px; }
-.add-form input {
-  flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
-  background: var(--card); color: var(--text); font-size: 1rem;
+.task-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.task-form-main { display: flex; gap: 8px; }
+.task-form-main input { flex: 1; min-width: 0; }
+.task-form-details { display: flex; gap: 12px; flex-wrap: wrap; }
+.task-form-details label {
+  display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted);
 }
+.task-form-details .tags-field { flex: 1; min-width: 160px; }
+.task-form-details .tags-field input { flex: 1; min-width: 0; }
+.task-form input, .task-form select, .list-controls select {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--card); color: var(--text); font-size: 0.9rem; font-family: inherit;
+}
+.task-form-main input { padding: 10px 12px; font-size: 1rem; }
 button {
   padding: 10px 16px; border: 0; border-radius: 8px; background: var(--accent);
   color: #fff; font-size: 1rem; cursor: pointer;
@@ -56,11 +65,34 @@ button:disabled { opacity: 0.5; cursor: default; }
   padding: 12px; margin-bottom: 8px; background: var(--card);
   border: 1px solid var(--border); border-radius: 8px;
 }
-.task-list label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-.task-list li.done span { text-decoration: line-through; color: var(--muted); }
-.delete { background: transparent; color: var(--muted); padding: 4px 8px; }
-.delete:hover { color: var(--danger); }
+.task-list li { gap: 12px; }
+.task-list li.editing { display: block; }
+.task-list li.editing .task-form { margin: 0; }
+.task-list li.editing input, .task-list li.editing select { background: var(--bg); }
+.task-body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.task-body label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.task-title { overflow-wrap: anywhere; }
+.task-list li.done .task-title { text-decoration: line-through; color: var(--muted); }
+.task-meta { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 28px; }
+.task-meta:empty { display: none; }
+.task-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border);
+  background: transparent; color: var(--muted); font-size: 0.78rem; line-height: 1.5;
+}
+.badge.priority-high { color: var(--danger); border-color: var(--danger); }
+.badge.overdue { color: #fff; background: var(--danger); border-color: var(--danger); }
+button.badge.tag { color: var(--accent); cursor: pointer; }
+button.badge.tag:hover, button.badge.tag.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.list-controls {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 12px; font-size: 0.85rem; color: var(--muted);
+}
+button.icon { background: transparent; color: var(--muted); padding: 4px 8px; }
+button.icon:hover { color: var(--accent); }
+button.icon.delete:hover { color: var(--danger); }
 .error { color: var(--danger); }
 .muted { color: var(--muted); }
 button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 6px 12px; font-size: 0.9rem; }
+.task-form-main button.secondary { padding: 10px 16px; font-size: 1rem; }
 button.link { background: none; color: var(--accent); padding: 0; font-size: inherit; text-decoration: underline; }

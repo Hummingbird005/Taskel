@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,10 @@ const string FrontendCorsPolicy = "Frontend";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                      ?? ["http://localhost:5173"];
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+    // Enums travel as camelCase strings ("low", "medium", "high"); numbers are rejected.
+    options.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
 builder.Services.AddOpenApi();
 var connectionString = builder.Configuration.GetConnectionString("Taskel")
     ?? throw new InvalidOperationException("Connection string 'ConnectionStrings:Taskel' is not configured.");

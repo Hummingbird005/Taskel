@@ -61,6 +61,19 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
 | DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
 
+### Task fields
+
+| Field         | Type                          | Notes                                                              |
+|---------------|-------------------------------|--------------------------------------------------------------------|
+| `title`       | string, 1–200 chars           | Required                                                           |
+| `description` | string, up to 2000 chars      | Optional                                                           |
+| `isCompleted` | boolean                       | Set through `PUT`                                                  |
+| `dueDate`     | `"YYYY-MM-DD"` or `null`      | A calendar date, no time or time zone                              |
+| `priority`    | `"low"`, `"medium"`, `"high"` | Defaults to `"medium"`                                             |
+| `tags`        | array of strings              | Up to 10 tags of up to 30 chars; trimmed, lower-cased, de-duplicated |
+
+`PUT` replaces the whole task: omitted optional fields are reset (no due date, medium priority, no tags).
+
 The OpenAPI document is available at `/openapi/v1.json` in Development.
 
 ## Authentication
