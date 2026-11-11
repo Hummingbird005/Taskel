@@ -16,6 +16,12 @@ const PATHS = {
   mail: 'M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1zM3.5 7l8.5 6 8.5-6',
   reply: 'M10 8L5 12l5 4M5 12h9a5 5 0 015 5v1',
   close: 'M6 6l12 12M18 6L6 18',
+  home: 'M4 11l8-7 8 7M6 10v9a1 1 0 001 1h3v-6h4v6h3a1 1 0 001-1v-9',
+  settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4',
+  arrowLeft: 'M11 6l-6 6 6 6M5 12h14',
+  arrowRight: 'M13 6l6 6-6 6M19 12H5',
+  plus: 'M12 5v14M5 12h14',
+  bell: 'M6 16V11a6 6 0 0112 0v5l1.5 2h-15L6 16zM10 20a2 2 0 004 0',
 } as const
 
 export type IconName = keyof typeof PATHS

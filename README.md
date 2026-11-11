@@ -2,6 +2,21 @@
 
 Task management app with an **ASP.NET Core (.NET 10)** backend and a **React + Vite + TypeScript** frontend (Node.js).
 
+
+![Taskel dashboard: at-a-glance counts, overdue, due today, upcoming, priority and weekly completion widgets](docs/screenshots/dashboard.png)
+
+## Screenshots
+
+| | |
+|---|---|
+| **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) |
+| **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
+| **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> |
+
+Screenshots use sample data.
+
+## Project layout
+
 ```
 Taskel/
 ├── backend/                     # ASP.NET Core Web API (.NET 10)
@@ -59,6 +74,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/auth/tokens`   | session | List your API tokens                       |
 | POST   | `/api/auth/tokens`   | session | Create an API token (shown once)           |
 | DELETE | `/api/auth/tokens/{id}` | session | Revoke an API token                     |
+| GET    | `/api/dashboard`     | ✓    | Your dashboard preferences                    |
+| PUT    | `/api/dashboard`     | ✓    | Save your dashboard preferences               |
 | GET    | `/api/tasks`         | ✓    | List your tasks                               |
 | GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
@@ -118,6 +135,22 @@ Authorization: Bearer tsk_…
 `integrations/outlook` contains a VBA macro for classic Outlook on Windows that sends the selected emails to
 `POST /api/tasks/from-email`; each becomes a task tagged `email`, with the subject as title and the sender,
 date and body as notes. See [integrations/outlook/README.md](integrations/outlook/README.md) for setup.
+
+## Dashboard and reminders
+
+The app opens on **Home**, a dashboard built from widgets: at-a-glance counts, overdue, due today, next 7 days,
+email tasks waiting for a reply, open tasks by priority, tasks completed over the last 7 days, tags, and recently
+completed.
+
+- **Customize** (top right) lets each user remove, add and reorder widgets, or reset to the default layout.
+  Changes are saved to the user's account as they are made (`PUT /api/dashboard`), so they follow the user
+  across browsers.
+- When the app is opened and there are tasks that are overdue or due today, a reminder dialog lists them, with
+  shortcuts to the Overdue and Today views. It is shown once per visit and can be turned off under Customize.
+- Preferences are `{ "widgets": ["stats", "overdue", …] | null, "showDueAlert": true }`. `null` means the default
+  layout. Widget ids are defined by the frontend (`frontend/src/lib/dashboard.ts`); the API only checks their shape.
+- "Completed, last 7 days" counts by completion time, which is recorded since the completion-reply feature; tasks
+  completed before that are not counted.
 
 ## Completing email tasks with a reply
 

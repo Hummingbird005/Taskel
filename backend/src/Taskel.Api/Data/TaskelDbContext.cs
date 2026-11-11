@@ -18,6 +18,8 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             user.Property(u => u.Email).HasMaxLength(254).IsRequired();
             user.Property(u => u.PasswordHash).IsRequired();
             user.HasIndex(u => u.Email).IsUnique();
+            user.Property(u => u.DashboardWidgets).HasColumnType("text[]");
+            user.Property(u => u.ShowDueAlert).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<ApiToken>(token =>

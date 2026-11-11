@@ -51,6 +51,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
 
       <div className="sidebar-scroll">
         <ul className="nav-list">
+          {item({ kind: 'dashboard' }, 'home', 'Home')}
           {item({ kind: 'all' }, 'inbox', 'All tasks', counts.all)}
           {item({ kind: 'today' }, 'sun', 'Today', counts.today)}
           {item({ kind: 'upcoming' }, 'calendar', 'Upcoming', counts.upcoming)}
