@@ -2,6 +2,21 @@
 
 Task management app with an **ASP.NET Core (.NET 10)** backend and a **React + Vite + TypeScript** frontend (Node.js).
 
+
+![Taskel dashboard: at-a-glance counts, overdue, due today, upcoming, priority and weekly completion widgets](docs/screenshots/dashboard.png)
+
+## Screenshots
+
+| | |
+|---|---|
+| **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) |
+| **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
+| **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> |
+
+Screenshots use sample data.
+
+## Project layout
+
 ```
 Taskel/
 ├── backend/                     # ASP.NET Core Web API (.NET 10)
