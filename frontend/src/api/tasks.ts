@@ -12,6 +12,14 @@ export interface TaskItem {
   priority: TaskPriority
   tags: string[]
   createdAt: string
+  /**
+   * Sender of the email this task came from. When set, the task can only be completed with a
+   * response, which Taskel emails to this address.
+   */
+  sourceEmailAddress: string | null
+  /** The response written when the task was completed. */
+  completionResponse: string | null
+  completedAt: string | null
 }
 
 /** The editable fields of a task. */
@@ -32,5 +40,8 @@ export const tasksApi = {
         tags: task.tags,
       }),
     }),
+  /** Completes a task. For email tasks the response is required and is emailed to the sender. */
+  complete: (id: string, response: string | null) =>
+    request<TaskItem>(`/tasks/${id}/complete`, { method: 'POST', body: JSON.stringify({ response }) }),
   remove: (id: string) => request<void>(`/tasks/${id}`, { method: 'DELETE' }),
 }

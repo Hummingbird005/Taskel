@@ -19,7 +19,9 @@ Private Const DEFAULT_BASE_URL As String = "http://localhost:5000"
 Private Const MAX_SUBJECT_CHARS As Long = 1000
 Private Const MAX_SENDER_CHARS As Long = 320
 Private Const MAX_BODY_CHARS As Long = 4000
+Private Const MAX_MESSAGE_ID_CHARS As Long = 998
 Private Const OL_MAIL As Long = 43
+Private Const PR_INTERNET_MESSAGE_ID As String = "http://schemas.microsoft.com/mapi/proptag/0x1035001F"
 
 ' ---------------------------------------------------------------------------
 ' Public macros
@@ -192,6 +194,7 @@ Private Function EmailJson(ByVal mail As Object) As String
 
     json = "{""subject"":" & JsonString(Left$(mail.Subject, MAX_SUBJECT_CHARS))
     json = json & ",""sender"":" & JsonString(Left$(SenderText(mail), MAX_SENDER_CHARS))
+    json = json & ",""senderEmail"":" & JsonString(Left$(SenderAddress(mail), MAX_SENDER_CHARS))
     json = json & ",""body"":" & JsonString(Left$(mail.Body, MAX_BODY_CHARS))
     json = json & ",""importance"":""" & ImportanceText(mail.Importance) & """"
 
@@ -201,7 +204,41 @@ Private Function EmailJson(ByVal mail As Object) As String
             Format$(mail.ReceivedTime, "yyyy\-mm\-dd\Thh\:nn\:ss") & """"
     End If
 
+    ' Taskel replies to the sender when the task is completed. The Message-ID
+    ' lets that reply land in the same conversation as this email.
+    Dim messageId As String
+    messageId = InternetMessageId(mail)
+    If Len(messageId) > 0 And Len(messageId) <= MAX_MESSAGE_ID_CHARS Then
+        json = json & ",""messageId"":" & JsonString(messageId)
+    End If
+
     EmailJson = json & "}"
+End Function
+
+' The sender's SMTP address. Exchange senders are stored as an internal
+' (X.500) address, which is resolved to the SMTP one where possible.
+Private Function SenderAddress(ByVal mail As Object) As String
+    Dim resolved As String
+
+    SenderAddress = Trim$(mail.SenderEmailAddress)
+    If mail.SenderEmailType <> "EX" Then Exit Function
+
+    On Error GoTo KeepOriginal
+    resolved = mail.Sender.GetExchangeUser.PrimarySmtpAddress
+    If Len(resolved) > 0 Then SenderAddress = resolved
+    Exit Function
+
+KeepOriginal:
+End Function
+
+' The email's Message-ID header ("<...@...>"), or "" when Outlook has none.
+Private Function InternetMessageId(ByVal mail As Object) As String
+    On Error GoTo Missing
+    InternetMessageId = Trim$(mail.PropertyAccessor.GetProperty(PR_INTERNET_MESSAGE_ID))
+    Exit Function
+
+Missing:
+    InternetMessageId = ""
 End Function
 
 Private Function SenderText(ByVal mail As Object) As String

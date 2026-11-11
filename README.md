@@ -64,6 +64,7 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
 | POST   | `/api/tasks/from-email` | ✓ | Create a task from an email                   |
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
+| POST   | `/api/tasks/{id}/complete` | ✓ | Complete a task, with a response (required for email tasks) |
 | DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
 
 ✓ = browser session or API token. "session" = browser session only.
@@ -78,6 +79,9 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | `dueDate`     | `"YYYY-MM-DD"` or `null`      | A calendar date, no time or time zone                              |
 | `priority`    | `"low"`, `"medium"`, `"high"` | Defaults to `"medium"`                                             |
 | `tags`        | array of strings              | Up to 10 tags of up to 30 chars; trimmed, lower-cased, de-duplicated |
+| `sourceEmailAddress` | string or `null`       | Read-only. Sender of the email the task came from                  |
+| `completionResponse` | string or `null`       | Read-only. The response given when the task was completed          |
+| `completedAt` | timestamp or `null`           | Read-only                                                          |
 
 `PUT` replaces the whole task: omitted optional fields are reset (no due date, medium priority, no tags).
 
@@ -114,6 +118,51 @@ Authorization: Bearer tsk_…
 `integrations/outlook` contains a VBA macro for classic Outlook on Windows that sends the selected emails to
 `POST /api/tasks/from-email`; each becomes a task tagged `email`, with the subject as title and the sender,
 date and body as notes. See [integrations/outlook/README.md](integrations/outlook/README.md) for setup.
+
+## Completing email tasks with a reply
+
+A task created from an email remembers who sent that email. Such a task can only be completed by writing a
+response:
+
+- `POST /api/tasks/{id}/complete` with `{ "response": "…" }` (up to 4000 characters). In the app, ticking the
+  task opens the response form.
+- Taskel emails the response to the sender as a reply to the original email (`Re:` subject, `In-Reply-To` and
+  `References` headers), so it shows up in the same conversation.
+- The task is marked as completed only after the SMTP server has accepted the reply. If sending fails
+  (`502`) or email is not configured (`503`), the task stays open.
+- Setting `isCompleted: true` through `PUT` is rejected for these tasks. Reopening through `PUT` is allowed;
+  completing again needs a new response and sends a new reply.
+- Tasks added by hand, and email tasks without a usable sender address, complete without a response.
+
+### Email (SMTP) configuration
+
+Replies are sent from one mailbox, configured on the server in the `Email:Smtp` section:
+
+| Setting       | Environment variable         | Notes                                                    |
+|---------------|------------------------------|----------------------------------------------------------|
+| `Host`        | `Email__Smtp__Host`          | e.g. `smtp.gmail.com`                                    |
+| `Port`        | `Email__Smtp__Port`          | `587` (STARTTLS, default) or `465` (TLS)                 |
+| `Username`    | `Email__Smtp__Username`      | Usually the full email address                           |
+| `Password`    | `Email__Smtp__Password`      | For Gmail, an [app password](https://support.google.com/accounts/answer/185833), not the account password |
+| `FromAddress` | `Email__Smtp__FromAddress`   | Optional; defaults to `Username`                         |
+| `FromName`    | `Email__Smtp__FromName`      | Optional display name                                    |
+
+Keep the password out of `appsettings.json`. For local development use user secrets:
+
+```bash
+cd backend/src/Taskel.Api
+dotnet user-secrets init
+dotnet user-secrets set "Email:Smtp:Host" "smtp.gmail.com"
+dotnet user-secrets set "Email:Smtp:Username" "you@gmail.com"
+dotnet user-secrets set "Email:Smtp:Password" "your-app-password"
+```
+
+Things to know:
+
+- All users' replies are sent from this one mailbox. A recipient who answers the reply writes to that mailbox.
+- Sent replies are not saved to a "Sent" folder by Taskel (Gmail keeps its own copy of mail sent through its SMTP server).
+- Any signed-in user can make the server send one email per completed email task, to the address stored on that
+  task. Do not expose a server with open registration and SMTP configured to the internet.
 
 ## Database (EF Core + PostgreSQL)
 

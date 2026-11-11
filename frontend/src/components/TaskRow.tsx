@@ -49,6 +49,11 @@ export default function TaskRow({ task, onToggle, onEdit, onDelete, onTagClick }
               {formatDueDate(task.dueDate)}
             </span>
           )}
+          {task.sourceEmailAddress && !task.isCompleted && (
+            <span className="badge" title={`Completing this task sends a reply to ${task.sourceEmailAddress}`}>
+              ↩ Reply required
+            </span>
+          )}
           {task.tags.map((tag) => (
             <button
               key={tag}
@@ -61,6 +66,14 @@ export default function TaskRow({ task, onToggle, onEdit, onDelete, onTagClick }
             </button>
           ))}
         </div>
+        {task.isCompleted && task.completionResponse && (
+          <details className="task-description">
+            <summary>
+              {task.sourceEmailAddress ? `Reply sent to ${task.sourceEmailAddress}` : 'Completion note'}
+            </summary>
+            <p>{task.completionResponse}</p>
+          </details>
+        )}
         {task.description && (
           <details className="task-description">
             <summary>Notes</summary>

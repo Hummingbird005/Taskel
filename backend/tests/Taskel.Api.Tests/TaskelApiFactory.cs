@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Taskel.Api.Data;
+using Taskel.Api.Email;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Tests;
@@ -18,11 +20,19 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         Environment.GetEnvironmentVariable("TASKEL_TEST_CONNECTION")
         ?? "Host=localhost;Port=5432;Database=taskel_test;Username=taskel;Password=taskel";
 
+    /// <summary>Stands in for the SMTP server; holds the replies the API tried to send.</summary>
+    public FakeEmailSender Emails { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Taskel", ConnectionString);
         builder.UseSetting("Database:MigrateOnStartup", "false");
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IEmailSender>();
+            services.AddSingleton<IEmailSender>(Emails);
+        });
     }
 
     public async Task InitializeAsync()

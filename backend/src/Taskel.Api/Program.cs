@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Taskel.Api.Auth;
 using Taskel.Api.Data;
+using Taskel.Api.Email;
 using Taskel.Api.Models;
 using Taskel.Api.Services;
 
@@ -24,6 +25,8 @@ var connectionString = builder.Configuration.GetConnectionString("Taskel")
     ?? throw new InvalidOperationException("Connection string 'ConnectionStrings:Taskel' is not configured.");
 builder.Services.AddDbContext<TaskelDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddScoped<ITaskRepository, EfTaskRepository>();
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
+builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 builder.Services.AddCors(options =>
     options.AddPolicy(FrontendCorsPolicy, policy =>
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));

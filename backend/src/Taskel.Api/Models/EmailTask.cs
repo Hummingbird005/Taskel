@@ -17,4 +17,8 @@ public record CreateTaskFromEmailRequest(
     DateTime? ReceivedAt = null,
     [StringLength(20000)] string? Body = null,
     [EnumDataType(typeof(EmailImportance))] EmailImportance Importance = EmailImportance.Normal,
-    DateOnly? DueDate = null);
+    DateOnly? DueDate = null,
+    /// <summary>The sender's plain email address; the reply on completion is sent here.</summary>
+    [StringLength(320)] string? SenderEmail = null,
+    /// <summary>The email's Message-ID header, e.g. <c>&lt;abc@mail.example.com&gt;</c>.</summary>
+    [StringLength(998)] string? MessageId = null);
