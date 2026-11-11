@@ -1,8 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Taskel.Api.Auth;
 using Taskel.Api.Data;
 using Taskel.Api.Models;
 using Taskel.Api.Services;
@@ -26,10 +28,18 @@ builder.Services.AddCors(options =>
     options.AddPolicy(FrontendCorsPolicy, policy =>
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
-// Cookie-based sessions: the browser holds an HttpOnly cookie, so no token is exposed to JavaScript.
+// Browsers use cookie sessions: an HttpOnly cookie, so no token is exposed to JavaScript.
+// Other clients (e.g. the Outlook macro) send a personal API token as "Authorization: Bearer tsk_…".
+const string CookieOrApiTokenScheme = "CookieOrApiToken";
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services
-    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddAuthentication(CookieOrApiTokenScheme)
+    .AddPolicyScheme(CookieOrApiTokenScheme, displayName: null, options =>
+        options.ForwardDefaultSelector = context =>
+            context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? ApiTokens.Scheme
+                : CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(ApiTokens.Scheme, configureOptions: null)
     .AddCookie(options =>
     {
         options.Cookie.Name = "taskel.auth";

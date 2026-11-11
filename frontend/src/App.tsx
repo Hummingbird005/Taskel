@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { authApi, type User } from './api/auth'
 import AuthForm from './components/AuthForm'
+import Integrations from './components/Integrations'
 import TaskList from './components/TaskList'
 
 type Session =
@@ -11,6 +12,7 @@ type Session =
 
 export default function App() {
   const [session, setSession] = useState<Session>({ status: 'loading' })
+  const [showIntegrations, setShowIntegrations] = useState(false)
 
   useEffect(() => {
     authApi
@@ -25,6 +27,7 @@ export default function App() {
     try {
       await authApi.logout()
     } finally {
+      setShowIntegrations(false)
       setSession({ status: 'signedOut' })
     }
   }
@@ -36,6 +39,14 @@ export default function App() {
         {session.status === 'signedIn' && (
           <div className="user-menu">
             <span className="muted">{session.user.email}</span>
+            <button
+              type="button"
+              className="secondary"
+              aria-expanded={showIntegrations}
+              onClick={() => setShowIntegrations((shown) => !shown)}
+            >
+              Integrations
+            </button>
             <button type="button" className="secondary" onClick={logout}>
               Sign out
             </button>
@@ -49,6 +60,9 @@ export default function App() {
       )}
       {session.status === 'signedOut' && (
         <AuthForm onAuthenticated={(user) => setSession({ status: 'signedIn', user })} />
+      )}
+      {session.status === 'signedIn' && showIntegrations && (
+        <Integrations onSessionExpired={handleSessionExpired} />
       )}
       {session.status === 'signedIn' && (
         <TaskList key={session.user.id} onSessionExpired={handleSessionExpired} />

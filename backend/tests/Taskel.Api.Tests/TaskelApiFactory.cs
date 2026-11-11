@@ -43,6 +43,31 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return client;
     }
 
+    /// <summary>Creates an API token through <paramref name="sessionClient"/> and returns a client that sends it.</summary>
+    public async Task<(HttpClient Client, CreatedApiTokenResponse Token)> CreateTokenClientAsync(
+        HttpClient sessionClient, string name = "Outlook")
+    {
+        var response = await sessionClient.PostAsJsonAsync("/api/auth/tokens", new CreateApiTokenRequest(name));
+        response.EnsureSuccessStatusCode();
+        var token = (await response.Content.ReadFromJsonAsync<CreatedApiTokenResponse>())!;
+        return (CreateBearerClient(token.Token), token);
+    }
+
+    /// <summary>A client without cookies that sends <paramref name="token"/> as a bearer token.</summary>
+    public HttpClient CreateBearerClient(string token)
+    {
+        var client = CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        client.DefaultRequestHeaders.Authorization = new("Bearer", token);
+        return client;
+    }
+
+    public async Task<List<string>> GetTokenHashesAsync()
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TaskelDbContext>();
+        return await db.ApiTokens.Select(t => t.TokenHash).ToListAsync();
+    }
+
     public async Task<string?> GetPasswordHashAsync(string email)
     {
         using var scope = Services.CreateScope();

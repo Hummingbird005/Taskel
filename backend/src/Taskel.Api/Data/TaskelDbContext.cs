@@ -7,6 +7,7 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
 {
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -17,6 +18,16 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             user.Property(u => u.Email).HasMaxLength(254).IsRequired();
             user.Property(u => u.PasswordHash).IsRequired();
             user.HasIndex(u => u.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<ApiToken>(token =>
+        {
+            token.ToTable("api_tokens");
+            token.HasKey(t => t.Id);
+            token.Property(t => t.Name).HasMaxLength(50).IsRequired();
+            token.Property(t => t.TokenHash).HasMaxLength(64).IsRequired();
+            token.HasIndex(t => t.TokenHash).IsUnique();
+            token.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TaskItem>(task =>

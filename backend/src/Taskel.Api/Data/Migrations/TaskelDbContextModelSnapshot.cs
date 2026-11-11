@@ -23,6 +23,41 @@ namespace Taskel.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Taskel.Api.Models.ApiToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("api_tokens", (string)null);
+                });
+
             modelBuilder.Entity("Taskel.Api.Models.TaskItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -92,6 +127,15 @@ namespace Taskel.Api.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Taskel.Api.Models.ApiToken", b =>
+                {
+                    b.HasOne("Taskel.Api.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Taskel.Api.Models.TaskItem", b =>

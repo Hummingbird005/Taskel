@@ -9,6 +9,7 @@ Taskel/
 │   ├── src/Taskel.Api/          # API: controllers, models, services
 │   └── tests/Taskel.Api.Tests/  # xUnit integration tests
 ├── frontend/                    # React + Vite + TypeScript
+├── integrations/outlook/        # Outlook macro: turn emails into tasks
 └── .github/workflows/ci.yml     # Build + test both projects
 ```
 
@@ -55,11 +56,17 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | POST   | `/api/auth/login`    | –    | Sign in                                       |
 | POST   | `/api/auth/logout`   | –    | Sign out                                      |
 | GET    | `/api/auth/me`       | ✓    | Current user                                  |
+| GET    | `/api/auth/tokens`   | session | List your API tokens                       |
+| POST   | `/api/auth/tokens`   | session | Create an API token (shown once)           |
+| DELETE | `/api/auth/tokens/{id}` | session | Revoke an API token                     |
 | GET    | `/api/tasks`         | ✓    | List your tasks                               |
 | GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
+| POST   | `/api/tasks/from-email` | ✓ | Create a task from an email                   |
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
 | DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
+
+✓ = browser session or API token. "session" = browser session only.
 
 ### Task fields
 
@@ -89,6 +96,24 @@ The OpenAPI document is available at `/openapi/v1.json` in Development.
   - The cookie is encrypted with ASP.NET Core Data Protection keys. Persist them (e.g. a mounted volume) when running
     in containers or on several instances, otherwise users are signed out on every restart.
   - There is no rate limiting on login/register yet.
+
+### API tokens
+
+Clients that cannot use the browser session send a personal API token instead:
+
+```
+Authorization: Bearer tsk_…
+```
+
+- Create and revoke tokens in the app under **Integrations** (up to 10 per user). A token is shown once;
+  only its SHA-256 hash is stored.
+- A token gives access to its owner's tasks. It cannot list, create or revoke tokens.
+
+## Outlook integration
+
+`integrations/outlook` contains a VBA macro for classic Outlook on Windows that sends the selected emails to
+`POST /api/tasks/from-email`; each becomes a task tagged `email`, with the subject as title and the sender,
+date and body as notes. See [integrations/outlook/README.md](integrations/outlook/README.md) for setup.
 
 ## Database (EF Core + PostgreSQL)
 

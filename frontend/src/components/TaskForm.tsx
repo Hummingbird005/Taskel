@@ -25,7 +25,10 @@ export default function TaskForm({ initial = EMPTY, submitLabel, onSubmit, onCan
   const [dueDate, setDueDate] = useState(initial.dueDate ?? '')
   const [priority, setPriority] = useState<TaskPriority>(initial.priority)
   const [tags, setTags] = useState(initial.tags.join(', '))
+  const [description, setDescription] = useState(initial.description ?? '')
   const [submitting, setSubmitting] = useState(false)
+
+  const isEditing = Boolean(onCancel)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -37,9 +40,11 @@ export default function TaskForm({ initial = EMPTY, submitLabel, onSubmit, onCan
       dueDate: dueDate || null,
       priority,
       tags: parseTags(tags),
+      // Notes are only editable in edit mode; new tasks start without any.
+      ...(isEditing ? { description: description.trim() || null } : {}),
     })
     setSubmitting(false)
-    if (saved && !onCancel) {
+    if (saved && !isEditing) {
       setTitle('')
       setDueDate('')
       setPriority('medium')
@@ -56,7 +61,7 @@ export default function TaskForm({ initial = EMPTY, submitLabel, onSubmit, onCan
           placeholder="What needs to be done?"
           maxLength={200}
           aria-label="Task title"
-          autoFocus={Boolean(onCancel)}
+          autoFocus={isEditing}
         />
         <button type="submit" disabled={!title.trim() || submitting}>
           {submitLabel}
@@ -94,6 +99,16 @@ export default function TaskForm({ initial = EMPTY, submitLabel, onSubmit, onCan
           />
         </label>
       </div>
+      {isEditing && (
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Notes"
+          maxLength={2000}
+          rows={4}
+          aria-label="Notes"
+        />
+      )}
     </form>
   )
 }
