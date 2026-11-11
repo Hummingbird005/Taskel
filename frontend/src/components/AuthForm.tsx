@@ -36,7 +36,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
 
   return (
     <form onSubmit={handleSubmit} className="auth-form">
-      <h2>{isRegister ? 'Create account' : 'Sign in'}</h2>
+      <h2>{isRegister ? 'Create your account' : 'Sign in to Taskel'}</h2>
       <label>
         Email
         <input
@@ -64,7 +64,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
           {error}
         </p>
       )}
-      <button type="submit" disabled={submitting}>
+      <button type="submit" className="button primary" disabled={submitting}>
         {isRegister ? 'Create account' : 'Sign in'}
       </button>
       <p className="muted">

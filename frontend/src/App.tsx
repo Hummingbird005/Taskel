@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { authApi, type User } from './api/auth'
 import AuthForm from './components/AuthForm'
-import Integrations from './components/Integrations'
-import TaskList from './components/TaskList'
+import Workspace from './components/Workspace'
 
 type Session =
   | { status: 'loading' }
@@ -12,7 +11,6 @@ type Session =
 
 export default function App() {
   const [session, setSession] = useState<Session>({ status: 'loading' })
-  const [showIntegrations, setShowIntegrations] = useState(false)
 
   useEffect(() => {
     authApi
@@ -27,46 +25,48 @@ export default function App() {
     try {
       await authApi.logout()
     } finally {
-      setShowIntegrations(false)
       setSession({ status: 'signedOut' })
     }
   }
 
-  return (
-    <main className="container">
-      <header className="app-header">
-        <h1>Taskel</h1>
-        {session.status === 'signedIn' && (
-          <div className="user-menu">
-            <span className="muted">{session.user.email}</span>
-            <button
-              type="button"
-              className="secondary"
-              aria-expanded={showIntegrations}
-              onClick={() => setShowIntegrations((shown) => !shown)}
-            >
-              Integrations
-            </button>
-            <button type="button" className="secondary" onClick={logout}>
-              Sign out
-            </button>
-          </div>
-        )}
-      </header>
+  if (session.status === 'signedIn') {
+    return (
+      <Workspace
+        key={session.user.id}
+        user={session.user}
+        onLogout={logout}
+        onSessionExpired={handleSessionExpired}
+      />
+    )
+  }
 
-      {session.status === 'loading' && <p>Loading…</p>}
-      {session.status === 'unreachable' && (
-        <p className="error">Could not reach the Taskel API. Is the backend running?</p>
-      )}
-      {session.status === 'signedOut' && (
-        <AuthForm onAuthenticated={(user) => setSession({ status: 'signedIn', user })} />
-      )}
-      {session.status === 'signedIn' && showIntegrations && (
-        <Integrations onSessionExpired={handleSessionExpired} />
-      )}
-      {session.status === 'signedIn' && (
-        <TaskList key={session.user.id} onSessionExpired={handleSessionExpired} />
-      )}
-    </main>
+  return (
+    <div className="welcome">
+      <aside className="welcome-brand">
+        <div className="sidebar-brand">
+          <span className="brand-mark" aria-hidden="true">
+            ✓
+          </span>
+          Taskel
+        </div>
+        <p className="welcome-tagline">Your tasks, organised like a conversation.</p>
+        <ul className="welcome-points">
+          <li>Views for today, upcoming and overdue work</li>
+          <li>Tags that work like channels</li>
+          <li>Turn Outlook emails into tasks, and reply when they are done</li>
+        </ul>
+      </aside>
+      <main className="welcome-main">
+        {session.status === 'loading' && <p className="empty">Loading…</p>}
+        {session.status === 'unreachable' && (
+          <p className="error" role="alert">
+            Could not reach the Taskel API. Is the backend running?
+          </p>
+        )}
+        {session.status === 'signedOut' && (
+          <AuthForm onAuthenticated={(user) => setSession({ status: 'signedIn', user })} />
+        )}
+      </main>
+    </div>
   )
 }
