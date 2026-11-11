@@ -48,16 +48,34 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 
 ## API
 
-| Method | Route             | Description        |
-|--------|-------------------|--------------------|
-| GET    | `/api/health`     | Health check       |
-| GET    | `/api/tasks`      | List tasks         |
-| GET    | `/api/tasks/{id}` | Get a task         |
-| POST   | `/api/tasks`      | Create a task      |
-| PUT    | `/api/tasks/{id}` | Update a task      |
-| DELETE | `/api/tasks/{id}` | Delete a task      |
+| Method | Route                | Auth | Description                                   |
+|--------|----------------------|------|-----------------------------------------------|
+| GET    | `/api/health`        | –    | Health check                                  |
+| POST   | `/api/auth/register` | –    | Create an account and sign in                 |
+| POST   | `/api/auth/login`    | –    | Sign in                                       |
+| POST   | `/api/auth/logout`   | –    | Sign out                                      |
+| GET    | `/api/auth/me`       | ✓    | Current user                                  |
+| GET    | `/api/tasks`         | ✓    | List your tasks                               |
+| GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
+| POST   | `/api/tasks`         | ✓    | Create a task                                 |
+| PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
+| DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
 
 The OpenAPI document is available at `/openapi/v1.json` in Development.
+
+## Authentication
+
+- Accounts are email + password. Passwords (8+ characters) are stored hashed with ASP.NET Core's `PasswordHasher` (PBKDF2).
+- Sessions use an **HttpOnly cookie** (`taskel.auth`, `SameSite=Lax`, 14 days, sliding), so JavaScript never sees a token.
+  Outside Development the cookie is `Secure` and is only sent over HTTPS.
+- Every task belongs to the user who created it; users only see and change their own tasks.
+- Unauthenticated requests to protected endpoints get `401`.
+- Deployment notes:
+  - Serve the frontend and the API from the same site (as the Vite dev proxy does). A frontend on a different site
+    needs `SameSite=None` on the cookie plus its origin in `Cors:AllowedOrigins`.
+  - The cookie is encrypted with ASP.NET Core Data Protection keys. Persist them (e.g. a mounted volume) when running
+    in containers or on several instances, otherwise users are signed out on every restart.
+  - There is no rate limiting on login/register yet.
 
 ## Database (EF Core + PostgreSQL)
 

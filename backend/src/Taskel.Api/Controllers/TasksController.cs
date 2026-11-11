@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Taskel.Api.Models;
 using Taskel.Api.Services;
@@ -5,22 +6,24 @@ using Taskel.Api.Services;
 namespace Taskel.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class TasksController(ITaskRepository repository) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskItem>>> GetAll(CancellationToken ct) =>
-        Ok(await repository.GetAllAsync(ct));
+        Ok(await repository.GetAllAsync(User.GetUserId(), ct));
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TaskItem>> Get(Guid id, CancellationToken ct) =>
-        await repository.GetAsync(id, ct) is { } task ? Ok(task) : NotFound();
+        await repository.GetAsync(User.GetUserId(), id, ct) is { } task ? Ok(task) : NotFound();
 
     [HttpPost]
     public async Task<ActionResult<TaskItem>> Create(CreateTaskRequest request, CancellationToken ct)
     {
         var task = await repository.AddAsync(new TaskItem
         {
+            UserId = User.GetUserId(),
             Title = request.Title.Trim(),
             Description = request.Description?.Trim()
         }, ct);
@@ -30,7 +33,7 @@ public class TasksController(ITaskRepository repository) : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<TaskItem>> Update(Guid id, UpdateTaskRequest request, CancellationToken ct)
     {
-        var task = await repository.GetAsync(id, ct);
+        var task = await repository.GetAsync(User.GetUserId(), id, ct);
         if (task is null) return NotFound();
 
         task.Title = request.Title.Trim();
@@ -42,5 +45,5 @@ public class TasksController(ITaskRepository repository) : ControllerBase
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) =>
-        await repository.DeleteAsync(id, ct) ? NoContent() : NotFound();
+        await repository.DeleteAsync(User.GetUserId(), id, ct) ? NoContent() : NotFound();
 }
