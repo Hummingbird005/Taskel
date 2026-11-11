@@ -1,8 +1,10 @@
+using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Taskel.Api.Data;
+using Taskel.Api.Models;
 
 namespace Taskel.Api.Tests;
 
@@ -31,5 +33,29 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await db.Database.MigrateAsync();
     }
 
+    /// <summary>A client with its own cookie jar, signed in as a freshly registered user.</summary>
+    public async Task<HttpClient> CreateAuthenticatedClientAsync()
+    {
+        var client = CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest($"user-{Guid.NewGuid():N}@example.com", "test-password-123"));
+        response.EnsureSuccessStatusCode();
+        return client;
+    }
+
+    public async Task<string?> GetPasswordHashAsync(string email)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TaskelDbContext>();
+        return await db.Users.Where(u => u.Email == email).Select(u => u.PasswordHash).SingleOrDefaultAsync();
+    }
+
     Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
+}
+
+/// <summary>Shares one API instance and one database across all API test classes.</summary>
+[CollectionDefinition(Name)]
+public class ApiCollection : ICollectionFixture<TaskelApiFactory>
+{
+    public const string Name = "Api";
 }

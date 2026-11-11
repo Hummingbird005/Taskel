@@ -22,7 +22,24 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); }
 .container { max-width: 640px; margin: 0 auto; padding: 48px 16px; }
-h1 { margin: 0 0 24px; }
+h1 { margin: 0; }
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 24px;
+}
+.user-menu { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.user-menu span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-form {
+  display: flex; flex-direction: column; gap: 14px; padding: 24px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+}
+.auth-form h2 { margin: 0; }
+.auth-form label { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+.auth-form input {
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-size: 1rem;
+}
+.auth-form p { margin: 0; }
 .add-form { display: flex; gap: 8px; margin-bottom: 16px; }
 .add-form input {
   flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
@@ -45,3 +62,5 @@ button:disabled { opacity: 0.5; cursor: default; }
 .delete:hover { color: var(--danger); }
 .error { color: var(--danger); }
 .muted { color: var(--muted); }
+button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); padding: 6px 12px; font-size: 0.9rem; }
+button.link { background: none; color: var(--accent); padding: 0; font-size: inherit; text-decoration: underline; }

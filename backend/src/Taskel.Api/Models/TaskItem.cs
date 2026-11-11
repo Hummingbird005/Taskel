@@ -1,10 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Taskel.Api.Models;
 
 public class TaskItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    /// <summary>Owner of the task. Never exposed through the API.</summary>
+    [JsonIgnore]
+    public Guid UserId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsCompleted { get; set; }

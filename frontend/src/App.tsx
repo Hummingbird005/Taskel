@@ -1,88 +1,57 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { tasksApi, type TaskItem } from './api/tasks'
+import { useCallback, useEffect, useState } from 'react'
+import { authApi, type User } from './api/auth'
+import AuthForm from './components/AuthForm'
+import TaskList from './components/TaskList'
+
+type Session =
+  | { status: 'loading' }
+  | { status: 'unreachable' }
+  | { status: 'signedOut' }
+  | { status: 'signedIn'; user: User }
 
 export default function App() {
-  const [tasks, setTasks] = useState<TaskItem[]>([])
-  const [title, setTitle] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [session, setSession] = useState<Session>({ status: 'loading' })
 
   useEffect(() => {
-    tasksApi
-      .list()
-      .then(setTasks)
-      .catch(() => setError('Could not reach the Taskel API. Is the backend running?'))
-      .finally(() => setLoading(false))
+    authApi
+      .me()
+      .then((user) => setSession(user ? { status: 'signedIn', user } : { status: 'signedOut' }))
+      .catch(() => setSession({ status: 'unreachable' }))
   }, [])
 
-  async function handleAdd(e: FormEvent) {
-    e.preventDefault()
-    const trimmed = title.trim()
-    if (!trimmed) return
-    try {
-      const created = await tasksApi.create(trimmed)
-      setTasks((prev) => [...prev, created])
-      setTitle('')
-      setError(null)
-    } catch {
-      setError('Failed to add task.')
-    }
-  }
+  const handleSessionExpired = useCallback(() => setSession({ status: 'signedOut' }), [])
 
-  async function toggle(task: TaskItem) {
+  async function logout() {
     try {
-      const updated = await tasksApi.update({ ...task, isCompleted: !task.isCompleted })
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-    } catch {
-      setError('Failed to update task.')
-    }
-  }
-
-  async function remove(id: string) {
-    try {
-      await tasksApi.remove(id)
-      setTasks((prev) => prev.filter((t) => t.id !== id))
-    } catch {
-      setError('Failed to delete task.')
+      await authApi.logout()
+    } finally {
+      setSession({ status: 'signedOut' })
     }
   }
 
   return (
     <main className="container">
-      <h1>Taskel</h1>
+      <header className="app-header">
+        <h1>Taskel</h1>
+        {session.status === 'signedIn' && (
+          <div className="user-menu">
+            <span className="muted">{session.user.email}</span>
+            <button type="button" className="secondary" onClick={logout}>
+              Sign out
+            </button>
+          </div>
+        )}
+      </header>
 
-      <form onSubmit={handleAdd} className="add-form">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="What needs to be done?"
-          maxLength={200}
-          aria-label="New task title"
-        />
-        <button type="submit" disabled={!title.trim()}>
-          Add
-        </button>
-      </form>
-
-      {error && <p className="error">{error}</p>}
-      {loading ? (
-        <p>Loading…</p>
-      ) : tasks.length === 0 ? (
-        <p className="muted">No tasks yet.</p>
-      ) : (
-        <ul className="task-list">
-          {tasks.map((task) => (
-            <li key={task.id} className={task.isCompleted ? 'done' : ''}>
-              <label>
-                <input type="checkbox" checked={task.isCompleted} onChange={() => toggle(task)} />
-                <span>{task.title}</span>
-              </label>
-              <button className="delete" onClick={() => remove(task.id)} aria-label={`Delete ${task.title}`}>
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
+      {session.status === 'loading' && <p>Loading…</p>}
+      {session.status === 'unreachable' && (
+        <p className="error">Could not reach the Taskel API. Is the backend running?</p>
+      )}
+      {session.status === 'signedOut' && (
+        <AuthForm onAuthenticated={(user) => setSession({ status: 'signedIn', user })} />
+      )}
+      {session.status === 'signedIn' && (
+        <TaskList key={session.user.id} onSessionExpired={handleSessionExpired} />
       )}
     </main>
   )
