@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Taskel.Api.Validation;
 
 namespace Taskel.Api.Models;
 
@@ -12,6 +13,8 @@ public sealed class TagListAttribute : ValidationAttribute
         if (value is not IEnumerable<string?> tags) return new ValidationResult("Tags must be a list of strings.");
 
         var normalized = TagList.Normalize(tags);
+        if (normalized.Any(t => !SafeText.IsSafe(t, multiline: false) || t.Contains(',')))
+            return new ValidationResult("Tags cannot contain commas or control characters.");
         if (normalized.Count > TagList.MaxTags)
             return new ValidationResult($"A task can have at most {TagList.MaxTags} tags.");
         if (normalized.Any(t => t.Length > TagList.MaxTagLength))
