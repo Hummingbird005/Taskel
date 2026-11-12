@@ -15,6 +15,7 @@ export const LIMITS = {
   passwordMax: 128,
   username: 128,
   tokenName: 50,
+  department: 100,
   dueDateMin: '2000-01-01',
   dueDateMax: '2100-12-31',
 } as const
@@ -87,6 +88,13 @@ export function validateTokenName(value: string): string | null {
   if (!name) return 'Dă un nume token-ului.'
   if (name.length > LIMITS.tokenName) return `Numele poate avea cel mult ${LIMITS.tokenName} de caractere.`
   if (CONTROL.test(name)) return 'Numele conține caractere nepermise.'
+  return null
+}
+
+export function validateDepartment(value: string): string | null {
+  const department = value.trim()
+  if (department.length > LIMITS.department) return `Departamentul poate avea cel mult ${LIMITS.department} de caractere.`
+  if (CONTROL.test(department) || /[\n\r\t]/.test(department)) return 'Departamentul conține caractere nepermise.'
   return null
 }
 

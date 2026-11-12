@@ -139,6 +139,10 @@ namespace Taskel.Api.Data.Migrations
                     b.PrimitiveCollection<List<string>>("DashboardWidgets")
                         .HasColumnType("text[]");
 
+                    b.Property<string>("Department")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("DirectoryId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -156,12 +160,17 @@ namespace Taskel.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Role")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("ShowDueAlert")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Department");
 
                     b.HasIndex("DirectoryId")
                         .IsUnique();

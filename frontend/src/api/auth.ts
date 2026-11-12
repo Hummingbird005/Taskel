@@ -1,5 +1,7 @@
 import { ApiError, request } from './client'
 
+export type UserRole = 'user' | 'manager' | 'admin'
+
 export interface User {
   id: string
   email: string
@@ -7,6 +9,9 @@ export interface User {
   displayName: string
   /** True for accounts that sign in through Active Directory. */
   isDirectoryAccount: boolean
+  /** Managers see their department's workload; administrators also manage users. */
+  role: UserRole
+  department: string | null
 }
 
 /** What the sign-in screen should offer. */

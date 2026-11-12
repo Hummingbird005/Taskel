@@ -10,11 +10,14 @@ The interface is in Romanian; code, API and documentation are in English.
 
 | | |
 |---|---|
+| **Team workload** for managers: each person in the department<br>![Team screen with totals and a table of people with open, overdue and completed counts](docs/screenshots/team.png) | **A team member's tasks**, in full, read only<br>![A team member's open and recently completed tasks, with notes](docs/screenshots/team-member.png) |
+| **Sign in** with a domain or a local account<br>![Sign-in screen with tabs for domain account and local account](docs/screenshots/signin.png) | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) |
 | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) |
-| **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
-| **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> |
+| **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
+| **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
+| | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> |
 
-Screenshots use sample data.
+Screenshots use sample data: made-up people and tasks in a test domain.
 
 ## Project layout
 
@@ -80,6 +83,10 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/dashboard`     | ✓    | Your dashboard preferences                    |
 | PUT    | `/api/dashboard`     | ✓    | Save your dashboard preferences               |
 | GET    | `/api/users`         | ✓    | People a task can be assigned to              |
+| GET    | `/api/team`          | manager | Workload of the people in a department     |
+| GET    | `/api/team/members/{id}/tasks` | manager | A team member's tasks, read only |
+| GET    | `/api/admin/users`   | admin | Accounts with their role and department      |
+| PUT    | `/api/admin/users/{id}` | admin | Set an account's role and department      |
 | GET    | `/api/tasks`         | ✓    | List tasks you created or were assigned       |
 | GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
@@ -176,6 +183,40 @@ A task belongs to the user who created it and can be assigned to one other user.
 `GET /api/users` shows every account's name and email to every signed-in user, which suits a team
 installation. The assignee picker is a plain list, so it is meant for tens of users rather than thousands.
 
+## Roles, departments and team workload
+
+Every account has a **role** and, optionally, a **department**.
+
+| Role      | Can do, on top of the role before it                                                    |
+|-----------|-----------------------------------------------------------------------------------------|
+| `user`    | Work with their own tasks and the tasks assigned to them                                |
+| `manager` | Open **Echipă** (Team): the workload of the people who share their department           |
+| `admin`   | Open **Utilizatori** (Users) to set roles and departments, and look at any department   |
+
+**Team workload** (`GET /api/team`) lists each person in the department with their open tasks, overdue tasks,
+tasks due today and in the next 7 days, open high-priority tasks, and tasks completed in the last 7 and 30 days,
+plus department totals. A person is counted for the tasks they are responsible for: those assigned to them, and
+their own that they have not handed to someone else. Pass `today=YYYY-MM-DD` so "overdue" follows the viewer's
+date; a value more than a day away from the server's is ignored.
+
+`GET /api/team/members/{id}/tasks` returns a member's tasks in full, notes and replies included, for reading.
+It does not give the manager access to the tasks themselves: they cannot edit, complete or delete them.
+
+A manager can only name their own department (`403` otherwise) and a manager without a department sees nobody.
+Roles and departments are read from the database on every request, so a change applies at once, without
+signing in again.
+
+Where roles and departments come from:
+
+- **Administrators** set them in the interface (`PUT /api/admin/users/{id}`). An administrator cannot change
+  their own role.
+- **The first administrator** is named in configuration: `Auth__AdminEmails__0=you@example.com` (more with
+  `__1`, `__2`, …). Those accounts are always administrators.
+- **Active Directory**, for domain accounts, at every sign-in: the department is read from the `department`
+  attribute (when the user has one), and members of `ManagerGroupDn` / `AdminGroupDn` become managers /
+  administrators. A configured group also takes the role away from people who are not in it. What the directory
+  does not speak for is left as set in Taskel.
+
 ## Active Directory sign-in
 
 Users can sign in with their domain account. Taskel checks the password by binding to Active Directory over
@@ -190,6 +231,9 @@ LDAP as that user, so no service account is needed. Local (email + password) acc
 | `Domain`          | `ActiveDirectory__Domain`            | DNS name of the domain, e.g. `corp.example.com`          |
 | `BaseDn`          | `ActiveDirectory__BaseDn`            | Where users live, e.g. `DC=corp,DC=example,DC=com`       |
 | `RequiredGroupDn` | `ActiveDirectory__RequiredGroupDn`   | Optional. Only direct members of this group may sign in  |
+| `DepartmentAttribute` | `ActiveDirectory__DepartmentAttribute` | Default `department`                               |
+| `ManagerGroupDn`  | `ActiveDirectory__ManagerGroupDn`    | Optional. Direct members are managers in Taskel          |
+| `AdminGroupDn`    | `ActiveDirectory__AdminGroupDn`      | Optional. Direct members are administrators in Taskel    |
 | `TimeoutSeconds`  | `ActiveDirectory__TimeoutSeconds`    | Default 10                                               |
 
 Related settings in the `Auth` section: `Auth__AllowLocalRegistration` (`false` stops new local accounts) and
@@ -212,7 +256,8 @@ Things to know:
   `Host`. Use `None` only in a lab: it sends passwords in clear text.
 - **Lockout.** Failed sign-ins count against the account in Active Directory. The rate limit is per client
   address; behind a reverse proxy configure forwarded headers, or every user shares one address.
-- **Groups.** `RequiredGroupDn` checks direct membership (`memberOf`), not nested groups.
+- **Groups.** `RequiredGroupDn`, `ManagerGroupDn` and `AdminGroupDn` check direct membership (`memberOf`), not
+  nested groups.
 - **Leaving.** An account removed from the directory can no longer sign in, but an open session lasts until
   its cookie expires, and its Taskel account and tasks remain.
 

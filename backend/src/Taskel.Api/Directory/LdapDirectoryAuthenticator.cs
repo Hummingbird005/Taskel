@@ -12,7 +12,7 @@ namespace Taskel.Api.Directory;
 public class LdapDirectoryAuthenticator(IOptions<DirectoryOptions> options, ILogger<LdapDirectoryAuthenticator> logger)
     : IDirectoryAuthenticator
 {
-    private static readonly string[] Attributes = ["objectGUID", "mail", "userPrincipalName", "displayName", "memberOf"];
+    private static readonly string[] BaseAttributes = ["objectGUID", "mail", "userPrincipalName", "displayName", "memberOf"];
 
     public async Task<DirectoryUser?> AuthenticateAsync(string username, string password, CancellationToken ct = default)
     {
@@ -72,7 +72,10 @@ public class LdapDirectoryAuthenticator(IOptions<DirectoryOptions> options, ILog
                      + $"(userPrincipalName={DirectoryNames.EscapeFilterValue(login.UserPrincipalName)})"
                      + $"(sAMAccountName={DirectoryNames.EscapeFilterValue(login.AccountName)})))";
 
-        var results = await connection.SearchAsync(directory.BaseDn, LdapConnection.ScopeSub, filter, Attributes, false, ct);
+        string[] attributes = DepartmentAttributeOf(directory) is { } department
+            ? [.. BaseAttributes, department]
+            : BaseAttributes;
+        var results = await connection.SearchAsync(directory.BaseDn, LdapConnection.ScopeSub, filter, attributes, false, ct);
         LdapEntry? found = null;
         while (await results.HasMoreAsync(ct))
         {
@@ -93,10 +96,14 @@ public class LdapDirectoryAuthenticator(IOptions<DirectoryOptions> options, ILog
 
     private DirectoryUser? ToDirectoryUser(LdapEntry entry, DirectoryOptions directory, DirectoryLogin login)
     {
+        var groups = entry.GetOrDefault("memberOf", null)?.StringValueArray ?? [];
+        bool? MemberOf(string? groupDn) => string.IsNullOrWhiteSpace(groupDn)
+            ? null
+            : groups.Any(group => string.Equals(group, groupDn.Trim(), StringComparison.OrdinalIgnoreCase));
+
         if (!string.IsNullOrWhiteSpace(directory.RequiredGroupDn))
         {
-            var groups = entry.GetOrDefault("memberOf", null)?.StringValueArray ?? [];
-            if (!groups.Any(group => string.Equals(group, directory.RequiredGroupDn, StringComparison.OrdinalIgnoreCase)))
+            if (MemberOf(directory.RequiredGroupDn) != true)
             {
                 logger.LogWarning("{User} signed in to the directory but is not in the required group", login.UserPrincipalName);
                 return null;
@@ -121,10 +128,23 @@ public class LdapDirectoryAuthenticator(IOptions<DirectoryOptions> options, ILog
         }
 
         var displayName = SafeText.Clean(entry.GetOrDefault("displayName", null)?.StringValue, multiline: false).Trim();
+        var department = DepartmentAttributeOf(directory) is { } attribute
+            ? SafeText.Clean(entry.GetOrDefault(attribute, null)?.StringValue, multiline: false).Trim()
+            : string.Empty;
         return new DirectoryUser(
             new Guid(guidBytes).ToString(),
             email,
-            displayName.Length is > 0 and <= 256 ? displayName : null);
+            displayName.Length is > 0 and <= 256 ? displayName : null,
+            department.Length is > 0 and <= Models.User.MaxDepartmentLength ? department : null,
+            MemberOf(directory.ManagerGroupDn),
+            MemberOf(directory.AdminGroupDn));
+    }
+
+    /// <summary>The department attribute to read, or null when it is not a plain attribute name.</summary>
+    private static string? DepartmentAttributeOf(DirectoryOptions directory)
+    {
+        var name = directory.DepartmentAttribute?.Trim();
+        return !string.IsNullOrEmpty(name) && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '-') ? name : null;
     }
 
     private static string? FirstValidEmail(params string?[] candidates) =>

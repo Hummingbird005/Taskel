@@ -65,7 +65,7 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var response = await client.PostAsJsonAsync("/api/auth/register",
             new RegisterRequest($"user-{Guid.NewGuid():N}@example.com", "test-password-123"));
         response.EnsureSuccessStatusCode();
-        return (client, (await response.Content.ReadFromJsonAsync<UserResponse>())!);
+        return (client, (await response.Content.ReadApiAsync<UserResponse>())!);
     }
 
     /// <summary>Creates an API token through <paramref name="sessionClient"/> and returns a client that sends it.</summary>
@@ -91,6 +91,27 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TaskelDbContext>();
         return await db.ApiTokens.Select(t => t.TokenHash).ToListAsync();
+    }
+
+    /// <summary>Sets a user's role and department directly, to arrange a test.</summary>
+    public async Task SetRoleAsync(Guid userId, UserRole role, string? department)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TaskelDbContext>();
+        var user = await db.Users.SingleAsync(u => u.Id == userId);
+        user.Role = role;
+        user.Department = department;
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Moves a task's completion time into the past, to arrange a test.</summary>
+    public async Task SetCompletedAtAsync(Guid taskId, DateTime completedAt)
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<TaskelDbContext>();
+        var task = await db.Tasks.SingleAsync(t => t.Id == taskId);
+        task.CompletedAt = completedAt;
+        await db.SaveChangesAsync();
     }
 
     public async Task<string?> GetPasswordHashAsync(string email)

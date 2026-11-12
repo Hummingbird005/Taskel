@@ -34,8 +34,9 @@ public class DirectoryLoginTests(TaskelApiFactory factory)
         var response = await SignInAsync(client, name, "Domain-Pass-1");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var user = (await response.Content.ReadFromJsonAsync<UserResponse>())!;
+        var user = (await response.Content.ReadApiAsync<UserResponse>())!;
         Assert.Equal(account.Email, user.Email);
+        Assert.Equal(UserRole.User, user.Role);
         Assert.Equal("Ion Popescu", user.DisplayName);
         Assert.True(user.IsDirectoryAccount);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/tasks")).StatusCode);
@@ -49,11 +50,11 @@ public class DirectoryLoginTests(TaskelApiFactory factory)
     {
         var name = NewName();
         var account = factory.Directory.AddAccount(name, "Domain-Pass-1", displayName: "Old Name");
-        var first = (await (await SignInAsync(factory.CreateClient(), name, "Domain-Pass-1")).Content.ReadFromJsonAsync<UserResponse>())!;
+        var first = (await (await SignInAsync(factory.CreateClient(), name, "Domain-Pass-1")).Content.ReadApiAsync<UserResponse>())!;
 
         var newEmail = $"renamed-{Guid.NewGuid():N}@corp.example.com";
         factory.Directory.Replace(name, "Domain-Pass-1", account with { Email = newEmail, DisplayName = "New Name" });
-        var second = (await (await SignInAsync(factory.CreateClient(), name, "Domain-Pass-1")).Content.ReadFromJsonAsync<UserResponse>())!;
+        var second = (await (await SignInAsync(factory.CreateClient(), name, "Domain-Pass-1")).Content.ReadApiAsync<UserResponse>())!;
 
         Assert.Equal(first.Id, second.Id);
         Assert.Equal(newEmail, second.Email);
@@ -128,7 +129,7 @@ public class DirectoryLoginTests(TaskelApiFactory factory)
         factory.Directory.AddAccount(name, "Domain-Pass-1", email: localUser.Email);
 
         var viaDirectory = factory.CreateClient();
-        var signedIn = (await (await SignInAsync(viaDirectory, name, "Domain-Pass-1")).Content.ReadFromJsonAsync<UserResponse>())!;
+        var signedIn = (await (await SignInAsync(viaDirectory, name, "Domain-Pass-1")).Content.ReadApiAsync<UserResponse>())!;
 
         Assert.Equal(localUser.Id, signedIn.Id);
         Assert.Single((await viaDirectory.GetApiAsync<List<TaskResponse>>("/api/tasks"))!);

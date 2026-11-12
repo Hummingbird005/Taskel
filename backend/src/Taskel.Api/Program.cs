@@ -41,6 +41,7 @@ builder.Services.Configure<DirectoryOptions>(builder.Configuration.GetSection(Di
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.Section));
 builder.Services.AddSingleton<IDirectoryAuthenticator, LdapDirectoryAuthenticator>();
 builder.Services.AddScoped<DirectoryAccounts>();
+builder.Services.AddScoped<CurrentUser>();
 
 // Sign-in attempts are limited per client address, to slow password guessing and to keep
 // repeated failures from locking accounts in Active Directory.

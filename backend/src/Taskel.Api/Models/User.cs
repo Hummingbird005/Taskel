@@ -3,8 +3,19 @@ using Taskel.Api.Validation;
 
 namespace Taskel.Api.Models;
 
+public enum UserRole
+{
+    User = 0,
+    /// <summary>Sees the workload and tasks of the people in their own department.</summary>
+    Manager = 1,
+    /// <summary>Sets roles and departments, and sees every department.</summary>
+    Admin = 2
+}
+
 public class User
 {
+    public const int MaxDepartmentLength = 100;
+
     public Guid Id { get; set; } = Guid.NewGuid();
     /// <summary>Stored trimmed and lower-cased; unique.</summary>
     public string Email { get; set; } = string.Empty;
@@ -14,6 +25,9 @@ public class User
     public string? DisplayName { get; set; }
     /// <summary>The account's objectGUID in Active Directory. Null for local accounts.</summary>
     public string? DirectoryId { get; set; }
+    public UserRole Role { get; set; } = UserRole.User;
+    /// <summary>The department the user belongs to. A manager sees the people who share theirs.</summary>
+    public string? Department { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>Ids of the dashboard widgets the user shows, in order. Null means the default layout.</summary>
@@ -35,11 +49,27 @@ public record DirectoryLoginRequest(
     [Required, StringLength(128), SafeText] string Username,
     [Required, StringLength(256)] string Password);
 
-public record UserResponse(Guid Id, string Email, string? DisplayName = null, bool IsDirectoryAccount = false)
+public record UserResponse(
+    Guid Id,
+    string Email,
+    string? DisplayName = null,
+    bool IsDirectoryAccount = false,
+    UserRole Role = UserRole.User,
+    string? Department = null)
 {
-    public static UserResponse From(User user) =>
-        new(user.Id, user.Email, user.DisplayName ?? user.Email, user.DirectoryId is not null);
+    /// <param name="role">The user's effective role, which may come from configuration rather than the account.</param>
+    public static UserResponse From(User user, UserRole role) =>
+        new(user.Id, user.Email, user.DisplayName ?? user.Email, user.DirectoryId is not null, role, user.Department);
 }
+
+/// <summary>An account as the administrator sees it.</summary>
+/// <param name="RoleIsFixed">True when the role comes from configuration and cannot be changed here.</param>
+public record AdminUserResponse(
+    Guid Id, string Email, string DisplayName, UserRole Role, string? Department, bool IsDirectoryAccount, bool RoleIsFixed);
+
+public record UpdateUserRequest(
+    [EnumDataType(typeof(UserRole))] UserRole Role,
+    [StringLength(User.MaxDepartmentLength), SafeText] string? Department);
 
 /// <summary>What the sign-in screen should offer.</summary>
 public record AuthOptionsResponse(bool LocalRegistration, bool ActiveDirectory, string? ActiveDirectoryDomain);

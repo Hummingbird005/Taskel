@@ -21,6 +21,8 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             user.Property(u => u.DisplayName).HasMaxLength(256);
             user.Property(u => u.DirectoryId).HasMaxLength(64);
             user.HasIndex(u => u.DirectoryId).IsUnique();
+            user.Property(u => u.Department).HasMaxLength(User.MaxDepartmentLength);
+            user.HasIndex(u => u.Department);
             user.Property(u => u.DashboardWidgets).HasColumnType("text[]");
             user.Property(u => u.ShowDueAlert).HasDefaultValue(true);
         });

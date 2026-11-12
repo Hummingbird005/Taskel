@@ -70,6 +70,16 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
           </ul>
         )}
 
+        {user.role !== 'user' && (
+          <>
+            <h2 className="nav-heading">Organizare</h2>
+            <ul className="nav-list">
+              {item({ kind: 'team' }, 'users', 'Echipă')}
+              {user.role === 'admin' && item({ kind: 'admin' }, 'shield', 'Utilizatori')}
+            </ul>
+          </>
+        )}
+
         <h2 className="nav-heading">Aplicații</h2>
         <ul className="nav-list">{item({ kind: 'integrations' }, 'plug', 'Integrări')}</ul>
       </div>
@@ -80,6 +90,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
         </span>
         <span className="sidebar-email" title={user.email}>
           {user.displayName}
+          {user.department && <small>{user.department}</small>}
         </span>
         <button type="button" className="sidebar-icon-button" onClick={onLogout} aria-label="Deconectare" title="Deconectare">
           <Icon name="logout" />

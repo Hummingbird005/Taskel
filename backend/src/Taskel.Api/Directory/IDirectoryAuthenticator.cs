@@ -2,7 +2,16 @@ namespace Taskel.Api.Directory;
 
 /// <summary>A directory account that proved its password.</summary>
 /// <param name="DirectoryId">The account's objectGUID: stable across renames and email changes.</param>
-public record DirectoryUser(string DirectoryId, string Email, string? DisplayName);
+/// <param name="Department">The user's department in the directory, when it has one.</param>
+/// <param name="IsManager">Membership of the configured manager group; null when no group is configured.</param>
+/// <param name="IsAdmin">Membership of the configured administrator group; null when no group is configured.</param>
+public record DirectoryUser(
+    string DirectoryId,
+    string Email,
+    string? DisplayName,
+    string? Department = null,
+    bool? IsManager = null,
+    bool? IsAdmin = null);
 
 public interface IDirectoryAuthenticator
 {

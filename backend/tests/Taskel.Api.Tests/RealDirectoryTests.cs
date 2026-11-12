@@ -12,8 +12,10 @@ namespace Taskel.Api.Tests;
 /// TASKEL_TEST_AD_BASE_DN=DC=corp,DC=example,DC=com
 /// </code>
 /// The directory needs these accounts: ion.popescu / Domain-Pass-1 (mail set, display name
-/// "Ion Popescu", member of "Taskel Users"), maria.ionescu / Domain-Pass-2 (mail set, not in the
-/// group), fara.email / Domain-Pass-3 (no mail attribute), dezactivat / Domain-Pass-4 (disabled).
+/// "Ion Popescu", department "Vânzări", member of "Taskel Users" and "Taskel Managers"),
+/// maria.ionescu / Domain-Pass-2 (mail set, department "Vânzări", in neither group),
+/// fara.email / Domain-Pass-3 (no mail or department attribute), dezactivat / Domain-Pass-4
+/// (disabled), and an empty or unrelated group "Taskel Admins".
 /// </summary>
 public sealed class DirectoryFactAttribute : FactAttribute
 {
@@ -106,6 +108,32 @@ public class RealDirectoryTests
         Assert.Null(await authenticator.AuthenticateAsync("maria.ionescu", "Domain-Pass-2"));
         // Without the restriction the same account signs in.
         Assert.NotNull(await Create().AuthenticateAsync("maria.ionescu", "Domain-Pass-2"));
+    }
+
+    [DirectoryFact]
+    public async Task Department_And_Role_Groups_Are_Read_From_The_Directory()
+    {
+        var authenticator = Create(o =>
+        {
+            o.ManagerGroupDn = $"CN=Taskel Managers,CN=Users,{BaseDn}";
+            o.AdminGroupDn = $"CN=Taskel Admins,CN=Users,{BaseDn}";
+        });
+
+        var manager = await authenticator.AuthenticateAsync("ion.popescu", "Domain-Pass-1");
+        var member = await authenticator.AuthenticateAsync("maria.ionescu", "Domain-Pass-2");
+
+        Assert.Equal("Vânzări", manager!.Department);
+        Assert.True(manager.IsManager);
+        Assert.False(manager.IsAdmin);
+        Assert.Equal("Vânzări", member!.Department);
+        Assert.False(member.IsManager);
+
+        // Without groups configured, the directory has no say about roles.
+        var plain = await Create().AuthenticateAsync("ion.popescu", "Domain-Pass-1");
+        Assert.Null(plain!.IsManager);
+        Assert.Null(plain.IsAdmin);
+        // An account without the attribute has no department.
+        Assert.Null((await Create().AuthenticateAsync("fara.email", "Domain-Pass-3"))!.Department);
     }
 
     [DirectoryFact]
