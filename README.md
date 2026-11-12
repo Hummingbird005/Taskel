@@ -69,7 +69,9 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 |--------|----------------------|------|-----------------------------------------------|
 | GET    | `/api/health`        | –    | Health check                                  |
 | POST   | `/api/auth/register` | –    | Create an account and sign in                 |
-| POST   | `/api/auth/login`    | –    | Sign in                                       |
+| GET    | `/api/auth/options`  | –    | What the sign-in screen should offer          |
+| POST   | `/api/auth/login`    | –    | Sign in with a local account                  |
+| POST   | `/api/auth/login/directory` | – | Sign in with an Active Directory account   |
 | POST   | `/api/auth/logout`   | –    | Sign out                                      |
 | GET    | `/api/auth/me`       | ✓    | Current user                                  |
 | GET    | `/api/auth/tokens`   | session | List your API tokens                       |
@@ -77,11 +79,13 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | DELETE | `/api/auth/tokens/{id}` | session | Revoke an API token                     |
 | GET    | `/api/dashboard`     | ✓    | Your dashboard preferences                    |
 | PUT    | `/api/dashboard`     | ✓    | Save your dashboard preferences               |
-| GET    | `/api/tasks`         | ✓    | List your tasks                               |
+| GET    | `/api/users`         | ✓    | People a task can be assigned to              |
+| GET    | `/api/tasks`         | ✓    | List tasks you created or were assigned       |
 | GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
 | POST   | `/api/tasks/from-email` | ✓ | Create a task from an email                   |
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
+| PUT    | `/api/tasks/{id}/assignee` | ✓ | Assign a task (creator only)                |
 | POST   | `/api/tasks/{id}/complete` | ✓ | Complete a task, with a response (required for email tasks) |
 | DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
 
@@ -100,6 +104,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | `sourceEmailAddress` | string or `null`       | Read-only. Sender of the email the task came from                  |
 | `completionResponse` | string or `null`       | Read-only. The response given when the task was completed          |
 | `completedAt` | timestamp or `null`           | Read-only                                                          |
+| `createdBy`   | `{ id, email, displayName }`  | Read-only. Who created the task                                    |
+| `assignee`    | same shape, or `null`         | Read-only here; set with `assigneeId` on create or through `/assignee` |
 
 `PUT` replaces the whole task: omitted optional fields are reset (no due date, medium priority, no tags).
 
@@ -137,10 +143,87 @@ Authorization: Bearer tsk_…
 `POST /api/tasks/from-email`; each becomes a task tagged `email`, with the subject as title and the sender,
 date and body as notes. See [integrations/outlook/README.md](integrations/outlook/README.md) for setup.
 
+## Input validation
+
+Every request is validated before anything is stored:
+
+- **Shape.** Bodies must be JSON objects of at most 1 MB. Unknown properties are rejected (`400`), so a
+  misspelt field is an error rather than silently ignored. Enums are strings; ids are GUIDs.
+- **Text.** Titles, notes, tags, token names, responses and user names reject control characters, NUL and
+  unpaired UTF-16 surrogates. Notes and responses may contain line breaks and tabs; single-line fields may not.
+  Text is trimmed, and blank notes are stored as none.
+- **Limits.** Title 1–200 characters, notes 2000, completion response 4000, up to 10 tags of up to 30 characters
+  (no commas), due dates between 2000-01-01 and 2100-12-31, passwords 8–128 characters.
+- **Email addresses** must be plain `name@host.tld` addresses.
+- **Emails turned into tasks** are the exception: they come from outside, so their text is cleaned (unsafe
+  characters removed, long values shortened) instead of rejected. Only the overall shape and lengths are checked.
+
+The interface applies the same rules in its forms and shows the reason in Romanian. Validation failures return
+`400` with a problem-details body listing the fields.
+
+## Assigning tasks
+
+A task belongs to the user who created it and can be assigned to one other user.
+
+- Assign on create with `assigneeId`, or later with `PUT /api/tasks/{id}/assignee` and
+  `{ "assigneeId": "…" }` (`null` takes the task back). `GET /api/users` lists the people to choose from.
+- The creator and the assignee both see the task, edit it and complete it (with the emailed reply, for
+  tasks from emails). Only the creator can delete or reassign it; the assignee gets `403`.
+- Other users cannot see the task at all (`404`).
+- In the interface, your own work (assigned to you, or yours and unassigned) fills the usual views, the
+  dashboard and the reminder; what you handed to others is under **Delegate**.
+
+`GET /api/users` shows every account's name and email to every signed-in user, which suits a team
+installation. The assignee picker is a plain list, so it is meant for tens of users rather than thousands.
+
+## Active Directory sign-in
+
+Users can sign in with their domain account. Taskel checks the password by binding to Active Directory over
+LDAP as that user, so no service account is needed. Local (email + password) accounts keep working.
+
+| Setting           | Environment variable                 | Notes                                                    |
+|-------------------|--------------------------------------|----------------------------------------------------------|
+| `Enabled`         | `ActiveDirectory__Enabled`           | `true` to turn it on                                     |
+| `Host`            | `ActiveDirectory__Host`              | A domain controller, e.g. `dc1.corp.example.com`         |
+| `Port`            | `ActiveDirectory__Port`              | `636` (default)                                          |
+| `Security`        | `ActiveDirectory__Security`          | `Ldaps` (default), `StartTls` (port 389) or `None`       |
+| `Domain`          | `ActiveDirectory__Domain`            | DNS name of the domain, e.g. `corp.example.com`          |
+| `BaseDn`          | `ActiveDirectory__BaseDn`            | Where users live, e.g. `DC=corp,DC=example,DC=com`       |
+| `RequiredGroupDn` | `ActiveDirectory__RequiredGroupDn`   | Optional. Only direct members of this group may sign in  |
+| `TimeoutSeconds`  | `ActiveDirectory__TimeoutSeconds`    | Default 10                                               |
+
+Related settings in the `Auth` section: `Auth__AllowLocalRegistration` (`false` stops new local accounts) and
+`Auth__LoginAttemptsPerMinute` (default 10 per client address; further attempts get `429`).
+
+How it behaves:
+
+- Users type `ion.popescu`, `CORP\ion.popescu` or `ion.popescu@corp.example.com`.
+- The first sign-in creates the Taskel account from the directory entry: email (`mail`, falling back to the
+  logon address), display name, and `objectGUID`, which links the account from then on. Later sign-ins follow
+  changes of name or email.
+- A local account with the same email is taken over by the directory account: it keeps its tasks and its local
+  password stops working. Directory accounts cannot sign in with the local form.
+- Disabled or locked accounts, wrong passwords and empty passwords are refused (`401`). If the directory
+  cannot be reached the answer is `503`.
+
+Things to know:
+
+- **TLS.** The domain controller's certificate must be trusted by the machine running Taskel and must match
+  `Host`. Use `None` only in a lab: it sends passwords in clear text.
+- **Lockout.** Failed sign-ins count against the account in Active Directory. The rate limit is per client
+  address; behind a reverse proxy configure forwarded headers, or every user shares one address.
+- **Groups.** `RequiredGroupDn` checks direct membership (`memberOf`), not nested groups.
+- **Leaving.** An account removed from the directory can no longer sign in, but an open session lasts until
+  its cookie expires, and its Taskel account and tasks remain.
+
+`RealDirectoryTests` run the LDAP code against a real directory when `TASKEL_TEST_AD_HOST` is set (see the
+class comment for the accounts it expects); they were developed against a Samba AD domain controller and are
+skipped otherwise, including in CI.
+
 ## Dashboard and reminders
 
 The app opens on **Acasă** (Home), a dashboard built from widgets: at-a-glance counts, overdue, due today, next 7 days,
-email tasks waiting for a reply, open tasks by priority, tasks completed over the last 7 days, tags, and recently
+email tasks waiting for a reply, tasks delegated to others, open tasks by priority, tasks completed over the last 7 days, tags, and recently
 completed.
 
 - **Personalizează** (Customize, top right) lets each user remove, add and reorder widgets, or reset to the default layout.

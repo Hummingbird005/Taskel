@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Taskel.Api.Auth;
+using System.Threading.RateLimiting;
+using Taskel.Api.Controllers;
 using Taskel.Api.Data;
+using Taskel.Api.Directory;
 using Taskel.Api.Email;
 using Taskel.Api.Models;
 using Taskel.Api.Services;
@@ -16,10 +19,17 @@ const string FrontendCorsPolicy = "Frontend";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                      ?? ["http://localhost:5173"];
 
+// The API takes small JSON documents; refuse anything larger outright.
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = 1_000_000);
+
 builder.Services.AddControllers().AddJsonOptions(options =>
+{
     // Enums travel as camelCase strings ("low", "medium", "high"); numbers are rejected.
     options.JsonSerializerOptions.Converters.Add(
-        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
+        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
+    // A property the API does not know is a mistake in the request, not something to ignore.
+    options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
+});
 builder.Services.AddOpenApi();
 var connectionString = builder.Configuration.GetConnectionString("Taskel")
     ?? throw new InvalidOperationException("Connection string 'ConnectionStrings:Taskel' is not configured.");
@@ -27,6 +37,27 @@ builder.Services.AddDbContext<TaskelDbContext>(options => options.UseNpgsql(conn
 builder.Services.AddScoped<ITaskRepository, EfTaskRepository>();
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
 builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.Configure<DirectoryOptions>(builder.Configuration.GetSection(DirectoryOptions.Section));
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.Section));
+builder.Services.AddSingleton<IDirectoryAuthenticator, LdapDirectoryAuthenticator>();
+builder.Services.AddScoped<DirectoryAccounts>();
+
+// Sign-in attempts are limited per client address, to slow password guessing and to keep
+// repeated failures from locking accounts in Active Directory.
+var loginAttemptsPerMinute = builder.Configuration.GetSection(AuthOptions.Section).Get<AuthOptions>()?.LoginAttemptsPerMinute
+                             ?? new AuthOptions().LoginAttemptsPerMinute;
+builder.Services.AddRateLimiter(limiter =>
+{
+    limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    limiter.AddPolicy(AuthController.LoginRateLimit, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = Math.Max(1, loginAttemptsPerMinute),
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
 builder.Services.AddCors(options =>
     options.AddPolicy(FrontendCorsPolicy, policy =>
         policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
@@ -84,6 +115,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDe
 app.UseCors(FrontendCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 

@@ -3,11 +3,13 @@ import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
 import { DEFAULT_DASHBOARD_SETTINGS, dashboardApi, type DashboardSettings } from '../api/dashboard'
 import { tasksApi, type TaskDraft, type TaskItem } from '../api/tasks'
+import { usersApi, type UserSummary } from '../api/users'
 import { todayIso } from '../lib/dates'
 import { tasksLabel } from '../lib/text'
 import {
   emptyMessage,
   groupTasks,
+  isMine,
   isOverdue,
   matchesSearch,
   tagCounts,
@@ -62,6 +64,8 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
   const [settings, setSettings] = useState<DashboardSettings>(DEFAULT_DASHBOARD_SETTINGS)
   const [customizing, setCustomizing] = useState(false)
   const [alertOpen, setAlertOpen] = useState(false)
+  const [people, setPeople] = useState<UserSummary[]>([])
+  const [notice, setNotice] = useState<string | null>(null)
 
   const today = todayIso()
 
@@ -91,13 +95,22 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
 
     // First load: tasks and dashboard preferences together, so the reminder can be decided once.
     // Preferences that fail to load fall back to the defaults rather than blocking the app.
-    Promise.all([tasksApi.list(), dashboardApi.get().catch(() => DEFAULT_DASHBOARD_SETTINGS)])
-      .then(([loaded, loadedSettings]) => {
+    // The list of people is only needed for assigning, so the app still opens without it.
+    Promise.all([
+      tasksApi.list(),
+      dashboardApi.get().catch(() => DEFAULT_DASHBOARD_SETTINGS),
+      usersApi.list().catch(() => [] as UserSummary[]),
+    ])
+      .then(([loaded, loadedSettings, loadedPeople]) => {
         if (cancelled) return
         setTasks(loaded)
         setSettings(loadedSettings)
+        setPeople(loadedPeople.filter((person) => person.id !== user.id))
         const now = todayIso()
-        const needsAttention = loaded.some((t) => !t.isCompleted && t.dueDate !== null && t.dueDate <= now)
+        // Only the user's own work calls for the reminder, not what they handed to others.
+        const needsAttention = loaded.some(
+          (t) => isMine(t, user.id) && !t.isCompleted && t.dueDate !== null && t.dueDate <= now,
+        )
         setAlertOpen(loadedSettings.showDueAlert && needsAttention)
       })
       .catch((err) => {
@@ -116,24 +129,31 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       cancelled = true
       window.removeEventListener('focus', reload)
     }
-  }, [onSessionExpired])
+  }, [onSessionExpired, user.id])
+
+  // The user's own work, and what they assigned to other people. Views, counts, the dashboard
+  // and the reminder are about the first; the second has its own view.
+  const mine = useMemo(() => tasks.filter((t) => isMine(t, user.id)), [tasks, user.id])
+  const delegated = useMemo(() => tasks.filter((t) => !isMine(t, user.id)), [tasks, user.id])
 
   const counts = useMemo(() => {
-    const open = tasks.filter((t) => !t.isCompleted)
+    const open = mine.filter((t) => !t.isCompleted)
     return {
       all: open.length,
       today: open.filter((t) => t.dueDate === today).length,
       upcoming: open.filter((t) => t.dueDate !== null && t.dueDate > today).length,
       overdue: open.filter((t) => isOverdue(t, today)).length,
+      delegated: delegated.filter((t) => !t.isCompleted).length,
     }
-  }, [tasks, today])
+  }, [mine, delegated, today])
 
-  const tags = useMemo(() => tagCounts(tasks), [tasks])
+  const tags = useMemo(() => tagCounts(mine), [mine])
 
   const groups = useMemo(() => {
-    const visible = tasksInView(tasks, view, today).filter((t) => matchesSearch(t, search))
+    const source = view.kind === 'delegated' ? delegated : mine
+    const visible = tasksInView(source, view, today).filter((t) => matchesSearch(t, search))
     return groupTasks(visible, sortBy, today)
-  }, [tasks, view, today, search, sortBy])
+  }, [mine, delegated, view, today, search, sortBy])
 
   const visibleCount = groups.reduce((sum, group) => sum + group.tasks.length, 0)
 
@@ -145,6 +165,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
     setSidebarOpen(false)
     setCustomizing(false)
     setAlertOpen(false)
+    setNotice(null)
   }
 
   /** Applies a dashboard change right away and saves it; a failed save is undone. */
@@ -165,6 +186,8 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       const created = await tasksApi.create(draft)
       setTasks((prev) => [...prev, created])
       setError(null)
+      // A task given to someone else leaves this view, so say where it went.
+      setNotice(created.assignee ? `Task alocat către ${created.assignee.displayName}. Îl găsești la „Delegate”.` : null)
       return true
     } catch (err) {
       handleFailure(err, 'Nu am putut adăuga task-ul.')
@@ -172,10 +195,18 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
     }
   }
 
-  async function save(task: TaskItem, changes: Partial<TaskItem>): Promise<boolean> {
+  /**
+   * Saves changes to a task. `assigneeId` is applied separately and only when it differs,
+   * since reassigning is its own request that only the creator may make.
+   */
+  async function save(task: TaskItem, changes: Partial<TaskItem> & { assigneeId?: string | null }): Promise<boolean> {
     try {
-      const updated = await tasksApi.update({ ...task, ...changes })
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      let updated = await tasksApi.update({ ...task, ...changes })
+      if (changes.assigneeId !== undefined && changes.assigneeId !== (task.assignee?.id ?? null)) {
+        updated = await tasksApi.assign(task.id, changes.assigneeId)
+      }
+      const saved = updated
+      setTasks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)))
       setError(null)
       return true
     } catch (err) {
@@ -215,7 +246,12 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       await tasksApi.remove(id)
       setTasks((prev) => prev.filter((t) => t.id !== id))
     } catch (err) {
-      handleFailure(err, 'Nu am putut șterge task-ul.')
+      handleFailure(
+        err,
+        err instanceof ApiError && err.status === 403
+          ? 'Doar persoana care a creat task-ul îl poate șterge.'
+          : 'Nu am putut șterge task-ul.',
+      )
     }
   }
 
@@ -229,14 +265,18 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
   const composerKey = view.kind === 'tag' ? `tag:${view.tag}` : view.kind
   const isDashboard = view.kind === 'dashboard'
   const showsTasks = !isDashboard && view.kind !== 'integrations'
-  const canAdd = (showsTasks && view.kind !== 'completed' && view.kind !== 'overdue') || (isDashboard && !customizing)
+  const canAdd =
+    (showsTasks && view.kind !== 'completed' && view.kind !== 'overdue' && view.kind !== 'delegated') ||
+    (isDashboard && !customizing)
 
   function renderTask(task: TaskItem) {
     if (editingId === task.id) {
       return (
         <li key={task.id} className="task-editor">
           <TaskForm
-            initial={task}
+            initial={{ ...task, assigneeId: task.assignee?.id ?? null }}
+            // Only the creator can reassign, so only they are offered the choice.
+            people={task.createdBy.id === user.id ? people : []}
             submitLabel="Salvează"
             placeholder="Titlul task-ului"
             onCancel={() => setEditingId(null)}
@@ -265,6 +305,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
       <TaskRow
         key={task.id}
         task={task}
+        currentUserId={user.id}
         today={today}
         onToggle={() => toggle(task)}
         onEdit={() => {
@@ -348,6 +389,14 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
         </header>
 
         <div className="main-scroll">
+          {notice && (
+            <div className="banner info" role="status">
+              <span>{notice}</span>
+              <button type="button" onClick={() => setNotice(null)} aria-label="Închide mesajul">
+                <Icon name="close" />
+              </button>
+            </div>
+          )}
           {error && (
             <div className="banner" role="alert">
               <span>{error}</span>
@@ -363,7 +412,8 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
             <p className="empty">Se încarcă…</p>
           ) : isDashboard ? (
             <Dashboard
-              tasks={tasks}
+              tasks={mine}
+              delegated={delegated}
               today={today}
               settings={settings}
               customizing={customizing}
@@ -394,6 +444,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
             <TaskForm
               key={composerKey}
               initial={composerDefaults}
+              people={people}
               submitLabel="Adaugă"
               placeholder={view.kind === 'tag' ? `Adaugă un task în #${view.tag}` : 'Adaugă un task'}
               onSubmit={add}
@@ -404,8 +455,8 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
 
       {alertOpen && (
         <DueAlert
-          overdue={tasks.filter((t) => isOverdue(t, today)).sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))}
-          dueToday={tasks.filter((t) => !t.isCompleted && t.dueDate === today)}
+          overdue={mine.filter((t) => isOverdue(t, today)).sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))}
+          dueToday={mine.filter((t) => !t.isCompleted && t.dueDate === today)}
           onOpen={selectView}
           onClose={() => setAlertOpen(false)}
         />

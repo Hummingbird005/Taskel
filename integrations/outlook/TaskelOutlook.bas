@@ -192,10 +192,10 @@ End Function
 Private Function EmailJson(ByVal mail As Object) As String
     Dim json As String
 
-    json = "{""subject"":" & JsonString(Left$(mail.Subject, MAX_SUBJECT_CHARS))
-    json = json & ",""sender"":" & JsonString(Left$(SenderText(mail), MAX_SENDER_CHARS))
-    json = json & ",""senderEmail"":" & JsonString(Left$(SenderAddress(mail), MAX_SENDER_CHARS))
-    json = json & ",""body"":" & JsonString(Left$(mail.Body, MAX_BODY_CHARS))
+    json = "{""subject"":" & JsonString(SafeLeft(mail.Subject, MAX_SUBJECT_CHARS))
+    json = json & ",""sender"":" & JsonString(SafeLeft(SenderText(mail), MAX_SENDER_CHARS))
+    json = json & ",""senderEmail"":" & JsonString(SafeLeft(SenderAddress(mail), MAX_SENDER_CHARS))
+    json = json & ",""body"":" & JsonString(SafeLeft(mail.Body, MAX_BODY_CHARS))
     json = json & ",""importance"":""" & ImportanceText(mail.Importance) & """"
 
     ' Unsent drafts report a placeholder date in the year 4501.
@@ -264,6 +264,19 @@ Private Function ImportanceText(ByVal importance As Long) As String
         Case 2: ImportanceText = "high"
         Case Else: ImportanceText = "normal"
     End Select
+End Function
+
+' The first maxChars characters of value, without cutting a surrogate pair
+' (an emoji, for example) in half: half a pair is not valid JSON and Taskel
+' would refuse the whole email.
+Private Function SafeLeft(ByVal value As String, ByVal maxChars As Long) As String
+    Dim code As Long
+
+    SafeLeft = Left$(value, maxChars)
+    If Len(SafeLeft) = 0 Or Len(value) <= maxChars Then Exit Function
+
+    code = AscW(Right$(SafeLeft, 1)) And &HFFFF&
+    If code >= &HD800& And code <= &HDBFF& Then SafeLeft = Left$(SafeLeft, Len(SafeLeft) - 1)
 End Function
 
 ' Quotes a string for JSON. Everything outside printable ASCII is written as

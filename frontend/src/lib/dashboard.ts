@@ -7,6 +7,7 @@ export type WidgetId =
   | 'today'
   | 'upcoming'
   | 'reply'
+  | 'delegated'
   | 'priority'
   | 'completed-week'
   | 'tags'
@@ -27,6 +28,7 @@ export const WIDGETS: WidgetInfo[] = [
   { id: 'today', title: 'De făcut azi', description: 'Task-uri deschise cu termen azi.' },
   { id: 'upcoming', title: 'Următoarele 7 zile', description: 'Task-uri deschise cu termen în săptămâna următoare.' },
   { id: 'reply', title: 'Așteaptă răspunsul tău', description: 'Task-uri din email care se finalizează doar cu un răspuns.' },
+  { id: 'delegated', title: 'Delegate de mine', description: 'Task-uri deschise pe care le-ai alocat altor persoane.' },
   { id: 'priority', title: 'Task-uri deschise pe priorități', description: 'Cum se împart task-urile deschise pe priorități.' },
   { id: 'completed-week', title: 'Finalizate în ultimele 7 zile', description: 'Task-urile finalizate în fiecare dintre ultimele 7 zile.' },
   { id: 'tags', title: 'Etichete', description: 'Cele mai folosite etichete, după task-urile deschise.' },
@@ -39,6 +41,7 @@ export const DEFAULT_WIDGETS: WidgetId[] = [
   'today',
   'upcoming',
   'reply',
+  'delegated',
   'priority',
   'completed-week',
   'tags',

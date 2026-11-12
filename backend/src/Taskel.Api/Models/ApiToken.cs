@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Taskel.Api.Validation;
 
 namespace Taskel.Api.Models;
 
@@ -16,7 +17,7 @@ public class ApiToken
     public DateTime? LastUsedAt { get; set; }
 }
 
-public record CreateApiTokenRequest([Required, StringLength(50, MinimumLength = 1)] string Name);
+public record CreateApiTokenRequest([Required, StringLength(50, MinimumLength = 1), SafeText] string Name);
 
 public record ApiTokenResponse(Guid Id, string Name, DateTime CreatedAt, DateTime? LastUsedAt);
 

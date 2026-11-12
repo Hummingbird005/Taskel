@@ -1,4 +1,5 @@
 import { request } from './client'
+import type { UserSummary } from './users'
 
 export type TaskPriority = 'low' | 'medium' | 'high'
 
@@ -20,10 +21,18 @@ export interface TaskItem {
   /** The response written when the task was completed. */
   completionResponse: string | null
   completedAt: string | null
+  /** Who created the task. Only they can delete or reassign it. */
+  createdBy: UserSummary
+  /** Who the task is assigned to, when that is someone other than its creator. */
+  assignee: UserSummary | null
 }
 
 /** The editable fields of a task. */
-export type TaskDraft = Pick<TaskItem, 'title' | 'dueDate' | 'priority' | 'tags'> & { description?: string | null }
+export type TaskDraft = Pick<TaskItem, 'title' | 'dueDate' | 'priority' | 'tags'> & {
+  description?: string | null
+  /** User to assign the task to; null keeps it with its creator. Left out when not being changed. */
+  assigneeId?: string | null
+}
 
 export const tasksApi = {
   list: () => request<TaskItem[]>('/tasks'),
@@ -40,6 +49,9 @@ export const tasksApi = {
         tags: task.tags,
       }),
     }),
+  /** Assigns a task to a user, or back to its creator with null. Only the creator may do this. */
+  assign: (id: string, assigneeId: string | null) =>
+    request<TaskItem>(`/tasks/${id}/assignee`, { method: 'PUT', body: JSON.stringify({ assigneeId }) }),
   /** Completes a task. For email tasks the response is required and is emailed to the sender. */
   complete: (id: string, response: string | null) =>
     request<TaskItem>(`/tasks/${id}/complete`, { method: 'POST', body: JSON.stringify({ response }) }),

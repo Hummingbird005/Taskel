@@ -64,6 +64,9 @@ namespace Taskel.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AssigneeId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -117,6 +120,8 @@ namespace Taskel.Api.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AssigneeId");
+
                     b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("tasks", (string)null);
@@ -134,6 +139,14 @@ namespace Taskel.Api.Data.Migrations
                     b.PrimitiveCollection<List<string>>("DashboardWidgets")
                         .HasColumnType("text[]");
 
+                    b.Property<string>("DirectoryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(254)
@@ -149,6 +162,9 @@ namespace Taskel.Api.Data.Migrations
                         .HasDefaultValue(true);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DirectoryId")
+                        .IsUnique();
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -167,11 +183,20 @@ namespace Taskel.Api.Data.Migrations
 
             modelBuilder.Entity("Taskel.Api.Models.TaskItem", b =>
                 {
-                    b.HasOne("Taskel.Api.Models.User", null)
+                    b.HasOne("Taskel.Api.Models.User", "Assignee")
+                        .WithMany()
+                        .HasForeignKey("AssigneeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Taskel.Api.Models.User", "Owner")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Assignee");
+
+                    b.Navigation("Owner");
                 });
 #pragma warning restore 612, 618
         }

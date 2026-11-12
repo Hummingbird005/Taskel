@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Taskel.Api.Data;
+using Taskel.Api.Directory;
 using Taskel.Api.Email;
 using Taskel.Api.Models;
 
@@ -23,15 +24,26 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// <summary>Stands in for the SMTP server; holds the replies the API tried to send.</summary>
     public FakeEmailSender Emails { get; } = new();
 
+    /// <summary>Stands in for Active Directory.</summary>
+    public FakeDirectory Directory { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Taskel", ConnectionString);
         builder.UseSetting("Database:MigrateOnStartup", "false");
+        builder.UseSetting("ActiveDirectory:Enabled", "true");
+        builder.UseSetting("ActiveDirectory:Host", "dc.corp.example.com");
+        builder.UseSetting("ActiveDirectory:Domain", "corp.example.com");
+        builder.UseSetting("ActiveDirectory:BaseDn", "DC=corp,DC=example,DC=com");
+        // The whole suite signs in from one address; the limit has its own test.
+        builder.UseSetting("Auth:LoginAttemptsPerMinute", "100000");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IEmailSender>();
             services.AddSingleton<IEmailSender>(Emails);
+            services.RemoveAll<IDirectoryAuthenticator>();
+            services.AddSingleton<IDirectoryAuthenticator>(Directory);
         });
     }
 
@@ -44,13 +56,16 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     }
 
     /// <summary>A client with its own cookie jar, signed in as a freshly registered user.</summary>
-    public async Task<HttpClient> CreateAuthenticatedClientAsync()
+    public async Task<HttpClient> CreateAuthenticatedClientAsync() => (await CreateUserAsync()).Client;
+
+    /// <summary>Registers a new user and returns their signed-in client and account.</summary>
+    public async Task<(HttpClient Client, UserResponse User)> CreateUserAsync()
     {
         var client = CreateClient();
         var response = await client.PostAsJsonAsync("/api/auth/register",
             new RegisterRequest($"user-{Guid.NewGuid():N}@example.com", "test-password-123"));
         response.EnsureSuccessStatusCode();
-        return client;
+        return (client, (await response.Content.ReadFromJsonAsync<UserResponse>())!);
     }
 
     /// <summary>Creates an API token through <paramref name="sessionClient"/> and returns a client that sends it.</summary>

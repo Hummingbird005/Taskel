@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using MimeKit;
 using Taskel.Api.Models;
+using Taskel.Api.Validation;
 
 namespace Taskel.Api.Services;
 
@@ -17,14 +18,25 @@ public static partial class EmailTaskFactory
     public const int MaxDescriptionLength = 2000;
     public const int MaxSourceSubjectLength = 500;
 
-    public static TaskItem Create(Guid userId, CreateTaskFromEmailRequest email)
+    public static TaskItem Create(Guid userId, CreateTaskFromEmailRequest request)
     {
+        // Strip characters that cannot be stored or shown, before anything else looks at the text.
+        var email = request with
+        {
+            // Line breaks and tabs are kept here; they are collapsed to single spaces below.
+            Subject = SafeText.Clean(request.Subject, multiline: true),
+            Sender = SafeText.Clean(request.Sender, multiline: true),
+            SenderEmail = SafeText.Clean(request.SenderEmail, multiline: false),
+            MessageId = SafeText.Clean(request.MessageId, multiline: false),
+            Body = SafeText.Clean(request.Body, multiline: true)
+        };
+
         var title = Whitespace().Replace(email.Subject ?? string.Empty, " ").Trim();
 
         var header = new List<string>();
         if (!string.IsNullOrWhiteSpace(email.Sender))
             header.Add($"De la: {Whitespace().Replace(email.Sender, " ").Trim()}");
-        if (email.ReceivedAt is { } received)
+        if (email.ReceivedAt is { Year: >= 1990 and <= 2100 } received)
             header.Add($"Primit: {received.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)}");
 
         var body = (email.Body ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');

@@ -1,9 +1,8 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import type { TaskDraft, TaskPriority } from '../api/tasks'
+import type { UserSummary } from '../api/users'
+import { firstError, LIMITS, validateDueDate, validateNotes, validateTags, validateTitle } from '../lib/validation'
 import Icon from './Icon'
-
-const MAX_TAGS = 10
-const MAX_TAG_LENGTH = 30
 
 const EMPTY: TaskDraft = { title: '', dueDate: null, priority: 'medium', tags: [] }
 
@@ -25,6 +24,11 @@ interface Props {
   onSubmit: (draft: TaskDraft) => Promise<boolean>
   /** Present in edit mode, which also shows the notes field. */
   onCancel?: () => void
+  /**
+   * The other users the task can be assigned to. Leave out (or pass an empty list) to hide the
+   * assignee field, e.g. when the person editing is not the task's creator.
+   */
+  people?: UserSummary[]
 }
 
 export default function TaskForm({
@@ -33,12 +37,14 @@ export default function TaskForm({
   submitLabel,
   onSubmit,
   onCancel,
+  people = [],
 }: Props) {
   const [title, setTitle] = useState(initial.title)
   const [dueDate, setDueDate] = useState(initial.dueDate ?? '')
   const [priority, setPriority] = useState<TaskPriority>(initial.priority)
   const [tags, setTags] = useState(initial.tags.join(', '))
   const [description, setDescription] = useState(initial.description ?? '')
+  const [assigneeId, setAssigneeId] = useState(initial.assigneeId ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -47,16 +53,20 @@ export default function TaskForm({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     const trimmed = title.trim()
-    if (!trimmed || submitting) return
+    if (submitting) return
+    // An empty composer is not an error worth announcing; in edit mode an empty title is.
+    if (!trimmed && !isEditing) return
 
-    // Same limits as the API, checked here so the message can be specific.
+    // The API applies the same rules; checking here gives a specific message.
     const parsedTags = parseTags(tags)
-    if (parsedTags.length > MAX_TAGS) {
-      setFormError(`Un task poate avea cel mult ${MAX_TAGS} etichete.`)
-      return
-    }
-    if (parsedTags.some((tag) => tag.length > MAX_TAG_LENGTH)) {
-      setFormError(`O etichetă poate avea cel mult ${MAX_TAG_LENGTH} de caractere.`)
+    const invalid = firstError(
+      validateTitle(title),
+      validateDueDate(dueDate),
+      validateTags(parsedTags),
+      isEditing ? validateNotes(description) : null,
+    )
+    if (invalid) {
+      setFormError(invalid)
       return
     }
     setFormError(null)
@@ -68,6 +78,8 @@ export default function TaskForm({
       tags: parsedTags,
       // Notes are only editable in edit mode; new tasks start without any.
       ...(isEditing ? { description: description.trim() || null } : {}),
+      // Only sent when the form offers the choice.
+      ...(people.length > 0 ? { assigneeId: assigneeId || null } : {}),
     })
     setSubmitting(false)
     if (saved && !isEditing) {
@@ -75,6 +87,7 @@ export default function TaskForm({
       setDueDate(initial.dueDate ?? '')
       setPriority(initial.priority)
       setTags(initial.tags.join(', '))
+      setAssigneeId(initial.assigneeId ?? '')
     }
   }
 
@@ -83,13 +96,19 @@ export default function TaskForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className={`composer${isEditing ? ' composer-edit' : ''}`}>
+    <form
+      onSubmit={handleSubmit}
+      onKeyDown={handleKeyDown}
+      className={`composer${isEditing ? ' composer-edit' : ''}`}
+      // Validation is done in handleSubmit, so the messages are ours and in Romanian.
+      noValidate
+    >
       <input
         className="composer-title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder={placeholder}
-        maxLength={200}
+        maxLength={LIMITS.title}
         aria-label="Titlul task-ului"
         autoFocus={isEditing}
       />
@@ -99,7 +118,7 @@ export default function TaskForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Note"
-          maxLength={2000}
+          maxLength={LIMITS.notes}
           rows={4}
           aria-label="Note"
         />
@@ -113,7 +132,14 @@ export default function TaskForm({
         <label className="composer-field">
           <Icon name="calendar" />
           <span className="visually-hidden">Termen</span>
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} aria-label="Termen" />
+          <input
+            type="date"
+            value={dueDate}
+            min={LIMITS.dueDateMin}
+            max={LIMITS.dueDateMax}
+            onChange={(e) => setDueDate(e.target.value)}
+            aria-label="Termen"
+          />
         </label>
         <label className="composer-field">
           <Icon name="flag" />
@@ -138,13 +164,27 @@ export default function TaskForm({
             aria-label="Etichete, separate prin virgulă"
           />
         </label>
+        {people.length > 0 && (
+          <label className="composer-field">
+            <Icon name="user" />
+            <span className="visually-hidden">Alocat către</span>
+            <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} aria-label="Alocat către">
+              <option value="">Eu</option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="composer-actions">
           {onCancel && (
             <button type="button" className="button ghost" onClick={onCancel}>
               Anulează
             </button>
           )}
-          <button type="submit" className="button send" disabled={!title.trim() || submitting}>
+          <button type="submit" className="button send" disabled={(!title.trim() && !isEditing) || submitting}>
             {isEditing ? null : <Icon name="send" />}
             {submitLabel}
           </button>

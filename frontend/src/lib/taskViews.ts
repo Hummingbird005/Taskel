@@ -8,6 +8,7 @@ export type View =
   | { kind: 'upcoming' }
   | { kind: 'overdue' }
   | { kind: 'completed' }
+  | { kind: 'delegated' }
   | { kind: 'tag'; tag: string }
   | { kind: 'integrations' }
 
@@ -20,6 +21,12 @@ export interface TaskGroup {
   tone?: 'danger'
   tasks: TaskItem[]
 }
+
+/**
+ * Whether a task is the user's own work: assigned to them, or created by them and not handed
+ * to someone else. Tasks they created for others are "delegated" and listed separately.
+ */
+export const isMine = (task: TaskItem, userId: string) => (task.assignee ?? task.createdBy).id === userId
 
 export const isOverdue = (task: TaskItem, today: string) =>
   !task.isCompleted && task.dueDate !== null && task.dueDate < today
@@ -41,6 +48,7 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
     case 'integrations':
       return []
     default:
+      // 'all' and 'delegated' show everything they are given.
       return tasks
   }
 }
@@ -48,7 +56,8 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
 export function matchesSearch(task: TaskItem, query: string): boolean {
   const needle = query.trim().toLowerCase()
   if (!needle) return true
-  return [task.title, task.description ?? '', task.sourceEmailAddress ?? '', ...task.tags]
+  const people = [task.createdBy.displayName, task.assignee?.displayName ?? '']
+  return [task.title, task.description ?? '', task.sourceEmailAddress ?? '', ...people, ...task.tags]
     .some((text) => text.toLowerCase().includes(needle))
 }
 
@@ -132,6 +141,8 @@ export function viewTitle(view: View): string {
       return 'Întârziate'
     case 'completed':
       return 'Finalizate'
+    case 'delegated':
+      return 'Delegate'
     case 'tag':
       return view.tag
     case 'integrations':
@@ -150,6 +161,8 @@ export function emptyMessage(view: View, searching: boolean): string {
       return 'Nimic întârziat. Bravo!'
     case 'completed':
       return 'Niciun task finalizat încă.'
+    case 'delegated':
+      return 'Nu ai alocat niciun task altcuiva.'
     case 'tag':
       return `Niciun task cu eticheta #${view.tag}.`
     default:
