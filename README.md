@@ -13,10 +13,13 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Team workload** for managers: each person in the department<br>![Team screen with totals and a table of people with open, overdue and completed counts](docs/screenshots/team.png) | **A team member's tasks**, in full, read only<br>![A team member's open and recently completed tasks, with notes](docs/screenshots/team-member.png) |
 | **Team calendar**: open tasks per person and day, four weeks at a time<br>![Heat map of tasks per person and day, with the tasks of the selected day listed below](docs/screenshots/team-calendar.png) | **One person's calendar**, with their tasks on each day<br>![Four-week calendar of one person's tasks](docs/screenshots/team-calendar-person.png) |
 | **Workload warning** when giving someone a task in a busy period<br>![Task composer warning that the assignee already has five tasks in the period](docs/screenshots/assign-warning.png) | **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) |
-| **Sign in** with a domain or a local account<br>![Sign-in screen with tabs for domain account and local account](docs/screenshots/signin.png) | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) |
-| **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) |
-| **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) |
-| **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> |
+| **Tasks for a group**: every member sees them until one takes them<br>![De preluat view with two group tasks and a Preia button on each](docs/screenshots/claimable.png) | **Giving a task to a group**, from Active Directory or made in Taskel<br>![Task composer with the assignee picker set to an Active Directory group](docs/screenshots/assign-group.png) |
+| **Forwarding** a received task to someone else, with a message<br>![Forward form with the recipient, a message and a workload warning](docs/screenshots/forward.png) | **Forwarded tasks** stay readable, with the path they took<br>![Direcționate view showing a completed task, who has it now and its path](docs/screenshots/forwarded.png) |
+| **Groups**, managed by administrators and managers<br>![Groups screen listing Active Directory groups and a form for a new group with members](docs/screenshots/groups.png) | **Sign in** with a domain or a local account<br>![Sign-in screen with tabs for domain account and local account](docs/screenshots/signin.png) |
+| **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) |
+| **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
+| **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
+| **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | |
 
 Screenshots use sample data: made-up people and tasks in a test domain.
 
@@ -90,12 +93,21 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/team/members/{id}/tasks` | manager | A team member's tasks, read only |
 | GET    | `/api/admin/users`   | admin | Accounts with their role and department      |
 | PUT    | `/api/admin/users/{id}` | admin | Set an account's role and department      |
-| GET    | `/api/tasks`         | ✓    | List tasks you created or were assigned       |
+| GET    | `/api/groups`        | ✓    | Groups a task can be given to                 |
+| GET    | `/api/groups/{id}`   | manager | A group with its members                   |
+| GET    | `/api/groups/candidates` | manager | People you may put in a group          |
+| POST   | `/api/groups`        | manager | Create an application group                |
+| PUT    | `/api/groups/{id}`   | manager | Rename a group and set its members         |
+| DELETE | `/api/groups/{id}`   | manager | Delete an application group                |
+| GET    | `/api/tasks`         | ✓    | List the tasks you can see                    |
 | GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
 | POST   | `/api/tasks/from-email` | ✓ | Create a task from an email                   |
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
-| PUT    | `/api/tasks/{id}/assignee` | ✓ | Assign a task (creator only)                |
+| PUT    | `/api/tasks/{id}/assignee` | ✓ | Assign a task to a user or a group (creator only) |
+| POST   | `/api/tasks/{id}/forward` | ✓ | Pass a received task on to a user or a group (assignee only) |
+| POST   | `/api/tasks/{id}/claim` | ✓ | Take a task that waits on one of your groups   |
+| POST   | `/api/tasks/{id}/release` | ✓ | Hand a task taken from a group back to it    |
 | POST   | `/api/tasks/{id}/complete` | ✓ | Complete a task, with a response (required for email tasks) |
 | DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
 
@@ -181,11 +193,49 @@ A task belongs to the user who created it and can be assigned to one other user.
 - The creator and the assignee both see the task, edit it and complete it (with the emailed reply, for
   tasks from emails). Only the creator can delete or reassign it; the assignee gets `403`.
 - Other users cannot see the task at all (`404`).
+- A task can also go to a group, and an assignee can pass it on: see [Groups and forwarding](#groups-and-forwarding).
 - In the interface, your own work (assigned to you, or yours and unassigned) fills the usual views, the
   dashboard and the reminder; what you handed to others is under **Delegate**.
 
 `GET /api/users` shows every account's name and email to every signed-in user, which suits a team
 installation. The assignee picker is a plain list, so it is meant for tens of users rather than thousands.
+
+## Groups and forwarding
+
+### Tasks for a group
+
+A task can be given to a group instead of a person: `groupId` in place of `assigneeId`, on create or with
+`PUT /api/tasks/{id}/assignee`. It is one shared task, not a copy per member.
+
+- Until someone takes it, every member of the group sees it under **De preluat**, read only.
+- A member takes it with **Preia** (`POST /api/tasks/{id}/claim`) and becomes its assignee: it moves to their
+  own tasks and disappears for the other members. If two people press at once, the second is told it is gone.
+- Whoever took it can hand it back to the group (`POST /api/tasks/{id}/release`).
+- The creator follows it under **Delegate** and sees who took it.
+- A task nobody has taken counts in nobody's workload, calendar or statistics.
+
+There are two kinds of groups, offered together in the assignee picker:
+
+- **Application groups** are made on the **Grupuri** screen. Administrators manage all of them. Managers
+  create their own, with people from their department, and manage only those. Deleting a group returns its
+  untaken tasks to the people who created them.
+- **Active Directory groups** appear by themselves: at each domain sign-in Taskel reads the user's `memberOf`
+  and updates their memberships. They cannot be edited in Taskel. See the limits under
+  [Active Directory sign-in](#active-directory-sign-in).
+
+### Forwarding
+
+Someone who received a task can pass it on to another user or to a group (`POST /api/tasks/{id}/forward` with
+`assigneeId` or `groupId`, and an optional `note` of up to 500 characters).
+
+- The new assignee gets every right the previous one had, including forwarding it again.
+- The person who forwarded keeps the task under **Direcționate**, read only, and sees how it ends.
+- Every step is kept and returned in the task's `forwards` (from, to, note, time); the interface shows it as
+  **Traseu** to everyone who can see the task.
+- Only the current assignee can forward. The creator reassigns instead.
+
+Each task in the API carries `access`, what the caller may do with it: `creator` (everything), `assignee`
+(edit, complete, forward), `group` (read and take) or `viewer` (read).
 
 ## Task intervals, the workload warning and the team calendar
 
@@ -262,6 +312,8 @@ LDAP as that user, so no service account is needed. Local (email + password) acc
 | `DepartmentAttribute` | `ActiveDirectory__DepartmentAttribute` | Default `department`                               |
 | `ManagerGroupDn`  | `ActiveDirectory__ManagerGroupDn`    | Optional. Direct members are managers in Taskel          |
 | `AdminGroupDn`    | `ActiveDirectory__AdminGroupDn`      | Optional. Direct members are administrators in Taskel    |
+| `SyncGroups`      | `ActiveDirectory__SyncGroups`        | Default `true`. Users' groups become groups in Taskel    |
+| `GroupsBaseDn`    | `ActiveDirectory__GroupsBaseDn`      | Optional. Only groups under this container are brought in, e.g. `OU=Teams,DC=corp,DC=example,DC=com` |
 | `TimeoutSeconds`  | `ActiveDirectory__TimeoutSeconds`    | Default 10                                               |
 
 Related settings in the `Auth` section: `Auth__AllowLocalRegistration` (`false` stops new local accounts) and
@@ -286,6 +338,11 @@ Things to know:
   address; behind a reverse proxy configure forwarded headers, or every user shares one address.
 - **Groups.** `RequiredGroupDn`, `ManagerGroupDn` and `AdminGroupDn` check direct membership (`memberOf`), not
   nested groups.
+- **Groups for tasks.** Taskel has no service account, so it cannot list the directory. It learns a group
+  when one of its members signs in, and shows as members only the people who have signed in to Taskel. A
+  change of membership in the directory takes effect at that person's next sign-in. Only direct membership
+  counts, and the primary group (usually Domain Users) is not included. Without `GroupsBaseDn` every group a
+  user belongs to is brought in, so set it to keep the list to the groups that make sense for tasks.
 - **Leaving.** An account removed from the directory can no longer sign in, but an open session lasts until
   its cookie expires, and its Taskel account and tasks remain.
 

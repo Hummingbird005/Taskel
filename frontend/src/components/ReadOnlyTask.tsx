@@ -2,9 +2,20 @@ import type { TaskItem } from '../api/tasks'
 import { formatDueDate, formatRange } from '../lib/dates'
 import { isOverdue } from '../lib/taskViews'
 import Icon from './Icon'
+import TaskTrail from './TaskTrail'
 
-/** A task shown for reading only, as a manager sees the tasks of someone in their department. */
-export default function ReadOnlyTask({ task, today }: { task: TaskItem; today: string }) {
+interface Props {
+  task: TaskItem
+  today: string
+  /** Also say who has the task now, for someone following a task they passed on. */
+  showHolder?: boolean
+}
+
+/**
+ * A task shown for reading only: as a manager sees the tasks of someone in their department,
+ * or as someone sees a task they forwarded.
+ */
+export default function ReadOnlyTask({ task, today, showHolder = false }: Props) {
   const overdue = isOverdue(task, today)
   const hasInterval = task.startDate !== null && task.dueDate !== null && task.startDate !== task.dueDate
   const dueLabel = !task.dueDate
@@ -14,7 +25,8 @@ export default function ReadOnlyTask({ task, today }: { task: TaskItem; today: s
       : task.dueDate === today
         ? 'azi'
         : formatDueDate(task.dueDate)
-  const sharedBy = task.assignee ? task.createdBy : null
+  const sharedBy = task.assignee || task.group ? task.createdBy : null
+  const holder = task.assignee ?? (task.group ? null : task.createdBy)
 
   return (
     <li className={`task readonly${task.isCompleted ? ' done' : ''}`}>
@@ -46,6 +58,19 @@ export default function ReadOnlyTask({ task, today }: { task: TaskItem; today: s
               De la: {sharedBy.displayName}
             </span>
           )}
+          {showHolder && holder && (
+            <span className="chip person" title={`Acum la ${holder.email}`}>
+              <Icon name="user" size={13} />
+              Acum la: {holder.displayName}
+            </span>
+          )}
+          {task.group && (
+            <span className={`chip person${task.assignee ? '' : ' waiting'}`} title={`Dat grupului ${task.group.name}`}>
+              <Icon name="users" size={13} />
+              Grup: {task.group.name}
+              {!task.assignee && ' · nepreluat'}
+            </span>
+          )}
           {task.sourceEmailAddress && (
             <span className="chip" title={`Dintr-un email trimis de ${task.sourceEmailAddress}`}>
               <Icon name="mail" size={13} />
@@ -72,6 +97,7 @@ export default function ReadOnlyTask({ task, today }: { task: TaskItem; today: s
             <p>{task.description}</p>
           </details>
         )}
+        <TaskTrail task={task} />
       </div>
     </li>
   )

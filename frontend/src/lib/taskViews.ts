@@ -9,9 +9,12 @@ export type View =
   | { kind: 'overdue' }
   | { kind: 'completed' }
   | { kind: 'delegated' }
+  | { kind: 'claimable' }
+  | { kind: 'forwarded' }
   | { kind: 'tag'; tag: string }
   | { kind: 'integrations' }
   | { kind: 'team' }
+  | { kind: 'groups' }
   | { kind: 'admin' }
 
 export type SortBy = 'dueDate' | 'priority' | 'created'
@@ -26,9 +29,17 @@ export interface TaskGroup {
 
 /**
  * Whether a task is the user's own work: assigned to them, or created by them and not handed
- * to someone else. Tasks they created for others are "delegated" and listed separately.
+ * to someone else or to a group. The rest of what they see is listed separately: tasks they
+ * created for others ("delegated"), tasks waiting on their groups, and tasks they forwarded.
  */
-export const isMine = (task: TaskItem, userId: string) => (task.assignee ?? task.createdBy).id === userId
+export const isMine = (task: TaskItem) =>
+  task.access === 'assignee' || (task.access === 'creator' && !task.assignee && !task.group)
+
+/** Created by the user and given to someone else or to a group. */
+export const isDelegated = (task: TaskItem) => task.access === 'creator' && !isMine(task)
+
+/** The selection value for a task's target in a picker: a user id, or a group id with a prefix. */
+export const GROUP_PREFIX = 'group:'
 
 export const isOverdue = (task: TaskItem, today: string) =>
   !task.isCompleted && task.dueDate !== null && task.dueDate < today
@@ -49,10 +60,11 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
     case 'dashboard':
     case 'integrations':
     case 'team':
+    case 'groups':
     case 'admin':
       return []
     default:
-      // 'all' and 'delegated' show everything they are given.
+      // 'all', 'delegated', 'claimable' and 'forwarded' show everything they are given.
       return tasks
   }
 }
@@ -60,7 +72,7 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
 export function matchesSearch(task: TaskItem, query: string): boolean {
   const needle = query.trim().toLowerCase()
   if (!needle) return true
-  const people = [task.createdBy.displayName, task.assignee?.displayName ?? '']
+  const people = [task.createdBy.displayName, task.assignee?.displayName ?? '', task.group?.name ?? '']
   return [task.title, task.description ?? '', task.sourceEmailAddress ?? '', ...people, ...task.tags]
     .some((text) => text.toLowerCase().includes(needle))
 }
@@ -147,6 +159,12 @@ export function viewTitle(view: View): string {
       return 'Finalizate'
     case 'delegated':
       return 'Delegate'
+    case 'claimable':
+      return 'De preluat'
+    case 'forwarded':
+      return 'Direcționate'
+    case 'groups':
+      return 'Grupuri'
     case 'tag':
       return view.tag
     case 'integrations':
@@ -171,6 +189,10 @@ export function emptyMessage(view: View, searching: boolean): string {
       return 'Niciun task finalizat încă.'
     case 'delegated':
       return 'Nu ai alocat niciun task altcuiva.'
+    case 'claimable':
+      return 'Niciun task nu așteaptă să fie preluat în grupurile tale.'
+    case 'forwarded':
+      return 'Nu ai direcționat niciun task. Task-urile pe care le dai mai departe rămân aici, doar pentru citire.'
     case 'tag':
       return `Niciun task cu eticheta #${view.tag}.`
     default:

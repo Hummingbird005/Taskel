@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
 import { DEFAULT_DASHBOARD_SETTINGS, dashboardApi, type DashboardSettings } from '../api/dashboard'
-import { tasksApi, type TaskDraft, type TaskItem } from '../api/tasks'
+import { groupsApi, type GroupListItem } from '../api/groups'
+import { tasksApi, type TaskDraft, type TaskItem, type TaskTarget } from '../api/tasks'
 import { usersApi, type UserSummary } from '../api/users'
 import { todayIso } from '../lib/dates'
 import { tasksLabel } from '../lib/text'
 import {
   emptyMessage,
   groupTasks,
+  isDelegated,
   isMine,
   isOverdue,
   matchesSearch,
@@ -20,6 +22,9 @@ import {
 } from '../lib/taskViews'
 import CompleteWithReply from './CompleteWithReply'
 import Dashboard from './Dashboard'
+import ForwardTask from './ForwardTask'
+import Groups from './Groups'
+import ReadOnlyTask from './ReadOnlyTask'
 import DueAlert from './DueAlert'
 import Icon from './Icon'
 import Integrations from './Integrations'
@@ -64,6 +69,8 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
+  const [forwardingId, setForwardingId] = useState<string | null>(null)
+  const [groups, setGroups] = useState<GroupListItem[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [settings, setSettings] = useState<DashboardSettings>(DEFAULT_DASHBOARD_SETTINGS)
   const [customizing, setCustomizing] = useState(false)
@@ -77,6 +84,17 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   function handleFailure(err: unknown, fallback: string) {
     if (err instanceof ApiError && err.status === 401) onSessionExpired()
     else setError(fallback)
+  }
+
+  /** Reloads tasks and groups after something changed that this page cannot work out by itself. */
+  async function refresh() {
+    try {
+      const [loaded, loadedGroups] = await Promise.all([tasksApi.list(), groupsApi.list().catch(() => groups)])
+      setTasks(loaded)
+      setGroups(loadedGroups)
+    } catch (err) {
+      handleFailure(err, 'Nu am putut reîncărca task-urile.')
+    }
   }
 
   useEffect(() => {
@@ -104,16 +122,18 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
       tasksApi.list(),
       dashboardApi.get().catch(() => DEFAULT_DASHBOARD_SETTINGS),
       usersApi.list().catch(() => [] as UserSummary[]),
+      groupsApi.list().catch(() => [] as GroupListItem[]),
     ])
-      .then(([loaded, loadedSettings, loadedPeople]) => {
+      .then(([loaded, loadedSettings, loadedPeople, loadedGroups]) => {
         if (cancelled) return
         setTasks(loaded)
         setSettings(loadedSettings)
         setPeople(loadedPeople.filter((person) => person.id !== user.id))
+        setGroups(loadedGroups)
         const now = todayIso()
         // Only the user's own work calls for the reminder, not what they handed to others.
         const needsAttention = loaded.some(
-          (t) => isMine(t, user.id) && !t.isCompleted && t.dueDate !== null && t.dueDate <= now,
+          (t) => isMine(t) && !t.isCompleted && t.dueDate !== null && t.dueDate <= now,
         )
         setAlertOpen(loadedSettings.showDueAlert && needsAttention)
       })
@@ -137,8 +157,11 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
 
   // The user's own work, and what they assigned to other people. Views, counts, the dashboard
   // and the reminder are about the first; the second has its own view.
-  const mine = useMemo(() => tasks.filter((t) => isMine(t, user.id)), [tasks, user.id])
-  const delegated = useMemo(() => tasks.filter((t) => !isMine(t, user.id)), [tasks, user.id])
+  const mine = useMemo(() => tasks.filter(isMine), [tasks])
+  const delegated = useMemo(() => tasks.filter(isDelegated), [tasks])
+  // Tasks waiting on the user's groups, and tasks they passed on and can still read.
+  const claimable = useMemo(() => tasks.filter((t) => t.access === 'group'), [tasks])
+  const forwarded = useMemo(() => tasks.filter((t) => t.access === 'viewer'), [tasks])
 
   const counts = useMemo(() => {
     const open = mine.filter((t) => !t.isCompleted)
@@ -148,24 +171,28 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
       upcoming: open.filter((t) => t.dueDate !== null && t.dueDate > today).length,
       overdue: open.filter((t) => isOverdue(t, today)).length,
       delegated: delegated.filter((t) => !t.isCompleted).length,
+      claimable: claimable.filter((t) => !t.isCompleted).length,
+      forwarded: forwarded.filter((t) => !t.isCompleted).length,
     }
-  }, [mine, delegated, today])
+  }, [mine, delegated, claimable, forwarded, today])
 
   const tags = useMemo(() => tagCounts(mine), [mine])
 
-  const groups = useMemo(() => {
-    const source = view.kind === 'delegated' ? delegated : mine
+  const sections = useMemo(() => {
+    const source =
+      view.kind === 'delegated' ? delegated : view.kind === 'claimable' ? claimable : view.kind === 'forwarded' ? forwarded : mine
     const visible = tasksInView(source, view, today).filter((t) => matchesSearch(t, search))
     return groupTasks(visible, sortBy, today)
-  }, [mine, delegated, view, today, search, sortBy])
+  }, [mine, delegated, claimable, forwarded, view, today, search, sortBy])
 
-  const visibleCount = groups.reduce((sum, group) => sum + group.tasks.length, 0)
+  const visibleCount = sections.reduce((sum, group) => sum + group.tasks.length, 0)
 
   function selectView(next: View) {
     setView(next)
     setSearch('')
     setEditingId(null)
     setCompletingId(null)
+    setForwardingId(null)
     setSidebarOpen(false)
     setCustomizing(false)
     setAlertOpen(false)
@@ -191,7 +218,13 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
       setTasks((prev) => [...prev, created])
       setError(null)
       // A task given to someone else leaves this view, so say where it went.
-      setNotice(created.assignee ? `Task alocat către ${created.assignee.displayName}. Îl găsești la „Delegate”.` : null)
+      setNotice(
+        created.assignee
+          ? `Task alocat către ${created.assignee.displayName}. Îl găsești la „Delegate”.`
+          : created.group
+            ? `Task dat grupului ${created.group.name}. Îl găsești la „Delegate” până îl preia cineva.`
+            : null,
+      )
       return true
     } catch (err) {
       handleFailure(err, 'Nu am putut adăuga task-ul.')
@@ -200,14 +233,19 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   }
 
   /**
-   * Saves changes to a task. `assigneeId` is applied separately and only when it differs,
+   * Saves changes to a task. Who it goes to is applied separately and only when it differs,
    * since reassigning is its own request that only the creator may make.
    */
-  async function save(task: TaskItem, changes: Partial<TaskItem> & { assigneeId?: string | null }): Promise<boolean> {
+  async function save(task: TaskItem, changes: Partial<TaskItem> & Partial<TaskTarget>): Promise<boolean> {
     try {
       let updated = await tasksApi.update({ ...task, ...changes })
-      if (changes.assigneeId !== undefined && changes.assigneeId !== (task.assignee?.id ?? null)) {
-        updated = await tasksApi.assign(task.id, changes.assigneeId)
+      if (changes.assigneeId !== undefined) {
+        const next: TaskTarget = { assigneeId: changes.assigneeId, groupId: changes.groupId ?? null }
+        // A group task someone took shows that person in the form; leaving them there changes nothing.
+        const current: TaskTarget = { assigneeId: task.assignee?.id ?? null, groupId: task.assignee ? null : (task.group?.id ?? null) }
+        if (next.assigneeId !== current.assigneeId || next.groupId !== current.groupId) {
+          updated = await tasksApi.assign(task.id, next)
+        }
       }
       const saved = updated
       setTasks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)))
@@ -219,10 +257,61 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
     }
   }
 
+  async function claim(task: TaskItem) {
+    try {
+      const taken = await tasksApi.claim(task.id)
+      setTasks((prev) => prev.map((t) => (t.id === taken.id ? taken : t)))
+      setError(null)
+      setNotice(`Ai preluat „${taken.title}”. Îl găsești la „Toate task-urile”.`)
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 404 || err.status === 409)) {
+        setError('Task-ul a fost preluat între timp de altcineva.')
+        await refresh()
+      } else {
+        handleFailure(err, 'Nu am putut prelua task-ul.')
+      }
+    }
+  }
+
+  async function release(task: TaskItem) {
+    try {
+      await tasksApi.release(task.id)
+      setNotice(`„${task.title}” s-a întors la grupul ${task.group?.name ?? ''}.`.replace(' .', '.'))
+      setError(null)
+      // Whether the task is still visible depends on the user still being in the group.
+      await refresh()
+    } catch (err) {
+      handleFailure(err, 'Nu am putut da task-ul înapoi grupului.')
+    }
+  }
+
+  async function forward(task: TaskItem, target: TaskTarget, note: string | null): Promise<string | null> {
+    try {
+      const updated = await tasksApi.forward(task.id, target, note)
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+      setForwardingId(null)
+      setError(null)
+      const to = updated.assignee?.displayName ?? (updated.group ? `grupul ${updated.group.name}` : updated.createdBy.displayName)
+      setNotice(`Task direcționat către ${to}. Îl poți urmări la „Direcționate”.`)
+      return null
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        onSessionExpired()
+        return null
+      }
+      if (err instanceof ApiError && err.status === 400) return 'Persoana sau grupul ales nu mai există. Alege altceva.'
+      if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+        return 'Task-ul nu mai este la tine, deci nu îl mai poți direcționa.'
+      }
+      return 'Nu am putut direcționa task-ul. Încearcă din nou.'
+    }
+  }
+
   /** Email tasks are completed through a reply; everything else toggles directly. */
   function toggle(task: TaskItem) {
     if (!task.isCompleted && task.sourceEmailAddress) {
       setEditingId(null)
+      setForwardingId(null)
       setCompletingId(task.id)
     } else {
       void save(task, { isCompleted: !task.isCompleted })
@@ -269,19 +358,35 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   }
   const composerKey = view.kind === 'tag' ? `tag:${view.tag}` : view.kind
   const isDashboard = view.kind === 'dashboard'
-  const showsTasks = !isDashboard && view.kind !== 'integrations' && view.kind !== 'team' && view.kind !== 'admin'
+  const showsTasks =
+    !isDashboard && view.kind !== 'integrations' && view.kind !== 'team' && view.kind !== 'groups' && view.kind !== 'admin'
   const canAdd =
-    (showsTasks && view.kind !== 'completed' && view.kind !== 'overdue' && view.kind !== 'delegated') ||
+    (showsTasks && !['completed', 'overdue', 'delegated', 'claimable', 'forwarded'].includes(view.kind)) ||
     (isDashboard && !customizing)
 
   function renderTask(task: TaskItem) {
+    if (task.access === 'viewer') return <ReadOnlyTask key={task.id} task={task} today={today} showHolder />
+    if (forwardingId === task.id) {
+      return (
+        <li key={task.id} className="task-editor">
+          <ForwardTask
+            task={task}
+            people={people}
+            groups={groups}
+            onCancel={() => setForwardingId(null)}
+            onSubmit={(target, note) => forward(task, target, note)}
+          />
+        </li>
+      )
+    }
     if (editingId === task.id) {
       return (
         <li key={task.id} className="task-editor">
           <TaskForm
-            initial={{ ...task, assigneeId: task.assignee?.id ?? null }}
+            initial={{ ...task, assigneeId: task.assignee?.id ?? null, groupId: task.assignee ? null : (task.group?.id ?? null) }}
             // Only the creator can reassign, so only they are offered the choice.
-            people={task.createdBy.id === user.id ? people : []}
+            people={task.access === 'creator' ? people : []}
+            groups={groups}
             currentUser={user}
             taskId={task.id}
             submitLabel="Salvează"
@@ -312,12 +417,19 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
       <TaskRow
         key={task.id}
         task={task}
-        currentUserId={user.id}
         today={today}
         onToggle={() => toggle(task)}
         onEdit={() => {
           setCompletingId(null)
+          setForwardingId(null)
           setEditingId(task.id)
+        }}
+        onClaim={() => void claim(task)}
+        onRelease={() => void release(task)}
+        onForward={() => {
+          setCompletingId(null)
+          setEditingId(null)
+          setForwardingId(task.id)
         }}
         onDelete={() => remove(task.id)}
         onTagClick={(tag) => selectView({ kind: 'tag', tag })}
@@ -417,6 +529,8 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
             <Integrations onSessionExpired={onSessionExpired} />
           ) : view.kind === 'team' ? (
             <Team user={user} today={today} onSessionExpired={onSessionExpired} />
+          ) : view.kind === 'groups' ? (
+            <Groups user={user} onSessionExpired={onSessionExpired} onChanged={() => void refresh()} />
           ) : view.kind === 'admin' ? (
             <AdminUsers user={user} onSessionExpired={onSessionExpired} onOwnAccountChanged={onUserChanged} />
           ) : loading ? (
@@ -435,7 +549,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           ) : visibleCount === 0 ? (
             <p className="empty">{emptyMessage(view, search.trim().length > 0)}</p>
           ) : (
-            groups.map((group) => (
+            sections.map((group) => (
               <section key={group.key} className="task-group">
                 {group.label && (
                   <h2 className={`divider${group.tone ? ` ${group.tone}` : ''}`}>
@@ -456,6 +570,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
               key={composerKey}
               initial={composerDefaults}
               people={people}
+              groups={groups}
               currentUser={user}
               submitLabel="Adaugă"
               placeholder={view.kind === 'tag' ? `Adaugă un task în #${view.tag}` : 'Adaugă un task'}

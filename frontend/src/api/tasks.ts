@@ -1,7 +1,29 @@
 import { request } from './client'
+import type { GroupSummary } from './groups'
 import type { UserSummary } from './users'
 
 export type TaskPriority = 'low' | 'medium' | 'high'
+
+/**
+ * What the signed-in user may do with a task: its creator everything; its assignee edit, complete
+ * and forward; a member of the group it waits on take it; a viewer only read it.
+ */
+export type TaskAccess = 'creator' | 'assignee' | 'group' | 'viewer'
+
+/** One time a task was passed on. */
+export interface TaskForward {
+  from: UserSummary
+  toUser: UserSummary | null
+  toGroup: GroupSummary | null
+  note: string | null
+  at: string
+}
+
+/** Who a task goes to: a user, a group, or nobody else (both null). */
+export interface TaskTarget {
+  assigneeId: string | null
+  groupId: string | null
+}
 
 export interface TaskItem {
   id: string
@@ -30,6 +52,11 @@ export interface TaskItem {
   createdBy: UserSummary
   /** Who the task is assigned to, when that is someone other than its creator. */
   assignee: UserSummary | null
+  /** The group the task was given to. Without an assignee it is waiting for a member to take it. */
+  group: GroupSummary | null
+  /** Each time the task was forwarded, oldest first. */
+  forwards: TaskForward[]
+  access: TaskAccess
 }
 
 /** The editable fields of a task. */
@@ -37,6 +64,8 @@ export type TaskDraft = Pick<TaskItem, 'title' | 'startDate' | 'dueDate' | 'prio
   description?: string | null
   /** User to assign the task to; null keeps it with its creator. Left out when not being changed. */
   assigneeId?: string | null
+  /** Group to give the task to instead of a user. */
+  groupId?: string | null
 }
 
 export const tasksApi = {
@@ -55,9 +84,16 @@ export const tasksApi = {
         tags: task.tags,
       }),
     }),
-  /** Assigns a task to a user, or back to its creator with null. Only the creator may do this. */
-  assign: (id: string, assigneeId: string | null) =>
-    request<TaskItem>(`/tasks/${id}/assignee`, { method: 'PUT', body: JSON.stringify({ assigneeId }) }),
+  /** Assigns a task to a user or a group, or back to its creator. Only the creator may do this. */
+  assign: (id: string, target: TaskTarget) =>
+    request<TaskItem>(`/tasks/${id}/assignee`, { method: 'PUT', body: JSON.stringify(target) }),
+  /** Passes a received task on to a user or a group. The sender can still read it afterwards. */
+  forward: (id: string, target: TaskTarget, note: string | null) =>
+    request<TaskItem>(`/tasks/${id}/forward`, { method: 'POST', body: JSON.stringify({ ...target, note }) }),
+  /** Takes a task that waits on one of the user's groups. */
+  claim: (id: string) => request<TaskItem>(`/tasks/${id}/claim`, { method: 'POST' }),
+  /** Hands a task taken from a group back to it. */
+  release: (id: string) => request<TaskItem>(`/tasks/${id}/release`, { method: 'POST' }),
   /** Completes a task. For email tasks the response is required and is emailed to the sender. */
   complete: (id: string, response: string | null) =>
     request<TaskItem>(`/tasks/${id}/complete`, { method: 'POST', body: JSON.stringify({ response }) }),
