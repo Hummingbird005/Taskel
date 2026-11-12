@@ -104,6 +104,9 @@ namespace Taskel.Api.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date");
+
                     b.PrimitiveCollection<List<string>>("Tags")
                         .IsRequired()
                         .ValueGeneratedOnAdd()

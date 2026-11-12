@@ -65,6 +65,65 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser) : Contr
         return Ok(new TeamResponse(name, departments, members, TeamStats.Sum(members.Select(m => m.Stats))));
     }
 
+    /// <summary>
+    /// The department's open, dated tasks that fall inside a period, per person: what a calendar of
+    /// the team's load is drawn from.
+    /// </summary>
+    [HttpGet("calendar")]
+    public async Task<ActionResult<TeamCalendarResponse>> GetCalendar(
+        [FromQuery, Required] DateOnly? from,
+        [FromQuery, Required] DateOnly? to,
+        [FromQuery, StringLength(Models.User.MaxDepartmentLength), SafeText] string? department,
+        CancellationToken ct)
+    {
+        if (from > to || to!.Value.DayNumber - from!.Value.DayNumber > MaxCalendarDays)
+        {
+            ModelState.AddModelError(nameof(to), $"The period must run forwards and cover at most {MaxCalendarDays} days.");
+            return ValidationProblem(ModelState);
+        }
+
+        var me = await currentUser.GetAsync(User, ct);
+        if (me is null) return Unauthorized();
+        var (user, role) = me.Value;
+        if (role == UserRole.User) return NotAManager();
+
+        var named = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+        if (named is not null && role != UserRole.Admin && !SameDepartment(named, user.Department)) return OtherDepartment();
+        var requested = named ?? user.Department;
+        if (requested is null) return Ok(new TeamCalendarResponse(null, from.Value, to.Value, []));
+
+        var people = await db.Users.AsNoTracking()
+            .Where(u => u.Department != null && u.Department.ToLower() == requested.ToLower())
+            .ToListAsync(ct);
+        var ids = people.Select(p => p.Id).ToList();
+
+        var open = await db.Tasks.AsNoTracking()
+            .Where(t => !t.IsCompleted)
+            .Where(t => (t.AssigneeId != null && ids.Contains(t.AssigneeId.Value)) || (t.AssigneeId == null && ids.Contains(t.UserId)))
+            .Where(t => t.DueDate == null || (t.DueDate >= from && (t.StartDate ?? t.DueDate) <= to))
+            .Select(t => new { ResponsibleId = t.AssigneeId ?? t.UserId, t.Id, t.Title, t.StartDate, t.DueDate, t.Priority })
+            .ToListAsync(ct);
+        var byPerson = open.ToLookup(t => t.ResponsibleId);
+
+        var members = people
+            .Select(p => new CalendarMember(
+                UserSummary.From(p),
+                byPerson[p.Id]
+                    .Where(t => t.DueDate is not null)
+                    .OrderBy(t => t.StartDate ?? t.DueDate)
+                    .ThenBy(t => t.DueDate)
+                    .Select(t => new CalendarTask(t.Id, t.Title, t.StartDate, t.DueDate!.Value, t.Priority))
+                    .ToList(),
+                byPerson[p.Id].Count(t => t.DueDate is null)))
+            .OrderBy(m => m.User.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        var name = people.Select(p => p.Department).FirstOrDefault() ?? requested;
+        return Ok(new TeamCalendarResponse(name, from.Value, to.Value, members));
+    }
+
+    private const int MaxCalendarDays = 92;
+
     /// <summary>The tasks one person is responsible for, in full, for reading.</summary>
     [HttpGet("members/{id:guid}/tasks")]
     public async Task<ActionResult<IEnumerable<TaskResponse>>> GetMemberTasks(Guid id, CancellationToken ct)
