@@ -69,8 +69,13 @@ public class RealDirectoryTests
         var upn = await authenticator.AuthenticateAsync($"Ion.Popescu@{Domain}", "Domain-Pass-1");
 
         Assert.NotNull(plain);
-        Assert.Equal(plain, withDomain);
-        Assert.Equal(plain, upn);
+        // The group list is compared by content; the rest of the record by value.
+        Assert.Equal(plain with { Groups = null }, withDomain! with { Groups = null });
+        Assert.Equal(plain with { Groups = null }, upn! with { Groups = null });
+        Assert.Equal(plain.Groups, withDomain.Groups);
+        Assert.Equal(plain.Groups, upn.Groups);
+        // Groups come from memberOf, named after their common name.
+        Assert.Contains(plain.Groups!, g => g.Name == "Taskel Managers" && g.Dn.StartsWith("CN=Taskel Managers,", StringComparison.OrdinalIgnoreCase));
     }
 
     [DirectoryFact]

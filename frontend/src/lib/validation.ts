@@ -16,6 +16,8 @@ export const LIMITS = {
   username: 128,
   tokenName: 50,
   department: 100,
+  groupName: 100,
+  forwardNote: 500,
   dueDateMin: '2000-01-01',
   dueDateMax: '2100-12-31',
 } as const
@@ -105,6 +107,14 @@ export function validateDepartment(value: string): string | null {
   const department = value.trim()
   if (department.length > LIMITS.department) return `Departamentul poate avea cel mult ${LIMITS.department} de caractere.`
   if (CONTROL.test(department) || /[\n\r\t]/.test(department)) return 'Departamentul conține caractere nepermise.'
+  return null
+}
+
+export function validateGroupName(value: string): string | null {
+  const name = value.trim()
+  if (!name) return 'Dă un nume grupului.'
+  if (name.length > LIMITS.groupName) return `Numele poate avea cel mult ${LIMITS.groupName} de caractere.`
+  if (CONTROL.test(name) || /[\n\r\t]/.test(name)) return 'Numele conține caractere nepermise.'
   return null
 }
 

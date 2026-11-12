@@ -11,7 +11,7 @@ namespace Taskel.Api.Controllers;
 /// <summary>
 /// A department's workload, for its manager. A manager sees the people who share their department;
 /// an administrator may look at any department. A person's tasks are the ones they are responsible
-/// for: assigned to them, or created by them and not handed to someone else.
+/// for: assigned to them, or created by them and not handed to someone else or to a group.
 /// </summary>
 [ApiController]
 [Authorize]
@@ -47,7 +47,7 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser) : Contr
         var ids = people.Select(p => p.Id).ToList();
 
         var tasks = await db.Tasks.AsNoTracking()
-            .Where(t => (t.AssigneeId != null && ids.Contains(t.AssigneeId.Value)) || (t.AssigneeId == null && ids.Contains(t.UserId)))
+            .Where(t => (t.AssigneeId != null && ids.Contains(t.AssigneeId.Value)) || (t.AssigneeId == null && t.GroupId == null && ids.Contains(t.UserId)))
             .Select(t => new TaskFacts(t.AssigneeId ?? t.UserId, t.IsCompleted, t.DueDate, t.Priority, t.CompletedAt))
             .ToListAsync(ct);
         var byPerson = tasks.ToLookup(t => t.ResponsibleId);
@@ -99,7 +99,7 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser) : Contr
 
         var open = await db.Tasks.AsNoTracking()
             .Where(t => !t.IsCompleted)
-            .Where(t => (t.AssigneeId != null && ids.Contains(t.AssigneeId.Value)) || (t.AssigneeId == null && ids.Contains(t.UserId)))
+            .Where(t => (t.AssigneeId != null && ids.Contains(t.AssigneeId.Value)) || (t.AssigneeId == null && t.GroupId == null && ids.Contains(t.UserId)))
             .Where(t => t.DueDate == null || (t.DueDate >= from && (t.StartDate ?? t.DueDate) <= to))
             .Select(t => new { ResponsibleId = t.AssigneeId ?? t.UserId, t.Id, t.Title, t.StartDate, t.DueDate, t.Priority })
             .ToListAsync(ct);
@@ -141,10 +141,15 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser) : Contr
         var tasks = await db.Tasks.AsNoTracking()
             .Include(t => t.Owner)
             .Include(t => t.Assignee)
-            .Where(t => t.AssigneeId == id || (t.AssigneeId == null && t.UserId == id))
+            .Include(t => t.Group)
+            .Include(t => t.Forwards).ThenInclude(f => f.From)
+            .Include(t => t.Forwards).ThenInclude(f => f.ToUser)
+            .Include(t => t.Forwards).ThenInclude(f => f.ToGroup)
+            .AsSplitQuery()
+            .Where(t => t.AssigneeId == id || (t.AssigneeId == null && t.GroupId == null && t.UserId == id))
             .OrderBy(t => t.CreatedAt)
             .ToListAsync(ct);
-        return Ok(tasks.Select(TaskResponse.From));
+        return Ok(tasks.Select(task => TaskResponse.From(task, TaskAccess.Viewer)));
     }
 
     private record TaskFacts(Guid ResponsibleId, bool IsCompleted, DateOnly? DueDate, TaskPriority Priority, DateTime? CompletedAt);

@@ -8,6 +8,9 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<User> Users => Set<User>();
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
+    public DbSet<Group> Groups => Set<Group>();
+    public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+    public DbSet<TaskForward> TaskForwards => Set<TaskForward>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,6 +28,39 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             user.HasIndex(u => u.Department);
             user.Property(u => u.DashboardWidgets).HasColumnType("text[]");
             user.Property(u => u.ShowDueAlert).HasDefaultValue(true);
+        });
+
+        modelBuilder.Entity<Group>(group =>
+        {
+            group.ToTable("groups");
+            group.HasKey(g => g.Id);
+            group.Property(g => g.Name).HasMaxLength(Group.MaxNameLength).IsRequired();
+            group.Property(g => g.DirectoryDn).HasMaxLength(1024);
+            group.HasIndex(g => g.DirectoryDn).IsUnique();
+            group.HasOne<User>().WithMany().HasForeignKey(g => g.CreatedById).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<GroupMember>(member =>
+        {
+            member.ToTable("group_members");
+            member.HasKey(m => new { m.GroupId, m.UserId });
+            member.HasOne<Group>().WithMany(g => g.Members).HasForeignKey(m => m.GroupId).OnDelete(DeleteBehavior.Cascade);
+            member.HasOne(m => m.User).WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Cascade);
+            member.HasIndex(m => m.UserId);
+        });
+
+        modelBuilder.Entity<TaskForward>(forward =>
+        {
+            forward.ToTable("task_forwards");
+            forward.HasKey(f => f.Id);
+            // The id is set in code; a forward added to a loaded task must be seen as new.
+            forward.Property(f => f.Id).ValueGeneratedNever();
+            forward.Property(f => f.Note).HasMaxLength(500);
+            forward.HasOne<TaskItem>().WithMany(t => t.Forwards).HasForeignKey(f => f.TaskId).OnDelete(DeleteBehavior.Cascade);
+            forward.HasOne(f => f.From).WithMany().HasForeignKey(f => f.FromUserId).OnDelete(DeleteBehavior.Cascade);
+            forward.HasOne(f => f.ToUser).WithMany().HasForeignKey(f => f.ToUserId).OnDelete(DeleteBehavior.SetNull);
+            forward.HasOne(f => f.ToGroup).WithMany().HasForeignKey(f => f.ToGroupId).OnDelete(DeleteBehavior.SetNull);
+            forward.HasIndex(f => f.FromUserId);
         });
 
         modelBuilder.Entity<ApiToken>(token =>
@@ -54,6 +90,8 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             task.HasOne(t => t.Owner).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
             task.HasOne(t => t.Assignee).WithMany().HasForeignKey(t => t.AssigneeId).OnDelete(DeleteBehavior.SetNull);
             task.HasIndex(t => t.AssigneeId);
+            task.HasOne(t => t.Group).WithMany().HasForeignKey(t => t.GroupId).OnDelete(DeleteBehavior.SetNull);
+            task.HasIndex(t => t.GroupId);
             task.HasIndex(t => new { t.UserId, t.CreatedAt });
         });
     }

@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
+import type { GroupListItem } from '../api/groups'
 import type { TaskDraft, TaskPriority } from '../api/tasks'
 import { usersApi, type UserSummary } from '../api/users'
 import { describePeriod } from '../lib/dates'
+import { GROUP_PREFIX } from '../lib/taskViews'
 import { tasksLabel } from '../lib/text'
 import {
   firstError,
@@ -13,6 +15,7 @@ import {
   validateTitle,
 } from '../lib/validation'
 import Icon from './Icon'
+import TargetOptions from './TargetOptions'
 
 const EMPTY: TaskDraft = { title: '', startDate: null, dueDate: null, priority: 'medium', tags: [] }
 
@@ -39,6 +42,8 @@ interface Props {
    * assignee field, e.g. when the person editing is not the task's creator.
    */
   people?: UserSummary[]
+  /** The groups the task can be given to, offered next to the people. */
+  groups?: GroupListItem[]
   /**
    * The signed-in user. With it, the form warns when the person the task is for already has
    * other tasks in the same date or period.
@@ -61,6 +66,7 @@ export default function TaskForm({
   onSubmit,
   onCancel,
   people = [],
+  groups = [],
   currentUser,
   taskId,
 }: Props) {
@@ -70,13 +76,18 @@ export default function TaskForm({
   const [priority, setPriority] = useState<TaskPriority>(initial.priority)
   const [tags, setTags] = useState(initial.tags.join(', '))
   const [description, setDescription] = useState(initial.description ?? '')
-  const [assigneeId, setAssigneeId] = useState(initial.assigneeId ?? '')
+  // Who the task is for: '' for the user themselves, a user id, or a prefixed group id.
+  const initialTarget = initial.assigneeId ?? (initial.groupId ? GROUP_PREFIX + initial.groupId : '')
+  const [target, setTarget] = useState(initialTarget)
+  const groupId = target.startsWith(GROUP_PREFIX) ? target.slice(GROUP_PREFIX.length) : null
+  const assigneeId = groupId ? '' : target
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [workload, setWorkload] = useState<Workload | null>(null)
 
   // Who the task is for, and when: the question behind the "already has N tasks" warning.
-  const responsibleId = assigneeId || currentUser?.id || ''
+  // A task given to a group is nobody's until someone takes it, so there is nobody to check.
+  const responsibleId = groupId ? '' : assigneeId || currentUser?.id || ''
   const datesAreValid = dueDate !== '' && !validateDueDate(dueDate) && !validateInterval(startDate, dueDate)
   const workloadKey = responsibleId && datesAreValid ? `${responsibleId}|${startDate || dueDate}|${dueDate}` : null
 
@@ -149,7 +160,7 @@ export default function TaskForm({
       // Notes are only editable in edit mode; new tasks start without any.
       ...(isEditing ? { description: description.trim() || null } : {}),
       // Only sent when the form offers the choice.
-      ...(people.length > 0 ? { assigneeId: assigneeId || null } : {}),
+      ...(people.length > 0 ? { assigneeId: assigneeId || null, groupId } : {}),
     })
     setSubmitting(false)
     if (saved && !isEditing) {
@@ -158,7 +169,7 @@ export default function TaskForm({
       setDueDate(initial.dueDate ?? '')
       setPriority(initial.priority)
       setTags(initial.tags.join(', '))
-      setAssigneeId(initial.assigneeId ?? '')
+      setTarget(initialTarget)
     }
   }
 
@@ -256,13 +267,9 @@ export default function TaskForm({
           <label className="composer-field">
             <Icon name="user" />
             <span className="visually-hidden">Alocat către</span>
-            <select value={assigneeId} onChange={(e) => change(setAssigneeId, e.target.value)} aria-label="Alocat către">
+            <select value={target} onChange={(e) => change(setTarget, e.target.value)} aria-label="Alocat către">
               <option value="">Eu</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.displayName}
-                </option>
-              ))}
+              <TargetOptions people={people} groups={groups} />
             </select>
           </label>
         )}

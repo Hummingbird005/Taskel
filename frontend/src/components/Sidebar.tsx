@@ -8,6 +8,8 @@ export interface ViewCounts {
   upcoming: number
   overdue: number
   delegated: number
+  claimable: number
+  forwarded: number
 }
 
 interface Props {
@@ -58,7 +60,9 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
           {item({ kind: 'upcoming' }, 'calendar', 'Urmează', counts.upcoming)}
           {item({ kind: 'overdue' }, 'alert', 'Întârziate', counts.overdue, 'danger')}
           {item({ kind: 'completed' }, 'checkCircle', 'Finalizate')}
+          {item({ kind: 'claimable' }, 'hand', 'De preluat', counts.claimable)}
           {item({ kind: 'delegated' }, 'send', 'Delegate', counts.delegated)}
+          {item({ kind: 'forwarded' }, 'forward', 'Direcționate', counts.forwarded)}
         </ul>
 
         <h2 className="nav-heading">Etichete</h2>
@@ -75,6 +79,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
             <h2 className="nav-heading">Organizare</h2>
             <ul className="nav-list">
               {item({ kind: 'team' }, 'users', 'Echipă')}
+              {item({ kind: 'groups' }, 'hand', 'Grupuri')}
               {user.role === 'admin' && item({ kind: 'admin' }, 'shield', 'Utilizatori')}
             </ul>
           </>

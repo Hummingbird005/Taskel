@@ -11,10 +11,11 @@ public class FakeDirectory : IDirectoryAuthenticator
     public bool Unavailable { get; set; }
 
     public DirectoryUser AddAccount(string username, string password, string? email = null, string? displayName = null,
-        string? department = null, bool? isManager = null, bool? isAdmin = null)
+        string? department = null, bool? isManager = null, bool? isAdmin = null, params string[] groups)
     {
         var user = new DirectoryUser(
-            Guid.NewGuid().ToString(), email ?? $"{username}@corp.example.com", displayName, department, isManager, isAdmin);
+            Guid.NewGuid().ToString(), email ?? $"{username}@corp.example.com", displayName, department, isManager, isAdmin,
+            groups.Select(name => new DirectoryGroup($"CN={name},OU=Groups,DC=corp,DC=example,DC=com", name)).ToList());
         _accounts[username] = (password, user);
         return user;
     }

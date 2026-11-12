@@ -610,3 +610,41 @@ button.chip.tag:hover { background: var(--accent); color: var(--on-accent); }
 /* Wide tables scroll inside their own box. Being positioned, the box also contains the
    visually hidden labels in its cells, which would otherwise be placed against the page and widen it. */
 .team-table-wrap { position: relative; }
+
+/* Groups, claiming and forwarding */
+.chip.waiting { color: var(--warn); border-color: var(--warn); }
+.task-claim { align-self: center; flex-shrink: 0; padding: 5px 12px; font-size: 0.85rem; }
+.trail { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; }
+.trail li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.trail-step { font-weight: 600; }
+.trail-note { flex-basis: 100%; color: var(--muted); overflow-wrap: anywhere; }
+.forward-target { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.forward-target select {
+  flex: 1; min-width: 0; max-width: 420px; padding: 7px 8px; border: 1px solid var(--border-strong);
+  border-radius: 8px; background: var(--bg); color: var(--text); font: inherit;
+}
+.kind-badge { font-size: 0.78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); }
+.kind-badge.directory { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.team-table td.group-actions { text-align: right; }
+.group-actions .button { padding: 4px 10px; font-size: 0.85rem; }
+.group-actions .button + .button { margin-left: 6px; }
+.button.ghost.danger:hover:not(:disabled) { color: var(--danger); border-color: var(--danger); }
+.group-form { border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.group-form h3 { font-size: 1.05rem; overflow-wrap: anywhere; }
+.group-name { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); max-width: 420px; }
+.group-name input {
+  padding: 8px 10px; border: 1px solid var(--border-strong); border-radius: 8px;
+  background: var(--bg); color: var(--text); font: inherit;
+}
+.group-members { border: 0; padding: 0; margin: 0; min-width: 0; }
+.group-members legend { font-size: 0.85rem; font-weight: 700; padding: 0; margin-bottom: 6px; }
+.group-members ul {
+  list-style: none; margin: 0; padding: 4px; max-height: 260px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 8px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2px;
+}
+.group-members label { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.group-members label:hover { background: var(--hover); }
+.group-members label span, .group-readonly li { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.group-members small, .group-readonly small { font-size: 0.78rem; }
+.group-readonly { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
