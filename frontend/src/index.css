@@ -490,3 +490,47 @@ button.chip.tag:hover { background: var(--accent); color: var(--on-accent); }
 }
 .auth-tabs button[aria-selected='true'] { background: var(--bg); color: var(--text); box-shadow: var(--shadow); }
 .composer-field select { max-width: 180px; }
+
+/* ---------- Team and administration ---------- */
+.team { padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+.team-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.team-head h2 { font-size: 1.35rem; font-weight: 800; }
+.team-department { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: var(--muted); }
+.team-department select, .team-table select, .team-table input {
+  height: 32px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg);
+}
+.stat.static { cursor: default; }
+.stat.static:hover { border-color: var(--border); background: var(--surface); }
+.stat.static.danger:hover { border-color: var(--danger); background: var(--danger-soft); }
+.team-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+.team-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.team-table th, .team-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.team-table thead th { font-size: 0.78rem; font-weight: 700; color: var(--muted); background: var(--surface); white-space: normal; vertical-align: bottom; }
+.team-table tbody tr:last-child > * { border-bottom: 0; }
+.team-table tbody th { font-weight: 500; }
+.team-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.team-table .load-col { min-width: 170px; }
+.team-table tr.open > * { background: var(--hover); }
+.load { display: flex; align-items: center; gap: 10px; }
+.load .meter-track { flex: 1; min-width: 80px; }
+.load .meter-figure { min-width: 2ch; }
+.member-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 0; border: 0; background: transparent; text-align: left;
+}
+.member-toggle:hover .member-name { text-decoration: underline; }
+.member-name { display: flex; flex-direction: column; line-height: 1.25; }
+.member-name small { font-size: 0.78rem; }
+.member-tasks > td { padding: 4px 0 12px; background: var(--surface); white-space: normal; }
+.member-task-lists { padding: 4px 12px; }
+.member-task-lists h3 { margin: 10px 8px 4px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.member-task-lists > p { margin: 4px 8px; }
+.task.readonly:hover { background: transparent; }
+.task-state { display: grid; place-items: center; width: 20px; height: 20px; margin-top: 1px; color: var(--muted); flex-shrink: 0; }
+.task-state.done { color: var(--go); }
+.chip.tag-static { color: var(--accent); border-color: transparent; background: var(--accent-soft); }
+.team-note { font-size: 0.85rem; }
+.department-cell { display: flex; align-items: center; gap: 8px; }
+.department-cell input { width: 220px; max-width: 100%; }
+.saved { color: var(--go); font-size: 0.82rem; font-weight: 600; }
+.sidebar-email small { display: block; font-size: 0.75rem; color: var(--side-text); overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .team { padding: 10px 12px 16px; } }

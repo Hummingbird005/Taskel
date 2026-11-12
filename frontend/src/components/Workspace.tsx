@@ -25,6 +25,8 @@ import Icon from './Icon'
 import Integrations from './Integrations'
 import Sidebar from './Sidebar'
 import TaskForm from './TaskForm'
+import Team from './Team'
+import AdminUsers from './AdminUsers'
 import TaskRow from './TaskRow'
 
 /** What to tell the user when completing an email task with a reply failed. */
@@ -46,12 +48,14 @@ function replyErrorText(err: unknown): string {
 
 interface Props {
   user: User
+  /** Called when the signed-in account itself was changed (its role or department). */
+  onUserChanged: () => void
   onLogout: () => void
   onSessionExpired: () => void
 }
 
 /** The signed-in app: sidebar with views, the dashboard or task list for the selected view, and the composer. */
-export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
+export default function Workspace({ user, onUserChanged, onLogout, onSessionExpired }: Props) {
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -264,7 +268,7 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
   }
   const composerKey = view.kind === 'tag' ? `tag:${view.tag}` : view.kind
   const isDashboard = view.kind === 'dashboard'
-  const showsTasks = !isDashboard && view.kind !== 'integrations'
+  const showsTasks = !isDashboard && view.kind !== 'integrations' && view.kind !== 'team' && view.kind !== 'admin'
   const canAdd =
     (showsTasks && view.kind !== 'completed' && view.kind !== 'overdue' && view.kind !== 'delegated') ||
     (isDashboard && !customizing)
@@ -408,6 +412,10 @@ export default function Workspace({ user, onLogout, onSessionExpired }: Props) {
 
           {view.kind === 'integrations' ? (
             <Integrations onSessionExpired={onSessionExpired} />
+          ) : view.kind === 'team' ? (
+            <Team user={user} today={today} onSessionExpired={onSessionExpired} />
+          ) : view.kind === 'admin' ? (
+            <AdminUsers user={user} onSessionExpired={onSessionExpired} onOwnAccountChanged={onUserChanged} />
           ) : loading ? (
             <p className="empty">Se încarcă…</p>
           ) : isDashboard ? (

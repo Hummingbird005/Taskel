@@ -21,6 +21,16 @@ export default function App() {
 
   const handleSessionExpired = useCallback(() => setSession({ status: 'signedOut' }), [])
 
+  /** Reads the account again after its role or department was changed. */
+  const refreshUser = useCallback(() => {
+    authApi
+      .me()
+      .then((user) => setSession(user ? { status: 'signedIn', user } : { status: 'signedOut' }))
+      .catch(() => {
+        // Keep the current session; the next request will show any real problem.
+      })
+  }, [])
+
   async function logout() {
     try {
       await authApi.logout()
@@ -34,6 +44,7 @@ export default function App() {
       <Workspace
         key={session.user.id}
         user={session.user}
+        onUserChanged={refreshUser}
         onLogout={logout}
         onSessionExpired={handleSessionExpired}
       />

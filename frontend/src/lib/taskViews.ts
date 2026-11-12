@@ -11,6 +11,8 @@ export type View =
   | { kind: 'delegated' }
   | { kind: 'tag'; tag: string }
   | { kind: 'integrations' }
+  | { kind: 'team' }
+  | { kind: 'admin' }
 
 export type SortBy = 'dueDate' | 'priority' | 'created'
 
@@ -46,6 +48,8 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
       return tasks.filter((t) => t.tags.includes(view.tag))
     case 'dashboard':
     case 'integrations':
+    case 'team':
+    case 'admin':
       return []
     default:
       // 'all' and 'delegated' show everything they are given.
@@ -147,6 +151,10 @@ export function viewTitle(view: View): string {
       return view.tag
     case 'integrations':
       return 'Integrări'
+    case 'team':
+      return 'Echipă'
+    case 'admin':
+      return 'Utilizatori'
   }
 }
 

@@ -1,0 +1,71 @@
+import type { TaskItem } from '../api/tasks'
+import { formatDueDate } from '../lib/dates'
+import { isOverdue } from '../lib/taskViews'
+import Icon from './Icon'
+
+/** A task shown for reading only, as a manager sees the tasks of someone in their department. */
+export default function ReadOnlyTask({ task, today }: { task: TaskItem; today: string }) {
+  const overdue = isOverdue(task, today)
+  const dueLabel = task.dueDate === today ? 'azi' : task.dueDate ? formatDueDate(task.dueDate) : null
+  const sharedBy = task.assignee ? task.createdBy : null
+
+  return (
+    <li className={`task readonly${task.isCompleted ? ' done' : ''}`}>
+      <span className={`task-state${task.isCompleted ? ' done' : ''}`} aria-hidden="true">
+        <Icon name={task.isCompleted ? 'checkCircle' : 'inbox'} />
+      </span>
+      <div className="task-body">
+        <span className="task-title">
+          <span className="visually-hidden">{task.isCompleted ? 'Finalizat: ' : 'Deschis: '}</span>
+          {task.title}
+        </span>
+        <div className="task-meta">
+          {task.priority !== 'medium' && (
+            <span className={`chip priority-${task.priority}`}>
+              <Icon name="flag" size={13} />
+              Prioritate {task.priority === 'high' ? 'ridicată' : 'scăzută'}
+            </span>
+          )}
+          {dueLabel && (
+            <span className={`chip due${overdue ? ' overdue' : ''}`}>
+              <Icon name="calendar" size={13} />
+              {overdue ? 'Întârziat: ' : 'Termen: '}
+              {dueLabel}
+            </span>
+          )}
+          {sharedBy && (
+            <span className="chip person" title={`Primit de la ${sharedBy.email}`}>
+              <Icon name="reply" size={13} />
+              De la: {sharedBy.displayName}
+            </span>
+          )}
+          {task.sourceEmailAddress && (
+            <span className="chip" title={`Dintr-un email trimis de ${task.sourceEmailAddress}`}>
+              <Icon name="mail" size={13} />
+              {task.sourceEmailAddress}
+            </span>
+          )}
+          {task.tags.map((tag) => (
+            <span key={tag} className="chip tag-static">
+              #{tag}
+            </span>
+          ))}
+        </div>
+        {task.isCompleted && task.completionResponse && (
+          <details className="task-details">
+            <summary>
+              {task.sourceEmailAddress ? `Răspuns trimis către ${task.sourceEmailAddress}` : 'Notă de finalizare'}
+            </summary>
+            <p>{task.completionResponse}</p>
+          </details>
+        )}
+        {task.description && (
+          <details className="task-details">
+            <summary>Note</summary>
+            <p>{task.description}</p>
+          </details>
+        )}
+      </div>
+    </li>
+  )
+}
