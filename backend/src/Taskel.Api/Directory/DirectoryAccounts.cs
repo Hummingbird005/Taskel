@@ -38,7 +38,47 @@ public class DirectoryAccounts(TaskelDbContext db)
         if (directoryUser.Department is not null) user.Department = directoryUser.Department;
         user.Role = RoleFromDirectory(user.Role, directoryUser);
         await db.SaveChangesAsync(ct);
+        if (directoryUser.Groups is not null) await SyncGroupsAsync(user, directoryUser.Groups, ct);
         return user;
+    }
+
+    /// <summary>
+    /// Makes the user's directory-group memberships in Taskel match the directory: groups seen for
+    /// the first time are created, and the user leaves the ones they no longer belong to.
+    /// </summary>
+    private async Task SyncGroupsAsync(User user, IReadOnlyList<DirectoryGroup> directoryGroups, CancellationToken ct)
+    {
+        var dns = directoryGroups.Select(g => g.Dn.ToLowerInvariant()).ToList();
+        var known = await db.Groups
+            .Where(g => g.Kind == GroupKind.Directory && g.DirectoryDn != null && dns.Contains(g.DirectoryDn))
+            .ToListAsync(ct);
+
+        var current = new HashSet<Guid>();
+        foreach (var directoryGroup in directoryGroups)
+        {
+            var dn = directoryGroup.Dn.ToLowerInvariant();
+            var group = known.FirstOrDefault(g => g.DirectoryDn == dn);
+            if (group is null)
+            {
+                group = new Group { Kind = GroupKind.Directory, DirectoryDn = dn, Name = directoryGroup.Name };
+                db.Groups.Add(group);
+                known.Add(group);
+            }
+            else
+            {
+                group.Name = directoryGroup.Name;
+            }
+            current.Add(group.Id);
+        }
+
+        var memberships = await db.GroupMembers
+            .Where(m => m.UserId == user.Id && db.Groups.Any(g => g.Id == m.GroupId && g.Kind == GroupKind.Directory))
+            .ToListAsync(ct);
+        db.GroupMembers.RemoveRange(memberships.Where(m => !current.Contains(m.GroupId)));
+        var already = memberships.Select(m => m.GroupId).ToHashSet();
+        db.GroupMembers.AddRange(current.Where(id => !already.Contains(id))
+            .Select(id => new GroupMember { GroupId = id, UserId = user.Id }));
+        await db.SaveChangesAsync(ct);
     }
 
     /// <summary>

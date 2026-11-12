@@ -45,7 +45,7 @@ public class UsersController(TaskelDbContext db) : ControllerBase
 
         var count = await db.Tasks.AsNoTracking()
             .Where(t => !t.IsCompleted && t.DueDate != null && t.Id != excludeTaskId)
-            .Where(t => t.AssigneeId == id || (t.AssigneeId == null && t.UserId == id))
+            .Where(t => t.AssigneeId == id || (t.AssigneeId == null && t.GroupId == null && t.UserId == id))
             .CountAsync(t => t.DueDate >= from && (t.StartDate ?? t.DueDate) <= to, ct);
         return Ok(new UserWorkloadResponse(count));
     }

@@ -3,8 +3,9 @@ using Taskel.Api.Models;
 namespace Taskel.Api.Services;
 
 /// <summary>
-/// Task storage. A user can reach the tasks they created and the tasks assigned to them;
-/// every read is scoped to that. Returned tasks have their owner and assignee loaded.
+/// Task storage. A user can reach the tasks they created, the tasks assigned to them, the unclaimed
+/// tasks of the groups they belong to, and the tasks they passed on; every read is scoped to that.
+/// Returned tasks have their people, group and forwards loaded.
 /// </summary>
 public interface ITaskRepository
 {
@@ -16,4 +17,7 @@ public interface ITaskRepository
     Task SaveAsync(TaskItem item, CancellationToken ct = default);
     Task DeleteAsync(TaskItem item, CancellationToken ct = default);
     Task<bool> UserExistsAsync(Guid userId, CancellationToken ct = default);
+    Task<bool> GroupExistsAsync(Guid groupId, CancellationToken ct = default);
+    /// <summary>The groups a user belongs to.</summary>
+    Task<IReadOnlySet<Guid>> GetGroupIdsAsync(Guid userId, CancellationToken ct = default);
 }

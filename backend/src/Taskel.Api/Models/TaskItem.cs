@@ -27,6 +27,17 @@ public class TaskItem
     public Guid? AssigneeId { get; set; }
     [JsonIgnore]
     public User? Assignee { get; set; }
+    /// <summary>
+    /// The group the task was given to. While it has no assignee, every member sees it and any of
+    /// them can take it; once taken, it stays linked to the group so it can be handed back.
+    /// </summary>
+    [JsonIgnore]
+    public Guid? GroupId { get; set; }
+    [JsonIgnore]
+    public Group? Group { get; set; }
+    /// <summary>Each time the task was passed on. People who passed it on can still read it.</summary>
+    [JsonIgnore]
+    public List<TaskForward> Forwards { get; set; } = [];
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsCompleted { get; set; }
@@ -71,6 +82,8 @@ public record CreateTaskRequest(
     [TagList] List<string>? Tags = null,
     /// <summary>User to assign the task to. Omit to keep it yourself.</summary>
     Guid? AssigneeId = null,
+    /// <summary>Group to give the task to, instead of a user. Any member can then take it.</summary>
+    Guid? GroupId = null,
     /// <summary>First day of the task's interval. Needs a due date on or after it.</summary>
     [DueDateRange] DateOnly? StartDate = null) : IValidatableObject
 {
@@ -108,8 +121,29 @@ public static class TaskInterval
 /// <summary>Completes a task. <see cref="Response"/> is required for tasks created from an email.</summary>
 public record CompleteTaskRequest([StringLength(4000), SafeText(Multiline = true)] string? Response = null);
 
-/// <summary>Assigns a task. A null <see cref="AssigneeId"/> returns it to its creator.</summary>
-public record AssignTaskRequest(Guid? AssigneeId);
+/// <summary>
+/// Assigns a task to a user or to a group (not both). With neither, it returns to its creator.
+/// </summary>
+public record AssignTaskRequest(Guid? AssigneeId = null, Guid? GroupId = null);
+
+/// <summary>Passes a received task on to another user or to a group: exactly one of the two.</summary>
+public record ForwardTaskRequest(
+    Guid? AssigneeId = null,
+    Guid? GroupId = null,
+    [StringLength(500), SafeText(Multiline = true)] string? Note = null);
+
+/// <summary>What the person asking may do with a task.</summary>
+public enum TaskAccess
+{
+    /// <summary>Created it: may do everything.</summary>
+    Creator,
+    /// <summary>Has it assigned: may edit, complete and pass it on.</summary>
+    Assignee,
+    /// <summary>Belongs to the group it was given to: may read it and take it.</summary>
+    Group,
+    /// <summary>May only read it: passed it on earlier, or manages the person who has it.</summary>
+    Viewer
+}
 
 /// <summary>A user as shown to other users: for pickers and "assigned to" labels.</summary>
 public record UserSummary(Guid Id, string Email, string DisplayName)
@@ -132,12 +166,26 @@ public record TaskResponse(
     string? CompletionResponse,
     DateTime? CompletedAt,
     UserSummary CreatedBy,
-    UserSummary? Assignee)
+    UserSummary? Assignee,
+    GroupSummary? Group,
+    IReadOnlyList<ForwardResponse> Forwards,
+    TaskAccess Access)
 {
-    /// <summary>The task's <see cref="TaskItem.Owner"/> (and assignee, if any) must be loaded.</summary>
-    public static TaskResponse From(TaskItem task) => new(
+    /// <summary>The task's people, group and forwards must be loaded.</summary>
+    public static TaskResponse From(TaskItem task, TaskAccess access) => new(
         task.Id, task.Title, task.Description, task.IsCompleted, task.StartDate, task.DueDate, task.Priority, task.Tags,
         task.CreatedAt, task.SourceEmailAddress, task.CompletionResponse, task.CompletedAt,
         UserSummary.From(task.Owner ?? throw new InvalidOperationException("Task owner is not loaded.")),
-        task.Assignee is null ? null : UserSummary.From(task.Assignee));
+        task.Assignee is null ? null : UserSummary.From(task.Assignee),
+        task.Group is null ? null : GroupSummary.From(task.Group),
+        task.Forwards
+            .OrderBy(f => f.At)
+            .Select(f => new ForwardResponse(
+                UserSummary.From(f.From ?? throw new InvalidOperationException("Forward sender is not loaded.")),
+                f.ToUser is null ? null : UserSummary.From(f.ToUser),
+                f.ToGroup is null ? null : GroupSummary.From(f.ToGroup),
+                f.Note,
+                f.At))
+            .ToList(),
+        access);
 }

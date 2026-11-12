@@ -34,6 +34,13 @@ public class DirectoryOptions
     public string? ManagerGroupDn { get; set; }
     /// <summary>When set, direct members of this group are administrators in Taskel, and others are not.</summary>
     public string? AdminGroupDn { get; set; }
+    /// <summary>
+    /// Whether the groups a user belongs to become groups in Taskel that tasks can be given to.
+    /// They are learned at sign-in, so a group shows the members who have signed in to Taskel.
+    /// </summary>
+    public bool SyncGroups { get; set; } = true;
+    /// <summary>When set, only groups under this container (e.g. <c>OU=Teams,DC=corp,DC=example,DC=com</c>) are brought in.</summary>
+    public string? GroupsBaseDn { get; set; }
     public int TimeoutSeconds { get; set; } = 10;
 
     public bool IsUsable =>

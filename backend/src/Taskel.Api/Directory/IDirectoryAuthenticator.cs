@@ -4,6 +4,7 @@ namespace Taskel.Api.Directory;
 /// <param name="DirectoryId">The account's objectGUID: stable across renames and email changes.</param>
 /// <param name="Department">The user's department in the directory, when it has one.</param>
 /// <param name="IsManager">Membership of the configured manager group; null when no group is configured.</param>
+/// <param name="Groups">The groups the user is a direct member of; null when groups are not brought into Taskel.</param>
 /// <param name="IsAdmin">Membership of the configured administrator group; null when no group is configured.</param>
 public record DirectoryUser(
     string DirectoryId,
@@ -11,7 +12,11 @@ public record DirectoryUser(
     string? DisplayName,
     string? Department = null,
     bool? IsManager = null,
-    bool? IsAdmin = null);
+    bool? IsAdmin = null,
+    IReadOnlyList<DirectoryGroup>? Groups = null);
+
+/// <summary>A directory group a user belongs to, which tasks can be given to in Taskel.</summary>
+public record DirectoryGroup(string Dn, string Name);
 
 public interface IDirectoryAuthenticator
 {

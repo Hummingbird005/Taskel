@@ -137,7 +137,8 @@ public class LdapDirectoryAuthenticator(IOptions<DirectoryOptions> options, ILog
             displayName.Length is > 0 and <= 256 ? displayName : null,
             department.Length is > 0 and <= Models.User.MaxDepartmentLength ? department : null,
             MemberOf(directory.ManagerGroupDn),
-            MemberOf(directory.AdminGroupDn));
+            MemberOf(directory.AdminGroupDn),
+            directory.SyncGroups ? DirectoryNames.TaskGroups(groups, directory.GroupsBaseDn) : null);
     }
 
     /// <summary>The department attribute to read, or null when it is not a plain attribute name.</summary>

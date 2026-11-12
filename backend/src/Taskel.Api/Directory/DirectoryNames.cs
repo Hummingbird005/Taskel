@@ -9,6 +9,56 @@ public record DirectoryLogin(string AccountName, string UserPrincipalName);
 public static partial class DirectoryNames
 {
     /// <summary>
+    /// Turns the distinguished names from <c>memberOf</c> into groups for Taskel, named after their
+    /// common name. Keeps only those under <paramref name="baseDn"/> when one is given.
+    /// </summary>
+    public static IReadOnlyList<DirectoryGroup> TaskGroups(IEnumerable<string> groupDns, string? baseDn)
+    {
+        var suffix = string.IsNullOrWhiteSpace(baseDn) ? null : "," + baseDn.Trim();
+        var groups = new List<DirectoryGroup>();
+        foreach (var raw in groupDns)
+        {
+            var dn = raw.Trim();
+            if (dn.Length is 0 or > 1024) continue;
+            if (suffix is not null && !dn.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) continue;
+            var name = Validation.SafeText.Clean(CommonName(dn), multiline: false).Trim();
+            if (name.Length == 0) continue;
+            if (name.Length > Models.Group.MaxNameLength) name = name[..Models.Group.MaxNameLength].TrimEnd();
+            if (!groups.Any(g => string.Equals(g.Dn, dn, StringComparison.OrdinalIgnoreCase)))
+                groups.Add(new DirectoryGroup(dn, name));
+        }
+        return groups;
+    }
+
+    /// <summary>The value of a distinguished name's first component, unescaped: <c>CN=Sales\, EU,OU=…</c> gives <c>Sales, EU</c>.</summary>
+    public static string CommonName(string dn)
+    {
+        var start = dn.IndexOf('=') + 1;
+        var bytes = new List<byte>();
+        for (var i = start; i < dn.Length; i++)
+        {
+            var c = dn[i];
+            if (c == ',') break;
+            if (c == '\\' && i + 1 < dn.Length)
+            {
+                if (i + 2 < dn.Length && Uri.IsHexDigit(dn[i + 1]) && Uri.IsHexDigit(dn[i + 2]))
+                {
+                    bytes.Add(Convert.ToByte(dn.Substring(i + 1, 2), 16));
+                    i += 2;
+                }
+                else
+                {
+                    bytes.AddRange(Encoding.UTF8.GetBytes(dn[i + 1].ToString()));
+                    i++;
+                }
+                continue;
+            }
+            bytes.AddRange(Encoding.UTF8.GetBytes(char.IsHighSurrogate(c) && i + 1 < dn.Length ? dn.Substring(i++, 2) : c.ToString()));
+        }
+        return Encoding.UTF8.GetString(bytes.ToArray());
+    }
+
+    /// <summary>
     /// Accepts <c>user</c>, <c>DOMAIN\user</c> or <c>user@domain</c> and returns both name forms.
     /// Anything outside a conservative character set is refused, so nothing unexpected reaches LDAP.
     /// </summary>
