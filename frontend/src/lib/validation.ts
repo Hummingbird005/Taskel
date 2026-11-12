@@ -74,6 +74,16 @@ export function validateDueDate(value: string): string | null {
   return null
 }
 
+/** A start date needs a due date on or after it. */
+export function validateInterval(startDate: string, dueDate: string): string | null {
+  if (!startDate) return null
+  const invalidStart = validateDueDate(startDate)
+  if (invalidStart) return invalidStart.replace('Termenul', 'Începutul')
+  if (!dueDate) return 'Un task cu dată de început are nevoie și de un termen.'
+  if (startDate > dueDate) return 'Data de început nu poate fi după termen.'
+  return null
+}
+
 export function validateTags(tags: string[]): string | null {
   if (tags.length > LIMITS.tags) return `Un task poate avea cel mult ${LIMITS.tags} etichete.`
   if (tags.some((tag) => tag.length > LIMITS.tagLength)) {

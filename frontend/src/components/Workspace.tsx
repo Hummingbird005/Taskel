@@ -262,6 +262,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   // New tasks start in the view they are added from: tagged in a tag view, due today in Today.
   const composerDefaults: TaskDraft = {
     title: '',
+    startDate: null,
     priority: 'medium',
     dueDate: view.kind === 'today' ? today : null,
     tags: view.kind === 'tag' ? [view.tag] : [],
@@ -281,6 +282,8 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
             initial={{ ...task, assigneeId: task.assignee?.id ?? null }}
             // Only the creator can reassign, so only they are offered the choice.
             people={task.createdBy.id === user.id ? people : []}
+            currentUser={user}
+            taskId={task.id}
             submitLabel="Salvează"
             placeholder="Titlul task-ului"
             onCancel={() => setEditingId(null)}
@@ -453,6 +456,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
               key={composerKey}
               initial={composerDefaults}
               people={people}
+              currentUser={user}
               submitLabel="Adaugă"
               placeholder={view.kind === 'tag' ? `Adaugă un task în #${view.tag}` : 'Adaugă un task'}
               onSubmit={add}
