@@ -11,11 +11,12 @@ The interface is in Romanian; code, API and documentation are in English.
 | | |
 |---|---|
 | **Team workload** for managers: each person in the department<br>![Team screen with totals and a table of people with open, overdue and completed counts](docs/screenshots/team.png) | **A team member's tasks**, in full, read only<br>![A team member's open and recently completed tasks, with notes](docs/screenshots/team-member.png) |
+| **Team calendar**: open tasks per person and day, four weeks at a time<br>![Heat map of tasks per person and day, with the tasks of the selected day listed below](docs/screenshots/team-calendar.png) | **One person's calendar**, with their tasks on each day<br>![Four-week calendar of one person's tasks](docs/screenshots/team-calendar-person.png) |
+| **Workload warning** when giving someone a task in a busy period<br>![Task composer warning that the assignee already has five tasks in the period](docs/screenshots/assign-warning.png) | **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) |
 | **Sign in** with a domain or a local account<br>![Sign-in screen with tabs for domain account and local account](docs/screenshots/signin.png) | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) |
 | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) |
-| **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
-| **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
-| | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> |
+| **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) |
+| **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> |
 
 Screenshots use sample data: made-up people and tasks in a test domain.
 
@@ -83,7 +84,9 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/dashboard`     | ✓    | Your dashboard preferences                    |
 | PUT    | `/api/dashboard`     | ✓    | Save your dashboard preferences               |
 | GET    | `/api/users`         | ✓    | People a task can be assigned to              |
+| GET    | `/api/users/{id}/workload` | ✓ | How many open tasks a user has in a period  |
 | GET    | `/api/team`          | manager | Workload of the people in a department     |
+| GET    | `/api/team/calendar` | manager | A department's dated open tasks, per person, for a period |
 | GET    | `/api/team/members/{id}/tasks` | manager | A team member's tasks, read only |
 | GET    | `/api/admin/users`   | admin | Accounts with their role and department      |
 | PUT    | `/api/admin/users/{id}` | admin | Set an account's role and department      |
@@ -105,7 +108,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | `title`       | string, 1–200 chars           | Required                                                           |
 | `description` | string, up to 2000 chars      | Optional                                                           |
 | `isCompleted` | boolean                       | Set through `PUT`                                                  |
-| `dueDate`     | `"YYYY-MM-DD"` or `null`      | A calendar date, no time or time zone                              |
+| `startDate`   | `"YYYY-MM-DD"` or `null`      | Optional first day of the task's interval; needs a `dueDate` on or after it |
+| `dueDate`     | `"YYYY-MM-DD"` or `null`      | A calendar date, no time or time zone; the last day of the interval |
 | `priority`    | `"low"`, `"medium"`, `"high"` | Defaults to `"medium"`                                             |
 | `tags`        | array of strings              | Up to 10 tags of up to 30 chars; trimmed, lower-cased, de-duplicated |
 | `sourceEmailAddress` | string or `null`       | Read-only. Sender of the email the task came from                  |
@@ -182,6 +186,30 @@ A task belongs to the user who created it and can be assigned to one other user.
 
 `GET /api/users` shows every account's name and email to every signed-in user, which suits a team
 installation. The assignee picker is a plain list, so it is meant for tens of users rather than thousands.
+
+## Task intervals, the workload warning and the team calendar
+
+A task can have an **interval**: a `startDate` together with its `dueDate` says on which days it is worked on.
+The start date is optional, must not be after the due date, and cannot be set without one. A task without a
+start date occupies its due date alone; a task without a due date occupies no day.
+
+**Workload warning.** Before a task is saved, the form asks how loaded the person it is for already is:
+`GET /api/users/{id}/workload?from=YYYY-MM-DD&to=YYYY-MM-DD` returns `{ "count": n }`, the number of open tasks
+that person is responsible for whose days overlap the period (`excludeTaskId` leaves out the task being edited).
+When the count is above zero the interface shows, for example, "Maria Ionescu mai are 5 task-uri în perioada
+14–16 nov.". It is a warning, not a block: the task can still be saved. Any signed-in user can ask for anyone's
+count; only the number is returned, never the tasks. The period can cover at most 366 days.
+
+**Team calendar.** In **Echipă**, the **Calendar** tab shows four weeks at a time:
+
+- *Toată echipa* (everyone): a heat map with one row per person and one column per day. Each cell holds the
+  number of open tasks occupying that day, shaded in fixed steps (1, 2, 3–4, 5+) so a number looks the same for
+  every person. Selecting a cell lists that person's tasks for the day.
+- One person: a calendar with their tasks named on each day.
+
+It is drawn from `GET /api/team/calendar?from=…&to=…` (at most 92 days; managers and administrators, with the
+same department rules as the workload screen), which returns each person's open tasks that have a due date and
+touch the period, plus how many open tasks have no date and so cannot be placed. Completed tasks are not shown.
 
 ## Roles, departments and team workload
 

@@ -6,6 +6,7 @@ import { teamApi, type Team as TeamData, type TeamMember } from '../api/team'
 import { countLabel, tasksLabel } from '../lib/text'
 import Icon, { type IconName } from './Icon'
 import ReadOnlyTask from './ReadOnlyTask'
+import TeamCalendar from './TeamCalendar'
 
 interface Props {
   user: User
@@ -24,6 +25,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [openMember, setOpenMember] = useState<string | null>(null)
   const [memberTasks, setMemberTasks] = useState<MemberTasks>({ status: 'loading' })
+  const [tab, setTab] = useState<'load' | 'calendar'>('load')
 
   useEffect(() => {
     let cancelled = false
@@ -133,104 +135,121 @@ export default function Team({ user, today, onSessionExpired }: Props) {
         {departmentPicker}
       </div>
 
-      <div className="stats">
-        {tile('Deschise', totals.open, 'inbox')}
-        {tile('Întârziate', totals.overdue, 'alert', totals.overdue > 0 ? 'danger' : undefined)}
-        {tile('Cu termen azi', totals.dueToday, 'sun')}
-        {tile('Rezolvate, 7 zile', totals.completedLast7Days, 'checkCircle')}
-        {tile('Rezolvate, 30 de zile', totals.completedLast30Days, 'checkCircle')}
+      <div className="tabs" role="tablist" aria-label="Vederea echipei">
+        <button type="button" role="tab" aria-selected={tab === 'load'} onClick={() => setTab('load')}>
+          <Icon name="users" />
+          Încărcare
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'calendar'} onClick={() => setTab('calendar')}>
+          <Icon name="calendar" />
+          Calendar
+        </button>
       </div>
 
-      <section className="team-table-wrap" aria-label="Încărcarea pe persoane">
-        <table className="team-table">
-          <thead>
-            <tr>
-              <th scope="col">Persoană</th>
-              <th scope="col" className="load-col">
-                Deschise
-              </th>
-              <th scope="col" className="num">
-                Întârziate
-              </th>
-              <th scope="col" className="num">
-                Azi
-              </th>
-              <th scope="col" className="num">
-                Următoarele 7 zile
-              </th>
-              <th scope="col" className="num">
-                Prioritate ridicată
-              </th>
-              <th scope="col" className="num">
-                Rezolvate, 7 zile
-              </th>
-              <th scope="col" className="num">
-                Rezolvate, 30 de zile
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((member) => {
-              const { stats } = member
-              const isOpen = openMember === member.user.id
-              return [
-                <tr key={member.user.id} className={isOpen ? 'open' : ''}>
-                  <th scope="row">
-                    <button
-                      type="button"
-                      className="member-toggle"
-                      aria-expanded={isOpen}
-                      onClick={() => toggleMember(member)}
-                      title={`Vezi task-urile: ${member.user.displayName}`}
-                    >
-                      <Icon name={isOpen ? 'chevronDown' : 'chevronRight'} />
-                      <span className="member-name">
-                        {member.user.displayName}
-                        {ROLE_LABEL[member.role] && <small className="muted">{ROLE_LABEL[member.role]}</small>}
-                      </span>
-                    </button>
+      {tab === 'calendar' ? (
+        <TeamCalendar department={team.department} today={today} onSessionExpired={onSessionExpired} />
+      ) : (
+        <>
+          <div className="stats">
+            {tile('Deschise', totals.open, 'inbox')}
+            {tile('Întârziate', totals.overdue, 'alert', totals.overdue > 0 ? 'danger' : undefined)}
+            {tile('Cu termen azi', totals.dueToday, 'sun')}
+            {tile('Rezolvate, 7 zile', totals.completedLast7Days, 'checkCircle')}
+            {tile('Rezolvate, 30 de zile', totals.completedLast30Days, 'checkCircle')}
+          </div>
+
+          <section className="team-table-wrap" aria-label="Încărcarea pe persoane">
+            <table className="team-table">
+              <thead>
+                <tr>
+                  <th scope="col">Persoană</th>
+                  <th scope="col" className="load-col">
+                    Deschise
                   </th>
-                  <td className="load-col">
-                    <span className="load">
-                      <span className="meter-track" aria-hidden="true">
-                        <span className="meter-bar" style={{ width: `${(stats.open / maxOpen) * 100}%` }} />
-                      </span>
-                      <span className="meter-figure">{stats.open}</span>
-                    </span>
-                  </td>
-                  <td className="num">
-                    {stats.overdue > 0 ? (
-                      <span className="chip overdue">
-                        <Icon name="alert" size={13} />
-                        {stats.overdue}
-                        <span className="visually-hidden">{stats.overdue === 1 ? ' întârziat' : ' întârziate'}</span>
-                      </span>
-                    ) : (
-                      0
-                    )}
-                  </td>
-                  <td className="num">{stats.dueToday}</td>
-                  <td className="num">{stats.dueNext7Days}</td>
-                  <td className="num">{stats.highPriorityOpen}</td>
-                  <td className="num">{stats.completedLast7Days}</td>
-                  <td className="num">{stats.completedLast30Days}</td>
-                </tr>,
-                isOpen && (
-                  <tr key={`${member.user.id}-tasks`} className="member-tasks">
-                    <td colSpan={8}>
-                      <MemberTaskList state={memberTasks} today={today} name={member.user.displayName} />
-                    </td>
-                  </tr>
-                ),
-              ]
-            })}
-          </tbody>
-        </table>
-      </section>
-      <p className="muted team-note">
-        Fiecărei persoane i se numără task-urile de care răspunde: cele alocate ei și cele proprii, nealocate altcuiva.
-        Poți doar să le citești.
-      </p>
+                  <th scope="col" className="num">
+                    Întârziate
+                  </th>
+                  <th scope="col" className="num">
+                    Azi
+                  </th>
+                  <th scope="col" className="num">
+                    Următoarele 7 zile
+                  </th>
+                  <th scope="col" className="num">
+                    Prioritate ridicată
+                  </th>
+                  <th scope="col" className="num">
+                    Rezolvate, 7 zile
+                  </th>
+                  <th scope="col" className="num">
+                    Rezolvate, 30 de zile
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((member) => {
+                  const { stats } = member
+                  const isOpen = openMember === member.user.id
+                  return [
+                    <tr key={member.user.id} className={isOpen ? 'open' : ''}>
+                      <th scope="row">
+                        <button
+                          type="button"
+                          className="member-toggle"
+                          aria-expanded={isOpen}
+                          onClick={() => toggleMember(member)}
+                          title={`Vezi task-urile: ${member.user.displayName}`}
+                        >
+                          <Icon name={isOpen ? 'chevronDown' : 'chevronRight'} />
+                          <span className="member-name">
+                            {member.user.displayName}
+                            {ROLE_LABEL[member.role] && <small className="muted">{ROLE_LABEL[member.role]}</small>}
+                          </span>
+                        </button>
+                      </th>
+                      <td className="load-col">
+                        <span className="load">
+                          <span className="meter-track" aria-hidden="true">
+                            <span className="meter-bar" style={{ width: `${(stats.open / maxOpen) * 100}%` }} />
+                          </span>
+                          <span className="meter-figure">{stats.open}</span>
+                        </span>
+                      </td>
+                      <td className="num">
+                        {stats.overdue > 0 ? (
+                          <span className="chip overdue">
+                            <Icon name="alert" size={13} />
+                            {stats.overdue}
+                            <span className="visually-hidden">{stats.overdue === 1 ? ' întârziat' : ' întârziate'}</span>
+                          </span>
+                        ) : (
+                          0
+                        )}
+                      </td>
+                      <td className="num">{stats.dueToday}</td>
+                      <td className="num">{stats.dueNext7Days}</td>
+                      <td className="num">{stats.highPriorityOpen}</td>
+                      <td className="num">{stats.completedLast7Days}</td>
+                      <td className="num">{stats.completedLast30Days}</td>
+                    </tr>,
+                    isOpen && (
+                      <tr key={`${member.user.id}-tasks`} className="member-tasks">
+                        <td colSpan={8}>
+                          <MemberTaskList state={memberTasks} today={today} name={member.user.displayName} />
+                        </td>
+                      </tr>
+                    ),
+                  ]
+                })}
+              </tbody>
+            </table>
+          </section>
+          <p className="muted team-note">
+            Fiecărei persoane i se numără task-urile de care răspunde: cele alocate ei și cele proprii, nealocate altcuiva.
+            Poți doar să le citești.
+          </p>
+        </>
+      )}
     </div>
   )
 }
@@ -260,12 +279,12 @@ function MemberTaskList({ state, today, name }: { state: MemberTasks; today: str
       )}
       {completed.length > 0 && (
         <>
-          <h3>Ultimele finalizate</h3>
-          <ul className="task-list">
-            {completed.map((task) => (
-              <ReadOnlyTask key={task.id} task={task} today={today} />
-            ))}
-          </ul>
+              <h3>Ultimele finalizate</h3>
+              <ul className="task-list">
+                {completed.map((task) => (
+                  <ReadOnlyTask key={task.id} task={task} today={today} />
+                ))}
+              </ul>
         </>
       )}
     </div>

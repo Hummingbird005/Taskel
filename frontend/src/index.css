@@ -534,3 +534,79 @@ button.chip.tag:hover { background: var(--accent); color: var(--on-accent); }
 .saved { color: var(--go); font-size: 0.82rem; font-weight: 600; }
 .sidebar-email small { display: block; font-size: 0.75rem; color: var(--side-text); overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 760px) { .team { padding: 10px 12px 16px; } }
+
+/* ---------- Task interval and workload warning ---------- */
+.field-hint { font-size: 0.8rem; white-space: nowrap; }
+.composer-warning {
+  display: flex; align-items: center; gap: 6px; margin: 0; padding: 0 14px 8px;
+  color: var(--warn); font-size: 0.88rem; font-weight: 600;
+}
+
+/* ---------- Team calendar ---------- */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.tabs button {
+  display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: 0; border-bottom: 2px solid transparent;
+  background: transparent; color: var(--muted); font-weight: 600; margin-bottom: -1px;
+}
+.tabs button:hover { color: var(--text); }
+.tabs button[aria-selected='true'] { color: var(--accent); border-bottom-color: var(--accent); }
+.calendar { display: flex; flex-direction: column; gap: 12px; }
+.calendar-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.calendar-nav { display: flex; align-items: center; gap: 6px; }
+.calendar-nav .button { padding: 6px 10px; }
+.calendar-period { margin-left: 8px; font-size: 1rem; }
+.heatmap { border-collapse: separate; border-spacing: 2px; width: 100%; font-size: 0.85rem; }
+.heatmap th { font-weight: 500; }
+.heat-person { text-align: left; white-space: nowrap; padding: 4px 10px 4px 8px; min-width: 150px; }
+.heat-person small { display: block; font-size: 0.75rem; }
+.heat-day { padding: 2px 0; color: var(--muted); font-size: 0.75rem; text-align: center; min-width: 26px; font-variant-numeric: tabular-nums; }
+.heat-day span { display: block; font-size: 0.7rem; }
+.heat-day.weekend { opacity: 0.6; }
+.heat-day.today { color: var(--accent); font-weight: 800; }
+.heat-cell { padding: 0; }
+.heat-cell.weekend .heat.level-0 { background: transparent; }
+.heat {
+  display: grid; place-items: center; width: 100%; min-width: 26px; height: 30px; padding: 0;
+  border: 0; border-radius: 4px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text);
+}
+/* One hue, light to dark: the darker the cell, the more tasks that day. */
+.heat.level-0 { background: var(--surface); cursor: default; }
+.heat.level-1 { background: color-mix(in srgb, var(--accent) 18%, var(--bg)); }
+.heat.level-2 { background: color-mix(in srgb, var(--accent) 40%, var(--bg)); }
+.heat.level-3 { background: color-mix(in srgb, var(--accent) 68%, var(--bg)); color: var(--on-accent); }
+.heat.level-4 { background: var(--accent); color: var(--on-accent); }
+.heat:not(:disabled):hover, .heat.selected { outline: 2px solid var(--text); outline-offset: 1px; }
+.heat-cell.today .heat { box-shadow: inset 0 -3px 0 var(--go); }
+.link-plain { padding: 0; border: 0; background: none; text-align: left; }
+.link-plain:hover { text-decoration: underline; }
+.calendar-legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; }
+.legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.swatch { width: 18px; min-width: 18px; height: 14px; }
+.legend-note { flex-basis: 100%; }
+.calendar-detail { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.calendar-detail h3 { font-size: 0.92rem; margin-bottom: 6px; }
+.calendar-detail ul { list-style: none; margin: 0; padding: 0; }
+.calendar-detail li { display: flex; align-items: baseline; gap: 8px; padding: 4px 0; }
+.month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.month-head { padding: 2px 6px; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: capitalize; }
+.month-day {
+  display: flex; flex-direction: column; gap: 3px; min-height: 96px; padding: 6px; text-align: left;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); overflow: hidden;
+}
+.month-day.weekend { background: var(--surface); }
+.month-day.today { border-color: var(--go); box-shadow: inset 0 0 0 1px var(--go); }
+.month-day:hover, .month-day.selected { border-color: var(--text); }
+.month-date { display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.month-day.today .month-date { color: var(--text); font-weight: 800; }
+.month-count { padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 0.72rem; }
+.month-day.level-3 .month-count, .month-day.level-4 .month-count { background: var(--danger); color: #fff; }
+.pill {
+  display: block; padding: 1px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--text);
+  font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-left: 3px solid var(--accent);
+}
+.pill.high { border-left-color: var(--danger); }
+.pill.more { background: transparent; border-left-color: transparent; color: var(--muted); }
+@media (max-width: 760px) { .month-day { min-height: 64px; padding: 4px; } .pill { font-size: 0.68rem; padding: 0 3px; } }
+/* Wide tables scroll inside their own box. Being positioned, the box also contains the
+   visually hidden labels in its cells, which would otherwise be placed against the page and widen it. */
+.team-table-wrap { position: relative; }

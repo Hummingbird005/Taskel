@@ -30,7 +30,12 @@ public class TaskItem
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsCompleted { get; set; }
-    /// <summary>Calendar date the task is due, without a time or time zone.</summary>
+    /// <summary>
+    /// First day of the period the task is worked on. Optional: together with <see cref="DueDate"/>
+    /// it gives the task an interval; without it the task falls on its due date alone.
+    /// </summary>
+    public DateOnly? StartDate { get; set; }
+    /// <summary>Calendar date the task is due, without a time or time zone. The last day of its interval.</summary>
     public DateOnly? DueDate { get; set; }
     public TaskPriority Priority { get; set; } = TaskPriority.Medium;
     /// <summary>Normalized (trimmed, lower-case, distinct) tags. See <see cref="TagList"/>.</summary>
@@ -65,7 +70,13 @@ public record CreateTaskRequest(
     [EnumDataType(typeof(TaskPriority))] TaskPriority Priority = TaskPriority.Medium,
     [TagList] List<string>? Tags = null,
     /// <summary>User to assign the task to. Omit to keep it yourself.</summary>
-    Guid? AssigneeId = null);
+    Guid? AssigneeId = null,
+    /// <summary>First day of the task's interval. Needs a due date on or after it.</summary>
+    [DueDateRange] DateOnly? StartDate = null) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        TaskInterval.Validate(StartDate, DueDate);
+}
 
 /// <summary>Full replacement of a task: omitted optional fields are reset (no due date, medium priority, no tags).</summary>
 public record UpdateTaskRequest(
@@ -74,7 +85,25 @@ public record UpdateTaskRequest(
     bool IsCompleted,
     [DueDateRange] DateOnly? DueDate = null,
     [EnumDataType(typeof(TaskPriority))] TaskPriority Priority = TaskPriority.Medium,
-    [TagList] List<string>? Tags = null);
+    [TagList] List<string>? Tags = null,
+    [DueDateRange] DateOnly? StartDate = null) : IValidatableObject
+{
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
+        TaskInterval.Validate(StartDate, DueDate);
+}
+
+/// <summary>The period a task occupies in a calendar, and the rule for giving it one.</summary>
+public static class TaskInterval
+{
+    public static IEnumerable<ValidationResult> Validate(DateOnly? start, DateOnly? due)
+    {
+        if (start is null) yield break;
+        if (due is null)
+            yield return new ValidationResult("A start date needs a due date to end the interval.", [nameof(TaskItem.StartDate)]);
+        else if (start > due)
+            yield return new ValidationResult("The start date cannot be after the due date.", [nameof(TaskItem.StartDate)]);
+    }
+}
 
 /// <summary>Completes a task. <see cref="Response"/> is required for tasks created from an email.</summary>
 public record CompleteTaskRequest([StringLength(4000), SafeText(Multiline = true)] string? Response = null);
@@ -94,6 +123,7 @@ public record TaskResponse(
     string Title,
     string? Description,
     bool IsCompleted,
+    DateOnly? StartDate,
     DateOnly? DueDate,
     TaskPriority Priority,
     List<string> Tags,
@@ -106,7 +136,7 @@ public record TaskResponse(
 {
     /// <summary>The task's <see cref="TaskItem.Owner"/> (and assignee, if any) must be loaded.</summary>
     public static TaskResponse From(TaskItem task) => new(
-        task.Id, task.Title, task.Description, task.IsCompleted, task.DueDate, task.Priority, task.Tags,
+        task.Id, task.Title, task.Description, task.IsCompleted, task.StartDate, task.DueDate, task.Priority, task.Tags,
         task.CreatedAt, task.SourceEmailAddress, task.CompletionResponse, task.CompletedAt,
         UserSummary.From(task.Owner ?? throw new InvalidOperationException("Task owner is not loaded.")),
         task.Assignee is null ? null : UserSummary.From(task.Assignee));

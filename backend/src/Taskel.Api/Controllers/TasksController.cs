@@ -36,6 +36,7 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
             AssigneeId = assigneeId,
             Title = request.Title.Trim(),
             Description = NullIfBlank(request.Description),
+            StartDate = request.StartDate,
             DueDate = request.DueDate,
             Priority = request.Priority,
             Tags = TagList.Normalize(request.Tags)
@@ -70,6 +71,7 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
             task.IsCompleted = request.IsCompleted;
             task.CompletedAt = request.IsCompleted ? DateTime.UtcNow : null;
         }
+        task.StartDate = request.StartDate;
         task.DueDate = request.DueDate;
         task.Priority = request.Priority;
         task.Tags = TagList.Normalize(request.Tags);

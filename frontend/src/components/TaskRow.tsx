@@ -1,5 +1,5 @@
 import type { TaskItem } from '../api/tasks'
-import { formatDueDate } from '../lib/dates'
+import { formatDueDate, formatRange } from '../lib/dates'
 import { isOverdue } from '../lib/taskViews'
 import Icon from './Icon'
 
@@ -17,7 +17,14 @@ interface Props {
 export default function TaskRow({ task, currentUserId, today, onToggle, onEdit, onDelete, onTagClick }: Props) {
   const overdue = isOverdue(task, today)
   const isCreator = task.createdBy.id === currentUserId
-  const dueLabel = task.dueDate === today ? 'azi' : task.dueDate ? formatDueDate(task.dueDate) : null
+  const hasInterval = task.startDate !== null && task.dueDate !== null && task.startDate !== task.dueDate
+  const dueLabel = !task.dueDate
+    ? null
+    : hasInterval
+      ? formatRange(task.startDate!, task.dueDate)
+      : task.dueDate === today
+        ? 'azi'
+        : formatDueDate(task.dueDate)
 
   return (
     <li className={`task${task.isCompleted ? ' done' : ''}`}>
@@ -40,7 +47,7 @@ export default function TaskRow({ task, currentUserId, today, onToggle, onEdit, 
           {dueLabel && (
             <span className={`chip due${overdue ? ' overdue' : ''}`}>
               <Icon name="calendar" size={13} />
-              {overdue ? 'Întârziat: ' : 'Termen: '}
+              {overdue ? 'Întârziat: ' : hasInterval ? 'Interval: ' : 'Termen: '}
               {dueLabel}
             </span>
           )}

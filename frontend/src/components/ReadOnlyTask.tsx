@@ -1,12 +1,19 @@
 import type { TaskItem } from '../api/tasks'
-import { formatDueDate } from '../lib/dates'
+import { formatDueDate, formatRange } from '../lib/dates'
 import { isOverdue } from '../lib/taskViews'
 import Icon from './Icon'
 
 /** A task shown for reading only, as a manager sees the tasks of someone in their department. */
 export default function ReadOnlyTask({ task, today }: { task: TaskItem; today: string }) {
   const overdue = isOverdue(task, today)
-  const dueLabel = task.dueDate === today ? 'azi' : task.dueDate ? formatDueDate(task.dueDate) : null
+  const hasInterval = task.startDate !== null && task.dueDate !== null && task.startDate !== task.dueDate
+  const dueLabel = !task.dueDate
+    ? null
+    : hasInterval
+      ? formatRange(task.startDate!, task.dueDate)
+      : task.dueDate === today
+        ? 'azi'
+        : formatDueDate(task.dueDate)
   const sharedBy = task.assignee ? task.createdBy : null
 
   return (
@@ -29,7 +36,7 @@ export default function ReadOnlyTask({ task, today }: { task: TaskItem; today: s
           {dueLabel && (
             <span className={`chip due${overdue ? ' overdue' : ''}`}>
               <Icon name="calendar" size={13} />
-              {overdue ? 'Întârziat: ' : 'Termen: '}
+              {overdue ? 'Întârziat: ' : hasInterval ? 'Interval: ' : 'Termen: '}
               {dueLabel}
             </span>
           )}

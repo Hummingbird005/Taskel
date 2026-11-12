@@ -8,6 +8,11 @@ export interface TaskItem {
   title: string
   description?: string | null
   isCompleted: boolean
+  /**
+   * First day of the period the task is worked on (YYYY-MM-DD), or null. With the due date it
+   * forms the task's interval; a task without it falls on its due date alone.
+   */
+  startDate: string | null
   /** Calendar date as YYYY-MM-DD, or null when the task has no due date. */
   dueDate: string | null
   priority: TaskPriority
@@ -28,7 +33,7 @@ export interface TaskItem {
 }
 
 /** The editable fields of a task. */
-export type TaskDraft = Pick<TaskItem, 'title' | 'dueDate' | 'priority' | 'tags'> & {
+export type TaskDraft = Pick<TaskItem, 'title' | 'startDate' | 'dueDate' | 'priority' | 'tags'> & {
   description?: string | null
   /** User to assign the task to; null keeps it with its creator. Left out when not being changed. */
   assigneeId?: string | null
@@ -44,6 +49,7 @@ export const tasksApi = {
         title: task.title,
         description: task.description,
         isCompleted: task.isCompleted,
+        startDate: task.startDate,
         dueDate: task.dueDate,
         priority: task.priority,
         tags: task.tags,

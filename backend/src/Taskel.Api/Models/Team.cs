@@ -25,6 +25,18 @@ public record TeamStats(
         a.CompletedLast30Days + b.CompletedLast30Days));
 }
 
+/// <summary>A task as placed on the team calendar: just enough to show and size it.</summary>
+public record CalendarTask(Guid Id, string Title, DateOnly? StartDate, DateOnly DueDate, TaskPriority Priority);
+
+/// <param name="Tasks">Open tasks with a due date that fall, at least partly, inside the requested period.</param>
+/// <param name="Unscheduled">Open tasks without a due date, which no calendar can place.</param>
+public record CalendarMember(UserSummary User, IReadOnlyList<CalendarTask> Tasks, int Unscheduled);
+
+public record TeamCalendarResponse(string? Department, DateOnly From, DateOnly To, IReadOnlyList<CalendarMember> Members);
+
+/// <summary>How many other open tasks a user has in a period, to warn before giving them one more.</summary>
+public record UserWorkloadResponse(int Count);
+
 public record TeamMember(UserSummary User, UserRole Role, TeamStats Stats);
 
 /// <summary>A department's people and their workload, as a manager sees it.</summary>

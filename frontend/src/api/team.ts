@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { TaskItem } from './tasks'
+import type { TaskItem, TaskPriority } from './tasks'
 import type { UserSummary } from './users'
 import type { UserRole } from './auth'
 
@@ -29,7 +29,37 @@ export interface Team {
   totals: TeamStats
 }
 
+/** A task as placed on the team calendar. */
+export interface CalendarTask {
+  id: string
+  title: string
+  startDate: string | null
+  dueDate: string
+  priority: TaskPriority
+}
+
+export interface CalendarMember {
+  user: UserSummary
+  /** Open tasks with a due date that fall, at least partly, inside the period. */
+  tasks: CalendarTask[]
+  /** Open tasks without a due date, which the calendar cannot place. */
+  unscheduled: number
+}
+
+export interface TeamCalendar {
+  department: string | null
+  from: string
+  to: string
+  members: CalendarMember[]
+}
+
 export const teamApi = {
+  /** The department's open, dated tasks per person, for the days from..to (YYYY-MM-DD, inclusive). */
+  calendar: (from: string, to: string, department?: string | null) => {
+    const query = new URLSearchParams({ from, to })
+    if (department) query.set('department', department)
+    return request<TeamCalendar>(`/team/calendar?${query}`)
+  },
   /** @param today The viewer's local date (YYYY-MM-DD), so "overdue" matches what they see elsewhere. */
   get: (today: string, department?: string | null) => {
     const query = new URLSearchParams({ today })
