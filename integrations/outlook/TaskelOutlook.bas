@@ -75,7 +75,7 @@ Public Sub ConfigureTaskel()
 
     token = Trim$(InputBox( _
         "Paste your Taskel API token (it starts with tsk_)." & vbCrLf & vbCrLf & _
-        "Create one in Taskel: Integrations > New token.", APP_NAME))
+        "Create one in Taskel: Integrari > Token nou.", APP_NAME))
     If Len(token) = 0 Then Exit Sub
 
     SaveSetting APP_NAME, SETTINGS_SECTION, "BaseUrl", baseUrl

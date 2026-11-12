@@ -22,15 +22,15 @@ export interface WidgetInfo {
 
 /** Every widget a dashboard can show, in the order they are offered. */
 export const WIDGETS: WidgetInfo[] = [
-  { id: 'stats', title: 'At a glance', description: 'Open, due today, overdue and recently completed counts.', wide: true },
-  { id: 'overdue', title: 'Overdue', description: 'Open tasks whose due date has passed.' },
-  { id: 'today', title: 'Due today', description: 'Open tasks due today.' },
-  { id: 'upcoming', title: 'Next 7 days', description: 'Open tasks due in the coming week.' },
-  { id: 'reply', title: 'Waiting for your reply', description: 'Email tasks that need a response to be completed.' },
-  { id: 'priority', title: 'Open tasks by priority', description: 'How your open tasks split across priorities.' },
-  { id: 'completed-week', title: 'Completed, last 7 days', description: 'Tasks you completed on each of the last 7 days.' },
-  { id: 'tags', title: 'Tags', description: 'Your most used tags, by open tasks.' },
-  { id: 'recent', title: 'Recently completed', description: 'The last tasks you finished.' },
+  { id: 'stats', title: 'Pe scurt', description: 'Câte task-uri sunt deschise, cu termen azi, întârziate și finalizate recent.', wide: true },
+  { id: 'overdue', title: 'Întârziate', description: 'Task-uri deschise cu termenul depășit.' },
+  { id: 'today', title: 'De făcut azi', description: 'Task-uri deschise cu termen azi.' },
+  { id: 'upcoming', title: 'Următoarele 7 zile', description: 'Task-uri deschise cu termen în săptămâna următoare.' },
+  { id: 'reply', title: 'Așteaptă răspunsul tău', description: 'Task-uri din email care se finalizează doar cu un răspuns.' },
+  { id: 'priority', title: 'Task-uri deschise pe priorități', description: 'Cum se împart task-urile deschise pe priorități.' },
+  { id: 'completed-week', title: 'Finalizate în ultimele 7 zile', description: 'Task-urile finalizate în fiecare dintre ultimele 7 zile.' },
+  { id: 'tags', title: 'Etichete', description: 'Cele mai folosite etichete, după task-urile deschise.' },
+  { id: 'recent', title: 'Finalizate recent', description: 'Ultimele task-uri pe care le-ai finalizat.' },
 ]
 
 export const DEFAULT_WIDGETS: WidgetId[] = [

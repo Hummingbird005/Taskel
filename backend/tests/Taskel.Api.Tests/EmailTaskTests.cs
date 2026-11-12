@@ -34,7 +34,7 @@ public class EmailTaskTests(TaskelApiFactory factory)
 
         Assert.Equal("Ofertă pentru proiect", task.Title);
         Assert.Equal(
-            "From: Ana Popescu <ana@example.com>\nReceived: 2026-11-10 09:30\n\nBună ziua,\n\nVă trimit oferta.\nMulțumesc!",
+            "De la: Ana Popescu <ana@example.com>\nPrimit: 2026-11-10 09:30\n\nBună ziua,\n\nVă trimit oferta.\nMulțumesc!",
             task.Description);
         Assert.Equal(TaskPriority.High, task.Priority);
         Assert.Equal(new DateOnly(2026, 11, 20), task.DueDate);
@@ -81,7 +81,7 @@ public class EmailTaskTests(TaskelApiFactory factory)
         Assert.Equal(EmailTaskFactory.MaxTitleLength, task.Title.Length);
         Assert.EndsWith("…", task.Title);
         Assert.Equal(EmailTaskFactory.MaxDescriptionLength, task.Description!.Length);
-        Assert.StartsWith("From: someone@example.com\n\nbbb", task.Description);
+        Assert.StartsWith("De la: someone@example.com\n\nbbb", task.Description);
         Assert.EndsWith("…", task.Description);
     }
 

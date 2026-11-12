@@ -5,11 +5,14 @@ using Taskel.Api.Models;
 
 namespace Taskel.Api.Services;
 
-/// <summary>Builds a task from an email, shortening the subject and body to the task's limits.</summary>
+/// <summary>
+/// Builds a task from an email, shortening the subject and body to the task's limits.
+/// The text it writes into the task (note labels, placeholder title) is Romanian, like the interface.
+/// </summary>
 public static partial class EmailTaskFactory
 {
     public const string EmailTag = "email";
-    public const string NoSubjectTitle = "(no subject)";
+    public const string NoSubjectTitle = "(fără subiect)";
     public const int MaxTitleLength = 200;
     public const int MaxDescriptionLength = 2000;
     public const int MaxSourceSubjectLength = 500;
@@ -20,9 +23,9 @@ public static partial class EmailTaskFactory
 
         var header = new List<string>();
         if (!string.IsNullOrWhiteSpace(email.Sender))
-            header.Add($"From: {Whitespace().Replace(email.Sender, " ").Trim()}");
+            header.Add($"De la: {Whitespace().Replace(email.Sender, " ").Trim()}");
         if (email.ReceivedAt is { } received)
-            header.Add($"Received: {received.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)}");
+            header.Add($"Primit: {received.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)}");
 
         var body = (email.Body ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n');
         body = BlankLines().Replace(body, "\n\n").Trim();

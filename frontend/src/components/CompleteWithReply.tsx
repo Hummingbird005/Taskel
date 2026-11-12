@@ -31,18 +31,18 @@ export default function CompleteWithReply({ title, recipient, onSubmit, onCancel
 
   return (
     <form onSubmit={handleSubmit} className="reply-form">
-      <h3>Complete “{title}”</h3>
+      <h3>Finalizează „{title}”</h3>
       <p className="muted">
-        This task came from an email. Your response is sent to <strong>{recipient}</strong> as a reply to
-        that email, and the task is marked as completed once it is sent.
+        Acest task vine dintr-un email. Răspunsul tău este trimis către <strong>{recipient}</strong>, ca reply la
+        acel email, iar task-ul este marcat ca finalizat după ce răspunsul a fost trimis.
       </p>
       <textarea
         value={response}
         onChange={(e) => setResponse(e.target.value)}
-        placeholder="Write your response"
+        placeholder="Scrie răspunsul"
         maxLength={4000}
         rows={5}
-        aria-label={`Response to ${recipient}`}
+        aria-label={`Răspuns către ${recipient}`}
         autoFocus
         required
       />
@@ -54,10 +54,10 @@ export default function CompleteWithReply({ title, recipient, onSubmit, onCancel
       <div className="reply-form-actions">
         <button type="submit" className="button send" disabled={!response.trim() || sending}>
           <Icon name="send" />
-          {sending ? 'Sending…' : 'Send reply and complete'}
+          {sending ? 'Se trimite…' : 'Trimite răspunsul și finalizează'}
         </button>
         <button type="button" className="button ghost" onClick={onCancel} disabled={sending}>
-          Cancel
+          Anulează
         </button>
       </div>
     </form>

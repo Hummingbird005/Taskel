@@ -6,7 +6,7 @@ click **Send to Taskel**, and each email becomes a task:
 | Email            | Task                                                        |
 |------------------|-------------------------------------------------------------|
 | Subject          | Title (shortened to 200 characters)                         |
-| Sender, received | First lines of the notes                                    |
+| Sender, received | First lines of the notes (`De la:`, `Primit:`)              |
 | Body             | Notes (plain text; the whole description is cut at 2000 characters) |
 | Importance       | Priority (low / normal / high → low / medium / high)        |
 | –                | Tag `email`                                                 |
@@ -17,7 +17,7 @@ work in the new Outlook for Windows, Outlook on the web or Outlook for Mac, whic
 
 ## Install
 
-1. **Create an API token.** In Taskel, open **Integrations**, click **New token** and copy the
+1. **Create an API token.** In Taskel, open **Integrări**, click **Token nou** and copy the
    token (it starts with `tsk_`). It is shown only once.
 2. **Allow macros.** In Outlook: **File → Options → Trust Center → Trust Center Settings → Macro
    Settings**, choose **Notifications for all macros**, then restart Outlook.
@@ -63,7 +63,7 @@ Tasks sent by the old macro still get a reply, but it may not be threaded with t
 
 - The address and token are stored for your Windows user in the registry, under
   `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\Taskel\Outlook`, in plain text. Revoke
-  the token in Taskel (**Integrations → Revoke**) if the computer is shared or lost.
+  the token in Taskel (**Integrări → Revocă**) if the computer is shared or lost.
 - A token can read and change your tasks, but cannot create or revoke tokens.
 - Only the first 4000 characters of the body are sent, as plain text. Attachments are not sent.
 - Use an `https://` address when Taskel is not on the same computer, so the token and email text

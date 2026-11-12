@@ -1,3 +1,5 @@
+import { LOCALE } from './text'
+
 const pad = (n: number) => String(n).padStart(2, '0')
 
 function toIso(date: Date): string {
@@ -21,10 +23,10 @@ export function addDaysIso(iso: string, days: number): string {
   return toIso(date)
 }
 
-/** "15 Mar", with the year added when it is not the current one. */
+/** "15 mar.", with the year added when it is not the current one. */
 export function formatDueDate(iso: string): string {
   const date = fromIso(iso)
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(LOCALE, {
     day: 'numeric',
     month: 'short',
     year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
@@ -32,15 +34,15 @@ export function formatDueDate(iso: string): string {
 }
 
 export function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  return new Date(iso).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/** "Wednesday, 11 November". */
+/** "miercuri, 11 noiembrie". */
 export function formatLongDate(iso: string): string {
-  return fromIso(iso).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+  return fromIso(iso).toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-/** Short weekday name, e.g. "Wed". */
+/** Short weekday name, e.g. "mie.". */
 export function formatWeekday(iso: string): string {
-  return fromIso(iso).toLocaleDateString(undefined, { weekday: 'short' })
+  return fromIso(iso).toLocaleDateString(LOCALE, { weekday: 'short' })
 }
