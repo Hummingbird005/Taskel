@@ -19,7 +19,7 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) |
 | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
-| **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | |
+| **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
 
 Screenshots use sample data: made-up people and tasks in a test domain.
 
@@ -86,6 +86,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | DELETE | `/api/auth/tokens/{id}` | session | Revoke an API token                     |
 | GET    | `/api/dashboard`     | ✓    | Your dashboard preferences                    |
 | PUT    | `/api/dashboard`     | ✓    | Save your dashboard preferences               |
+| GET    | `/api/notifications` | ✓    | Your email notification preference            |
+| PUT    | `/api/notifications` | ✓    | Turn emails for received tasks on or off      |
 | GET    | `/api/users`         | ✓    | People a task can be assigned to              |
 | GET    | `/api/users/{id}/workload` | ✓ | How many open tasks a user has in a period  |
 | GET    | `/api/team`          | manager | Workload of the people in a department     |
@@ -383,7 +385,7 @@ response:
 
 ### Email (SMTP) configuration
 
-Replies are sent from one mailbox, configured on the server in the `Email:Smtp` section:
+Replies and notifications are sent from one mailbox, configured on the server in the `Email:Smtp` section:
 
 | Setting       | Environment variable         | Notes                                                    |
 |---------------|------------------------------|----------------------------------------------------------|
@@ -410,6 +412,40 @@ Things to know:
 - Sent replies are not saved to a "Sent" folder by Taskel (Gmail keeps its own copy of mail sent through its SMTP server).
 - Any signed-in user can make the server send one email per completed email task, to the address stored on that
   task. Do not expose a server with open registration and SMTP configured to the internet.
+
+## Email notifications for received tasks
+
+When a task reaches someone, Taskel emails them at their account's address. It uses the same mailbox as the
+replies ([Email (SMTP) configuration](#email-smtp-configuration)); without SMTP configured nothing is sent.
+
+An email goes out when:
+
+- a task is created for, or reassigned to, another user: to that user;
+- a task is forwarded: to the new assignee, with the forwarder's message;
+- a task is given or forwarded to a group: to every member of the group.
+
+The person who did it is never emailed, and neither is anyone for a task they keep for themselves. Taking a
+group task, handing it back, editing and completing are not announced.
+
+The email is plain text, in Romanian, with the task's title, due date or interval, priority (when not medium)
+and, if set, a link to Taskel. The task's notes are not included.
+
+Each user can turn the emails off under **Integrări → Notificări pe email** (`GET`/`PUT /api/notifications`).
+They are on by default, including for existing accounts.
+
+| Setting     | Environment variable                 | Notes                                                    |
+|-------------|--------------------------------------|----------------------------------------------------------|
+| `Enabled`   | `Email__Notifications__Enabled`      | Default `true`. `false` stops notifications for everyone |
+| `PublicUrl` | `Email__Notifications__PublicUrl`    | Optional. Address of the Taskel interface, added to the emails as a link |
+
+Things to know:
+
+- Notifications are sent in the background after the action has succeeded. If the mail server refuses one, it
+  is logged and dropped: the task is still assigned, and nothing is retried.
+- Emails waiting to be sent are held in memory (up to 2000) and are lost if the server restarts.
+- Local accounts' addresses are not verified. With open registration, someone could register with another
+  person's address and have tasks assigned to it, making Taskel email that person. On a server reachable from
+  the internet, set `Auth__AllowLocalRegistration=false` or `Email__Notifications__Enabled=false`.
 
 ## Database (EF Core + PostgreSQL)
 

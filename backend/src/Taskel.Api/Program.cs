@@ -37,6 +37,10 @@ builder.Services.AddDbContext<TaskelDbContext>(options => options.UseNpgsql(conn
 builder.Services.AddScoped<ITaskRepository, EfTaskRepository>();
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection(SmtpOptions.Section));
 builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.Section));
+builder.Services.AddSingleton<NotificationQueue>();
+builder.Services.AddHostedService<NotificationWorker>();
+builder.Services.AddScoped<TaskNotifier>();
 builder.Services.Configure<DirectoryOptions>(builder.Configuration.GetSection(DirectoryOptions.Section));
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.Section));
 builder.Services.AddSingleton<IDirectoryAuthenticator, LdapDirectoryAuthenticator>();

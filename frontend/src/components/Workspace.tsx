@@ -22,6 +22,7 @@ import {
 } from '../lib/taskViews'
 import CompleteWithReply from './CompleteWithReply'
 import Dashboard from './Dashboard'
+import EmailNotifications from './EmailNotifications'
 import ForwardTask from './ForwardTask'
 import Groups from './Groups'
 import ReadOnlyTask from './ReadOnlyTask'
@@ -526,7 +527,10 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           )}
 
           {view.kind === 'integrations' ? (
-            <Integrations onSessionExpired={onSessionExpired} />
+            <>
+              <EmailNotifications onSessionExpired={onSessionExpired} />
+              <Integrations onSessionExpired={onSessionExpired} />
+            </>
           ) : view.kind === 'team' ? (
             <Team user={user} today={today} onSessionExpired={onSessionExpired} />
           ) : view.kind === 'groups' ? (

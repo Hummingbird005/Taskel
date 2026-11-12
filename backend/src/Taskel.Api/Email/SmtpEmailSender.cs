@@ -10,14 +10,21 @@ public class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSen
 {
     private const int TimeoutMilliseconds = 15_000;
 
-    public async Task SendReplyAsync(ReplyEmail reply, CancellationToken ct = default)
+    public Task SendReplyAsync(ReplyEmail reply, CancellationToken ct = default) =>
+        SendAsync(smtp => BuildMessage(reply, smtp), "reply", ct);
+
+    public Task SendAsync(EmailMessage message, CancellationToken ct = default) =>
+        SendAsync(smtp => BuildMessage(message, smtp), "notification", ct);
+
+    private async Task SendAsync(Func<SmtpOptions, MimeMessage> build, string kind, CancellationToken ct)
     {
         var smtp = options.Value;
         if (!smtp.IsConfigured) throw new EmailNotConfiguredException();
 
-        var message = BuildMessage(reply, smtp);
         try
         {
+            // Built inside the try: an address the mail library refuses is a failed send, not a crash.
+            var message = build(smtp);
             using var client = new SmtpClient { Timeout = TimeoutMilliseconds };
             var security = smtp.RequireTls
                 ? (smtp.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls)
@@ -30,7 +37,7 @@ public class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSen
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Sending a reply through {Host}:{Port} failed", smtp.Host, smtp.Port);
+            logger.LogError(ex, "Sending a {Kind} through {Host}:{Port} failed", kind, smtp.Host, smtp.Port);
             throw new EmailSendException("The SMTP server did not accept the message.", ex);
         }
     }
@@ -48,6 +55,18 @@ public class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSen
             message.References.Add(reply.InReplyToMessageId);
         }
         message.Body = new TextPart("plain") { Text = reply.Body };
+        return message;
+    }
+
+    /// <summary>Builds a message Taskel sends by itself. Marked as automatic so mail systems do not auto-reply to it.</summary>
+    public static MimeMessage BuildMessage(EmailMessage email, SmtpOptions smtp)
+    {
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(smtp.FromName ?? string.Empty, smtp.EffectiveFromAddress!));
+        message.To.Add(MailboxAddress.Parse(email.To));
+        message.Subject = email.Subject.ReplaceLineEndings(" ").Trim();
+        message.Headers.Add("Auto-Submitted", "auto-generated");
+        message.Body = new TextPart("plain") { Text = email.Body };
         return message;
     }
 

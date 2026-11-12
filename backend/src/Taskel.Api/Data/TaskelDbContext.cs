@@ -28,6 +28,7 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             user.HasIndex(u => u.Department);
             user.Property(u => u.DashboardWidgets).HasColumnType("text[]");
             user.Property(u => u.ShowDueAlert).HasDefaultValue(true);
+            user.Property(u => u.EmailNotifications).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<Group>(group =>

@@ -648,3 +648,10 @@ button.chip.tag:hover { background: var(--accent); color: var(--on-accent); }
 .group-members label span, .group-readonly li { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .group-members small, .group-readonly small { font-size: 0.78rem; }
 .group-readonly { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+
+/* Email notification preference */
+.notify-toggle { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.notify-toggle input { margin-top: 4px; }
+.notify-toggle > span:first-of-type { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.notify-toggle small { font-size: 0.82rem; }
+.notify-unavailable { font-size: 0.88rem; }
