@@ -1,3 +1,4 @@
+import { TableSkeleton } from './ui/Skeleton'
 import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
 import { teamApi, type CalendarMember, type CalendarTask, type TeamCalendar as CalendarData } from '../api/team'
@@ -90,7 +91,7 @@ export default function TeamCalendar({ department, today, onSessionExpired }: Pr
       </p>
     )
   }
-  if (!calendar) return <p className="muted">Se încarcă…</p>
+  if (!calendar) return <TableSkeleton heading={false} rows={4} />
 
   const days = daysFrom(start, DAYS)
   const person = calendar.members.find((member) => member.user.id === personId) ?? null

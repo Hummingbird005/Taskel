@@ -14,7 +14,7 @@ namespace Taskel.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
-public class TasksController(ITaskRepository repository, IEmailSender emailSender) : ControllerBase
+public class TasksController(ITaskRepository repository, IEmailSender emailSender, TaskNotifier notifier) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskResponse>>> GetAll(CancellationToken ct)
@@ -48,6 +48,7 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
             Priority = request.Priority,
             Tags = TagList.Normalize(request.Tags)
         }, ct);
+        await notifier.TaskReceivedAsync(task, userId, TaskNotificationReason.Assigned, ct: ct);
         return CreatedAtAction(nameof(Get), new { id = task.Id }, TaskResponse.From(task, TaskAccess.Creator));
     }
 
@@ -103,9 +104,12 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         var target = await ResolveTargetAsync(task.UserId, request.AssigneeId, request.GroupId, ct);
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
+        var changed = task.AssigneeId != target.AssigneeId || task.GroupId != target.GroupId;
         task.AssigneeId = target.AssigneeId;
         task.GroupId = target.GroupId;
         await repository.SaveAsync(task, ct);
+        // Saving it again with the same person is not news to them.
+        if (changed) await notifier.TaskReceivedAsync(task, task.UserId, TaskNotificationReason.Assigned, ct: ct);
         return Ok(TaskResponse.From(task, access));
     }
 
@@ -145,6 +149,7 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         task.AssigneeId = target.AssigneeId;
         task.GroupId = target.GroupId;
         await repository.SaveAsync(task, ct);
+        await notifier.TaskReceivedAsync(task, userId, TaskNotificationReason.Forwarded, NullIfBlank(request.Note), ct);
         return Ok(TaskResponse.From(task, AccessOf(task, userId, await repository.GetGroupIdsAsync(userId, ct))));
     }
 

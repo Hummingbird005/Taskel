@@ -1,3 +1,4 @@
+import EmptyState from './ui/EmptyState'
 import type { DashboardSettings } from '../api/dashboard'
 import type { TaskItem } from '../api/tasks'
 import { hiddenWidgets, visibleWidgets, type WidgetInfo } from '../lib/dashboard'
@@ -97,7 +98,9 @@ export default function Dashboard({ tasks, delegated, today, settings, customizi
       )}
 
       {visible.length === 0 ? (
-        <p className="empty">Dashboard-ul tău este gol. {customizing ? 'Adaugă un widget din lista de mai sus.' : 'Folosește „Personalizează” ca să adaugi widget-uri.'}</p>
+        <EmptyState icon="home" title="Dashboard gol">
+          {customizing ? 'Adaugă un widget din lista de mai sus.' : 'Folosește „Personalizează” ca să adaugi widget-uri.'}
+        </EmptyState>
       ) : (
         <div className="widget-grid">
           {visible.map((widget, index) => {

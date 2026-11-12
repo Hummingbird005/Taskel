@@ -33,6 +33,8 @@ public class User
     /// <summary>Ids of the dashboard widgets the user shows, in order. Null means the default layout.</summary>
     public List<string>? DashboardWidgets { get; set; }
     /// <summary>Whether to show the overdue / due-today reminder when the user opens the app.</summary>
+    /// <summary>Whether Taskel emails this user when a task reaches them.</summary>
+    public bool EmailNotifications { get; set; } = true;
     public bool ShowDueAlert { get; set; } = true;
 }
 
@@ -73,3 +75,10 @@ public record UpdateUserRequest(
 
 /// <summary>What the sign-in screen should offer.</summary>
 public record AuthOptionsResponse(bool LocalRegistration, bool ActiveDirectory, string? ActiveDirectoryDomain);
+
+/// <param name="EmailOnNewTask">Whether the user wants an email when a task reaches them.</param>
+/// <param name="Address">Where those emails go: the account's address.</param>
+/// <param name="Available">Whether the server can send them at all (SMTP configured, notifications not switched off).</param>
+public record NotificationSettingsResponse(bool EmailOnNewTask, string Address, bool Available);
+
+public record UpdateNotificationSettingsRequest(bool EmailOnNewTask);

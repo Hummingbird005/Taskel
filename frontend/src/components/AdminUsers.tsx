@@ -1,3 +1,6 @@
+import DataTable from './ui/DataTable'
+import EmptyState from './ui/EmptyState'
+import { TableSkeleton } from './ui/Skeleton'
 import { useEffect, useState } from 'react'
 import { adminApi, type AdminUser } from '../api/admin'
 import type { User, UserRole } from '../api/auth'
@@ -61,11 +64,11 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
 
   if (!users) {
     return error ? (
-      <p className="empty error" role="alert">
+      <EmptyState error title="Utilizatorii nu au putut fi încărcați">
         {error}
-      </p>
+      </EmptyState>
     ) : (
-      <p className="empty">Se încarcă…</p>
+      <TableSkeleton />
     )
   }
 
@@ -90,8 +93,7 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
         </p>
       )}
 
-      <section className="team-table-wrap">
-        <table className="team-table">
+      <DataTable label="Utilizatori">
           <thead>
             <tr>
               <th scope="col">Utilizator</th>
@@ -112,8 +114,8 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
                       {account.displayName !== account.email && <small className="muted">{account.email}</small>}
                     </span>
                   </th>
-                  <td>{account.isDirectoryAccount ? 'Domeniu' : 'Local'}</td>
-                  <td>
+                  <td data-label="Cont">{account.isDirectoryAccount ? 'Domeniu' : 'Local'}</td>
+                  <td data-label="Rol">
                     <select
                       value={account.role}
                       disabled={isSelf || account.roleIsFixed}
@@ -132,7 +134,7 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
                       <option value="admin">Administrator</option>
                     </select>
                   </td>
-                  <td>
+                  <td data-label="Departament">
                     <span className="department-cell">
                       <input
                         value={department}
@@ -162,13 +164,12 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
               )
             })}
           </tbody>
-        </table>
-        <datalist id="departments">
-          {departments.map((name) => (
-            <option key={name} value={name} />
-          ))}
-        </datalist>
-      </section>
+      </DataTable>
+      <datalist id="departments">
+        {departments.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
       <p className="muted team-note">
         Pentru conturile de domeniu, departamentul și rolurile stabilite prin grupuri în Active Directory se reaplică la
         fiecare conectare și pot înlocui ce setezi aici.

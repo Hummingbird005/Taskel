@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { validateNotes, LIMITS } from '../lib/validation'
 import Icon from './Icon'
+import Button from './ui/Button'
 
 interface Props {
   title: string
@@ -58,10 +59,10 @@ export default function CompleteWithReply({ title, recipient, onSubmit, onCancel
         </p>
       )}
       <div className="reply-form-actions">
-        <button type="submit" className="button send" disabled={!response.trim() || sending}>
+        <Button type="submit" variant="primary" disabled={!response.trim()} loading={sending}>
           <Icon name="send" />
-          {sending ? 'Se trimite…' : 'Trimite răspunsul și finalizează'}
-        </button>
+          Trimite răspunsul și finalizează
+        </Button>
         <button type="button" className="button ghost" onClick={onCancel} disabled={sending}>
           Anulează
         </button>

@@ -16,6 +16,7 @@ import {
 } from '../lib/validation'
 import Icon from './Icon'
 import TargetOptions from './TargetOptions'
+import Button from './ui/Button'
 
 const EMPTY: TaskDraft = { title: '', startDate: null, dueDate: null, priority: 'medium', tags: [] }
 
@@ -279,10 +280,10 @@ export default function TaskForm({
               Anulează
             </button>
           )}
-          <button type="submit" className="button send" disabled={(!title.trim() && !isEditing) || submitting}>
+          <Button type="submit" variant="primary" disabled={!title.trim() && !isEditing} loading={submitting}>
             {isEditing ? null : <Icon name="send" />}
             {submitLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </form>

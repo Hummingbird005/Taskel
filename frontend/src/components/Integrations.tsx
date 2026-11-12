@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
+import Panel from './ui/Panel'
 import { tokensApi, type ApiToken, type CreatedApiToken } from '../api/tokens'
 import { formatTimestamp as formatDate } from '../lib/dates'
 import { validateTokenName } from '../lib/validation'
@@ -73,8 +74,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
   }
 
   return (
-    <section className="panel" aria-labelledby="integrations-title">
-      <h2 id="integrations-title">Outlook</h2>
+    <Panel title="Outlook">
       <p className="muted">
         Trimite emailuri din Outlook în Taskel, ca task-uri. Instalează macro-ul din{' '}
         <code>integrations/outlook</code> din repository-ul Taskel, apoi dă-i un token API creat aici.
@@ -134,6 +134,6 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
           ))}
         </ul>
       )}
-    </section>
+    </Panel>
   )
 }

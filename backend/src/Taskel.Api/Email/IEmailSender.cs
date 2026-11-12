@@ -7,8 +7,15 @@ namespace Taskel.Api.Email;
 /// <param name="InReplyToMessageId">Message-ID of the original email, when known.</param>
 public record ReplyEmail(string To, string? Subject, string Body, string? InReplyToMessageId);
 
+/// <summary>A plain-text email Taskel sends on its own behalf, such as a notification.</summary>
+public record EmailMessage(string To, string Subject, string Body);
+
 public interface IEmailSender
 {
+    /// <exception cref="EmailNotConfiguredException">No SMTP server is configured.</exception>
+    /// <exception cref="EmailSendException">The message could not be handed to the SMTP server.</exception>
+    Task SendAsync(EmailMessage message, CancellationToken ct = default);
+
     /// <exception cref="EmailNotConfiguredException">No SMTP server is configured.</exception>
     /// <exception cref="EmailSendException">The message could not be handed to the SMTP server.</exception>
     Task SendReplyAsync(ReplyEmail reply, CancellationToken ct = default);

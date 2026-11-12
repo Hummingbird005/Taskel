@@ -1,3 +1,4 @@
+import Button from './ui/Button'
 import { useEffect, useState, type FormEvent } from 'react'
 import { authApi, DEFAULT_AUTH_OPTIONS, type AuthOptions, type User } from '../api/auth'
 import { ApiError } from '../api/client'
@@ -156,9 +157,9 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
         </p>
       )}
 
-      <button type="submit" className="button primary" disabled={submitting}>
+      <Button type="submit" variant="primary" loading={submitting}>
         {isRegister ? 'Creează contul' : 'Conectare'}
-      </button>
+      </Button>
 
       {isRegister ? (
         <p className="muted">

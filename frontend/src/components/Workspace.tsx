@@ -9,6 +9,7 @@ import { todayIso } from '../lib/dates'
 import { tasksLabel } from '../lib/text'
 import {
   emptyMessage,
+  emptyTitle,
   groupTasks,
   isDelegated,
   isMine,
@@ -22,11 +23,16 @@ import {
 } from '../lib/taskViews'
 import CompleteWithReply from './CompleteWithReply'
 import Dashboard from './Dashboard'
+import EmailNotifications from './EmailNotifications'
 import ForwardTask from './ForwardTask'
 import Groups from './Groups'
 import ReadOnlyTask from './ReadOnlyTask'
 import DueAlert from './DueAlert'
 import Icon from './Icon'
+import Banner from './ui/Banner'
+import Button from './ui/Button'
+import EmptyState from './ui/EmptyState'
+import { CardsSkeleton, TaskListSkeleton } from './ui/Skeleton'
 import Integrations from './Integrations'
 import Sidebar from './Sidebar'
 import TaskForm from './TaskForm'
@@ -448,7 +454,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
         onClick={() => setSidebarOpen(false)}
       />
 
-      <main className="main">
+      <main className={`main${isDashboard || view.kind === 'team' || view.kind === 'groups' || view.kind === 'admin' ? ' wide' : ''}`}>
         <header className="main-header">
           <button
             type="button"
@@ -509,24 +515,17 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
 
         <div className="main-scroll">
           {notice && (
-            <div className="banner info" role="status">
-              <span>{notice}</span>
-              <button type="button" onClick={() => setNotice(null)} aria-label="Închide mesajul">
-                <Icon name="close" />
-              </button>
-            </div>
+            <Banner tone="info" onClose={() => setNotice(null)}>
+              {notice}
+            </Banner>
           )}
-          {error && (
-            <div className="banner" role="alert">
-              <span>{error}</span>
-              <button type="button" onClick={() => setError(null)} aria-label="Închide mesajul">
-                <Icon name="close" />
-              </button>
-            </div>
-          )}
+          {error && <Banner onClose={() => setError(null)}>{error}</Banner>}
 
           {view.kind === 'integrations' ? (
-            <Integrations onSessionExpired={onSessionExpired} />
+            <>
+              <EmailNotifications onSessionExpired={onSessionExpired} />
+              <Integrations onSessionExpired={onSessionExpired} />
+            </>
           ) : view.kind === 'team' ? (
             <Team user={user} today={today} onSessionExpired={onSessionExpired} />
           ) : view.kind === 'groups' ? (
@@ -534,7 +533,11 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           ) : view.kind === 'admin' ? (
             <AdminUsers user={user} onSessionExpired={onSessionExpired} onOwnAccountChanged={onUserChanged} />
           ) : loading ? (
-            <p className="empty">Se încarcă…</p>
+            isDashboard ? (
+              <CardsSkeleton />
+            ) : (
+              <TaskListSkeleton />
+            )
           ) : isDashboard ? (
             <Dashboard
               tasks={mine}
@@ -547,7 +550,24 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
               onOpen={selectView}
             />
           ) : visibleCount === 0 ? (
-            <p className="empty">{emptyMessage(view, search.trim().length > 0)}</p>
+            <EmptyState
+              {...emptyTitle(view, search.trim().length > 0)}
+              action={
+                search.trim().length > 0 ? (
+                  <Button onClick={() => setSearch('')}>Șterge căutarea</Button>
+                ) : canAdd ? (
+                  <Button
+                    variant="primary"
+                    onClick={() => document.querySelector<HTMLInputElement>('.main-composer .composer-title')?.focus()}
+                  >
+                    <Icon name="plus" />
+                    Adaugă un task
+                  </Button>
+                ) : undefined
+              }
+            >
+              {emptyMessage(view, search.trim().length > 0)}
+            </EmptyState>
           ) : (
             sections.map((group) => (
               <section key={group.key} className="task-group">

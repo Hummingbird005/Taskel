@@ -38,6 +38,10 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ActiveDirectory:BaseDn", "DC=corp,DC=example,DC=com");
         // The whole suite signs in from one address; the limit has its own test.
         builder.UseSetting("Auth:LoginAttemptsPerMinute", "100000");
+        // Enough for Taskel to consider email set up; the fake sender takes the messages.
+        builder.UseSetting("Email:Smtp:Host", "smtp.test.invalid");
+        builder.UseSetting("Email:Smtp:FromAddress", "taskel@test.invalid");
+        builder.UseSetting("Email:Notifications:PublicUrl", "https://taskel.test.invalid");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IEmailSender>();

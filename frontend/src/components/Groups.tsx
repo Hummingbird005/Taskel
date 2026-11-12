@@ -1,3 +1,7 @@
+import Button from './ui/Button'
+import DataTable from './ui/DataTable'
+import EmptyState from './ui/EmptyState'
+import { TableSkeleton } from './ui/Skeleton'
 import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
@@ -138,11 +142,11 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
 
   if (!groups) {
     return error ? (
-      <p className="empty error" role="alert">
+      <EmptyState error title="Grupurile nu au putut fi încărcate">
         {error}
-      </p>
+      </EmptyState>
     ) : (
-      <p className="empty">Se încarcă…</p>
+      <TableSkeleton />
     )
   }
 
@@ -176,10 +180,22 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
       )}
 
       {groups.length === 0 ? (
-        <p className="empty">Niciun grup încă. Creează primul cu „Grup nou”.</p>
+        !panel && (
+          <EmptyState
+            icon="users"
+            title="Niciun grup încă"
+            action={
+              <Button variant="primary" onClick={openNew}>
+                <Icon name="plus" />
+                Grup nou
+              </Button>
+            }
+          >
+            Un grup îți permite să dai un task mai multor oameni deodată; îl preia cine are loc.
+          </EmptyState>
+        )
       ) : (
-        <section className="team-table-wrap">
-          <table className="team-table">
+        <DataTable label="Grupuri">
             <thead>
               <tr>
                 <th scope="col">Grup</th>
@@ -196,12 +212,12 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
               {groups.map((group) => (
                 <tr key={group.id} className={panel?.mode === 'existing' && panel.group.id === group.id ? 'open' : undefined}>
                   <th scope="row">{group.name}</th>
-                  <td>
+                  <td data-label="Tip">
                     <span className={`kind-badge ${group.kind}`}>
                       {group.kind === 'directory' ? 'Active Directory' : 'Aplicație'}
                     </span>
                   </td>
-                  <td className="num">{group.memberCount}</td>
+                  <td className="num" data-label="Membri">{group.memberCount}</td>
                   <td className="group-actions">
                     <button type="button" className="button ghost" onClick={() => void open(group.id)}>
                       {group.canManage ? 'Editează' : 'Vezi membrii'}
@@ -220,8 +236,7 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </section>
+        </DataTable>
       )}
 
       {panel && editable && (
@@ -269,9 +284,9 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
             </p>
           )}
           <div className="reply-form-actions">
-            <button type="submit" className="button send" disabled={saving}>
+            <Button type="submit" variant="primary" loading={saving}>
               {panel.mode === 'new' ? 'Creează grupul' : 'Salvează'}
-            </button>
+            </Button>
             <button type="button" className="button ghost" onClick={() => setPanel(null)} disabled={saving}>
               Anulează
             </button>
