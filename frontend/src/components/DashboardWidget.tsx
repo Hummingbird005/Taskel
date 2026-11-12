@@ -7,7 +7,10 @@ import { LOCALE } from '../lib/text'
 import Icon, { type IconName } from './Icon'
 
 interface WidgetProps {
+  /** The user's own tasks. */
   tasks: TaskItem[]
+  /** Tasks the user assigned to other people. */
+  delegated: TaskItem[]
   today: string
   onOpen: (view: View) => void
 }
@@ -136,6 +139,19 @@ function ReplyRequired({ tasks, onOpen }: WidgetProps) {
   )
 }
 
+function Delegated({ delegated, onOpen }: WidgetProps) {
+  const open = delegated.filter((t) => !t.isCompleted)
+  return (
+    <TaskLines
+      tasks={open}
+      empty="Nu ai task-uri deschise alocate altcuiva."
+      view={{ kind: 'delegated' }}
+      meta={(task) => task.assignee?.displayName ?? ''}
+      onOpen={onOpen}
+    />
+  )
+}
+
 const PRIORITIES: { priority: TaskPriority; label: string }[] = [
   { priority: 'high', label: 'Ridicată' },
   { priority: 'medium', label: 'Medie' },
@@ -257,6 +273,8 @@ export default function DashboardWidget({ id, ...props }: WidgetProps & { id: Wi
       return <Upcoming {...props} />
     case 'reply':
       return <ReplyRequired {...props} />
+    case 'delegated':
+      return <Delegated {...props} />
     case 'priority':
       return <Priority {...props} />
     case 'completed-week':

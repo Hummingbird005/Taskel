@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { tokensApi, type ApiToken, type CreatedApiToken } from '../api/tokens'
 import { formatTimestamp as formatDate } from '../lib/dates'
+import { validateTokenName } from '../lib/validation'
 
 export default function Integrations({ onSessionExpired }: { onSessionExpired: () => void }) {
   const [tokens, setTokens] = useState<ApiToken[]>([])
@@ -28,7 +29,11 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
   async function create(e: FormEvent) {
     e.preventDefault()
     const trimmed = name.trim()
-    if (!trimmed) return
+    const invalid = validateTokenName(trimmed)
+    if (invalid) {
+      setError(invalid)
+      return
+    }
     try {
       const token = await tokensApi.create(trimmed)
       setCreated(token)

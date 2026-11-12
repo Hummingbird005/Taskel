@@ -21,6 +21,7 @@ const PATHS = {
   arrowLeft: 'M11 6l-6 6 6 6M5 12h14',
   arrowRight: 'M13 6l6 6-6 6M19 12H5',
   plus: 'M12 5v14M5 12h14',
+  user: 'M12 4a4 4 0 100 8 4 4 0 000-8zM4.5 20a7.5 7.5 0 0115 0',
   bell: 'M6 16V11a6 6 0 0112 0v5l1.5 2h-15L6 16zM10 20a2 2 0 004 0',
 } as const
 

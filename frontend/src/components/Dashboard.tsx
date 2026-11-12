@@ -9,6 +9,7 @@ import Icon from './Icon'
 
 interface Props {
   tasks: TaskItem[]
+  delegated: TaskItem[]
   today: string
   settings: DashboardSettings
   customizing: boolean
@@ -27,7 +28,7 @@ function summary(tasks: TaskItem[], today: string): string {
 }
 
 /** The home screen: the user's chosen widgets, in their chosen order. */
-export default function Dashboard({ tasks, today, settings, customizing, onChange, onDone, onOpen }: Props) {
+export default function Dashboard({ tasks, delegated, today, settings, customizing, onChange, onDone, onOpen }: Props) {
   const visible = visibleWidgets(settings.widgets)
   const hidden = hiddenWidgets(visible)
 
@@ -136,7 +137,7 @@ export default function Dashboard({ tasks, today, settings, customizing, onChang
                     </div>
                   )}
                 </header>
-                <DashboardWidget id={widget.id} tasks={tasks} today={today} onOpen={onOpen} />
+                <DashboardWidget id={widget.id} tasks={tasks} delegated={delegated} today={today} onOpen={onOpen} />
               </section>
             )
           })}

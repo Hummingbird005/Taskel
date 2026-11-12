@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { validateNotes, LIMITS } from '../lib/validation'
 import Icon from './Icon'
 
 interface Props {
@@ -19,6 +20,11 @@ export default function CompleteWithReply({ title, recipient, onSubmit, onCancel
     e.preventDefault()
     const trimmed = response.trim()
     if (!trimmed) return
+    const invalid = validateNotes(trimmed, LIMITS.response)
+    if (invalid) {
+      setError(invalid)
+      return
+    }
     setSending(true)
     setError(null)
     const failure = await onSubmit(trimmed)
@@ -30,7 +36,7 @@ export default function CompleteWithReply({ title, recipient, onSubmit, onCancel
   }
 
   return (
-    <form onSubmit={handleSubmit} className="reply-form">
+    <form onSubmit={handleSubmit} className="reply-form" noValidate>
       <h3>Finalizează „{title}”</h3>
       <p className="muted">
         Acest task vine dintr-un email. Răspunsul tău este trimis către <strong>{recipient}</strong>, ca reply la

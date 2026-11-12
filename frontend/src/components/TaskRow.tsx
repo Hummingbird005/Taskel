@@ -5,6 +5,8 @@ import Icon from './Icon'
 
 interface Props {
   task: TaskItem
+  /** Id of the signed-in user, to tell their own tasks from ones shared with them. */
+  currentUserId: string
   today: string
   onToggle: () => void
   onEdit: () => void
@@ -12,8 +14,9 @@ interface Props {
   onTagClick: (tag: string) => void
 }
 
-export default function TaskRow({ task, today, onToggle, onEdit, onDelete, onTagClick }: Props) {
+export default function TaskRow({ task, currentUserId, today, onToggle, onEdit, onDelete, onTagClick }: Props) {
   const overdue = isOverdue(task, today)
+  const isCreator = task.createdBy.id === currentUserId
   const dueLabel = task.dueDate === today ? 'azi' : task.dueDate ? formatDueDate(task.dueDate) : null
 
   return (
@@ -39,6 +42,18 @@ export default function TaskRow({ task, today, onToggle, onEdit, onDelete, onTag
               <Icon name="calendar" size={13} />
               {overdue ? 'Întârziat: ' : 'Termen: '}
               {dueLabel}
+            </span>
+          )}
+          {task.assignee && isCreator && (
+            <span className="chip person" title={`Alocat către ${task.assignee.email}`}>
+              <Icon name="send" size={13} />
+              Alocat: {task.assignee.displayName}
+            </span>
+          )}
+          {!isCreator && (
+            <span className="chip person" title={`Primit de la ${task.createdBy.email}`}>
+              <Icon name="reply" size={13} />
+              De la: {task.createdBy.displayName}
             </span>
           )}
           {task.sourceEmailAddress && (
@@ -84,9 +99,11 @@ export default function TaskRow({ task, today, onToggle, onEdit, onDelete, onTag
         <button type="button" onClick={onEdit} aria-label={`Editează: ${task.title}`} title="Editează">
           <Icon name="edit" />
         </button>
-        <button type="button" className="danger" onClick={onDelete} aria-label={`Șterge: ${task.title}`} title="Șterge">
-          <Icon name="trash" />
-        </button>
+        {isCreator && (
+          <button type="button" className="danger" onClick={onDelete} aria-label={`Șterge: ${task.title}`} title="Șterge">
+            <Icon name="trash" />
+          </button>
+        )}
       </div>
     </li>
   )

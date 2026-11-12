@@ -7,6 +7,7 @@ export interface ViewCounts {
   today: number
   upcoming: number
   overdue: number
+  delegated: number
 }
 
 interface Props {
@@ -57,6 +58,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
           {item({ kind: 'upcoming' }, 'calendar', 'Urmează', counts.upcoming)}
           {item({ kind: 'overdue' }, 'alert', 'Întârziate', counts.overdue, 'danger')}
           {item({ kind: 'completed' }, 'checkCircle', 'Finalizate')}
+          {item({ kind: 'delegated' }, 'send', 'Delegate', counts.delegated)}
         </ul>
 
         <h2 className="nav-heading">Etichete</h2>
@@ -74,10 +76,10 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
 
       <div className="sidebar-user">
         <span className="avatar" aria-hidden="true">
-          {user.email.charAt(0).toUpperCase()}
+          {user.displayName.charAt(0).toUpperCase()}
         </span>
         <span className="sidebar-email" title={user.email}>
-          {user.email}
+          {user.displayName}
         </span>
         <button type="button" className="sidebar-icon-button" onClick={onLogout} aria-label="Deconectare" title="Deconectare">
           <Icon name="logout" />
