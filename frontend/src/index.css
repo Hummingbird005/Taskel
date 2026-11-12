@@ -41,8 +41,27 @@
   --content: 920px;
   --control: 36px;
 }
+/* The dark theme: chosen by the user, or by the system when the user chose nothing. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0b0c;
+  --surface: #151517;
+  --hover: #1c1c1f;
+  --text: #f5f5f6;
+  --muted: #a3a3ab;
+  --border: #26262a;
+  --border-strong: #f5f5f6;
+  --field-border: #63636b;
+  --accent: #8ab4ff;
+  --accent-soft: #111a2e;
+  --on-accent: #0b0b0c;
+  --danger: #ff8a80;
+  --danger-soft: #2a1412;
+  --go: #5fd3a6;
+  --warn: #f2b84b;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --bg: #0b0b0c;
     --surface: #151517;
     --hover: #1c1c1f;
@@ -60,6 +79,7 @@
     --warn: #f2b84b;
   }
 }
+:root[data-theme='light'], :root[data-theme='frost'] { color-scheme: light; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
@@ -806,4 +826,145 @@ button.chip.tag:hover { background: var(--text); color: var(--bg); }
   *, *::before, *::after { transition: none !important; }
   .skeleton::after { animation: none; }
   .button.is-loading::after { animation-duration: 2s; }
+}
+
+/* ---------- Theme picker ---------- */
+.theme-picker {
+  display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s4); border-top: 1px solid var(--border);
+  color: var(--muted); font-size: var(--fs-sm);
+}
+.theme-picker select {
+  flex: 1; min-width: 0; height: 32px; padding: 0 var(--s2); border: 1px solid transparent; border-radius: var(--radius);
+  background: transparent; color: var(--text); cursor: pointer;
+}
+.theme-picker select:hover { border-color: var(--field-border); }
+.theme-picker + .sidebar-user { border-top: 0; padding-top: var(--s2); }
+@media (min-width: 641px) and (max-width: 1024px) and (hover: hover) {
+  .sidebar:not(:hover):not(:focus-within) .theme-picker { justify-content: center; padding-inline: 0; }
+  .sidebar:not(:hover):not(:focus-within) .theme-picker select { display: none; }
+}
+
+/* ---------- Arctic Frost: light glass ----------
+   A pale background with soft pastel shapes behind it, and surfaces of frosted glass: translucent
+   white, blurred, edged in white with a highlight along the top and a very faint shadow.
+   Text stays dark slate and primary buttons stay solid, so nothing depends on what is behind. */
+:root[data-theme='frost'] {
+  --bg: #f8fafc;
+  --surface: rgb(255 255 255 / 0.45);
+  --hover: rgb(15 23 42 / 0.05);
+  --text: #0f172a;
+  --muted: #475569;
+  --border: rgb(15 23 42 / 0.08);
+  --border-strong: #0f172a;
+  --field-border: #94a3b8;
+  --accent: #0369a1;
+  --accent-soft: rgb(186 230 253 / 0.5);
+  --on-accent: #ffffff;
+  --danger: #b42318;
+  --danger-soft: rgb(254 226 226 / 0.7);
+  --go: #0f6b4f;
+  --warn: #8a5300;
+  --radius: 14px;
+  --glass: rgb(255 255 255 / 0.65);
+  --glass-strong: rgb(255 255 255 / 0.82);
+  --glass-border: rgb(255 255 255 / 0.8);
+  --glass-blur: blur(40px) saturate(1.4);
+  --glass-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(15 23 42 / 0.05), 0 12px 32px rgb(15 23 42 / 0.05);
+}
+[data-theme='frost'] body { background: var(--bg); }
+/* The shapes: pale blue, lavender and a hint of ice, far out of focus and fixed behind everything. */
+[data-theme='frost'] body::before, [data-theme='frost'] body::after, [data-theme='frost'] #root::before {
+  content: ''; position: fixed; z-index: 0; border-radius: 50%; filter: blur(64px); pointer-events: none;
+}
+[data-theme='frost'] body::before { width: 46vw; height: 46vw; min-width: 320px; min-height: 320px; top: -12vw; left: 8vw; background: #bfdbfe; opacity: 0.75; }
+[data-theme='frost'] body::after { width: 42vw; height: 42vw; min-width: 300px; min-height: 300px; bottom: -14vw; right: -6vw; background: #ddd6fe; opacity: 0.7; }
+[data-theme='frost'] #root::before { width: 30vw; height: 30vw; min-width: 240px; min-height: 240px; top: 34%; left: 46%; background: #bae6fd; opacity: 0.5; }
+[data-theme='frost'] #root { position: relative; z-index: 1; isolation: isolate; }
+[data-theme='frost'] #root > * { position: relative; z-index: 1; }
+
+[data-theme='frost'] :is(.sidebar, .widget, .panel, .stat, .composer, .reply-form, .group-form, .customize,
+  .team-table-wrap, .calendar-detail, .month-day, .skeleton-card, .skeleton-table,
+  .new-token, .alert-section, .empty-icon) {
+  background: var(--glass); border-color: var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+/* Kept out of the list above: :is() takes the weight of its heaviest selector, and a two-class
+   one there would outweigh the single-class overrides further down. */
+[data-theme='frost'] .banner.info {
+  background: var(--glass-strong); border-color: var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--glass-shadow);
+}
+[data-theme='frost'] .sidebar { border-right-color: var(--glass-border); }
+[data-theme='frost'] .main-header {
+  background: rgb(255 255 255 / 0.4); border-bottom-color: var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+/* Glass inside glass would stack blurs: nested surfaces are a lighter pane without their own blur. */
+[data-theme='frost'] .widget .stat, [data-theme='frost'] .due-alert .alert-section {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background: rgb(255 255 255 / 0.55);
+}
+[data-theme='frost'] .available-widgets li { background: rgb(255 255 255 / 0.55); border-color: var(--glass-border); }
+[data-theme='frost'] .due-alert {
+  background: var(--glass-strong); border-color: var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 24px 64px rgb(15 23 42 / 0.18);
+}
+[data-theme='frost'] .due-alert::backdrop { background: rgb(15 23 42 / 0.25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+[data-theme='frost'] .stat.danger, [data-theme='frost'] .alert-section.danger { border-color: var(--danger); }
+[data-theme='frost'] .widget.editing { border-color: var(--border-strong); }
+[data-theme='frost'] .composer, [data-theme='frost'] .reply-form, [data-theme='frost'] .group-form, [data-theme='frost'] .customize { background: var(--glass-strong); }
+[data-theme='frost'] .composer:hover, [data-theme='frost'] .composer:focus-within { border-color: var(--border-strong); }
+[data-theme='frost'] .composer:focus-within { box-shadow: 0 0 0 1px var(--border-strong), var(--glass-shadow); }
+
+/* Fields are solid enough to read and type in whatever lies behind. */
+[data-theme='frost'] :is(.search, .input, .field input, .field select, .field textarea, .auth-form input, .token-form input,
+  .group-name input, .reply-form textarea, .sort select, .team-department select, .team-table select, .team-table input,
+  .forward-target select) { background: rgb(255 255 255 / 0.8); }
+[data-theme='frost'] .button.primary, [data-theme='frost'] .button.send { box-shadow: 0 1px 2px rgb(15 23 42 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.12); }
+[data-theme='frost'] .button.ghost { background: rgb(255 255 255 / 0.6); border-color: var(--glass-border); box-shadow: var(--glass-shadow); }
+[data-theme='frost'] .button.ghost:hover:not(:disabled) { background: #ffffff; border-color: var(--field-border); }
+[data-theme='frost'] .button.ghost.danger:hover:not(:disabled) { border-color: var(--danger); }
+[data-theme='frost'] .button:disabled { background: rgb(255 255 255 / 0.4); border-color: var(--glass-border); box-shadow: none; }
+[data-theme='frost'] .button, [data-theme='frost'] .nav-item, [data-theme='frost'] .chip, [data-theme='frost'] .task,
+[data-theme='frost'] .widget-line, [data-theme='frost'] .composer-field, [data-theme='frost'] .kind-badge { border-radius: 10px; }
+[data-theme='frost'] .nav-item.active { background: rgb(255 255 255 / 0.75); box-shadow: var(--glass-shadow); }
+[data-theme='frost'] .task:hover, [data-theme='frost'] .task:focus-within { background: rgb(255 255 255 / 0.55); box-shadow: var(--glass-shadow); }
+[data-theme='frost'] .task.readonly:hover { background: transparent; box-shadow: none; }
+[data-theme='frost'] .chip { background: rgb(255 255 255 / 0.6); border-color: var(--glass-border); }
+[data-theme='frost'] .chip.priority-high { border-color: var(--danger); }
+[data-theme='frost'] .chip.overdue { background: var(--danger); border-color: var(--danger); }
+[data-theme='frost'] .chip.reply, [data-theme='frost'] .chip.waiting { border-color: var(--warn); }
+[data-theme='frost'] button.chip.tag, [data-theme='frost'] .chip.tag-static { background: rgb(15 23 42 / 0.06); border-color: transparent; }
+[data-theme='frost'] button.chip.tag:hover { background: var(--text); }
+[data-theme='frost'] .team-table thead th { border-bottom-color: var(--border); }
+[data-theme='frost'] .team-table tbody tr:hover > *, [data-theme='frost'] .team-table tr.open > *, [data-theme='frost'] .member-tasks > td { background: rgb(255 255 255 / 0.5); }
+[data-theme='frost'] .skeleton { background: rgb(15 23 42 / 0.07); }
+[data-theme='frost'] .heat.level-0 { background: rgb(255 255 255 / 0.55); }
+[data-theme='frost'] .month-day.weekend { background: rgb(255 255 255 / 0.35); }
+[data-theme='frost'] .panel code { background: rgb(15 23 42 / 0.06); }
+[data-theme='frost'] .welcome-brand {
+  background: var(--glass); color: var(--muted); border-right: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--glass-shadow);
+}
+[data-theme='frost'] .welcome-brand .sidebar-brand, [data-theme='frost'] .welcome-tagline { color: var(--text); }
+[data-theme='frost'] .welcome-brand .brand-mark { background: var(--text); color: #ffffff; }
+[data-theme='frost'] .welcome-points li { border-left-color: var(--field-border); }
+@media (max-width: 640px), (max-width: 1024px) and (hover: none) {
+  /* The drawer slides over content, so it is nearly opaque. */
+  [data-theme='frost'] .sidebar { background: rgb(248 250 252 / 0.92); }
+  [data-theme='frost'] .cards .team-table tbody tr { background: var(--glass); border-color: var(--glass-border); box-shadow: var(--glass-shadow); }
+  [data-theme='frost'] .team-table-wrap.cards { background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (min-width: 641px) and (max-width: 1024px) and (hover: hover) {
+  [data-theme='frost'] .sidebar:hover, [data-theme='frost'] .sidebar:focus-within { background: rgb(248 250 252 / 0.9); }
+}
+/* Without backdrop blur the glass would be a thin wash over the shapes: make it nearly solid instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme='frost'] { --glass: rgb(255 255 255 / 0.9); --glass-strong: rgb(255 255 255 / 0.96); }
+}
+/* People who ask for less transparency or more contrast get solid surfaces. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root[data-theme='frost'] { --glass: #ffffff; --glass-strong: #ffffff; --glass-border: #cbd5e1; --glass-blur: none; --surface: #ffffff; }
+  [data-theme='frost'] body::before, [data-theme='frost'] body::after, [data-theme='frost'] #root::before { display: none; }
 }

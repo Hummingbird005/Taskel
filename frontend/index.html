@@ -5,6 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Taskel</title>
+    <script>
+      // The saved theme is applied before the first paint, so the page does not flash in another one.
+      try {
+        var theme = localStorage.getItem('taskel.theme')
+        if (theme === 'light' || theme === 'dark' || theme === 'frost') document.documentElement.dataset.theme = theme
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
