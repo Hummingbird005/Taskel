@@ -20,6 +20,7 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
 | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
+| **Arctic Frost** theme: frosted glass over soft pastel shapes<br>![Dashboard in the Arctic Frost theme, with translucent cards over a pale blue and lavender background](docs/screenshots/frost-dashboard.png) | **Arctic Frost**, task list<br>![Task list in the Arctic Frost theme](docs/screenshots/frost-tasks.png) |
 | **Loading**: skeletons in the shape of the content<br>![Dashboard with grey placeholder cards while it loads](docs/screenshots/loading.png) | **Empty state**: what is missing and why<br>![Empty Direcționate view with an icon, a title and an explanation](docs/screenshots/empty.png) |
 | **Tablet**: the sidebar becomes a rail that opens on hover<br><img src="docs/screenshots/tablet.png" alt="Dashboard at tablet width with an icon-only sidebar" width="70%"> | **Tables on a phone** become cards<br><img src="docs/screenshots/mobile-team.png" alt="Team workload on a phone, one card per person" width="48%"> |
 
@@ -32,6 +33,27 @@ follows the system setting), one blue accent for the active item and focus, and 
 means something: red for overdue, amber for warnings, green for done. Text is set in Inter, bundled with the
 app, on a 13/15/17/22/28 px scale and a 4 px spacing grid. The tokens are at the top of
 `frontend/src/index.css`.
+
+### Themes
+
+The theme is chosen at the bottom of the sidebar and remembered in the browser (so it also applies to the
+sign-in screen, and is separate on each device):
+
+- **Automată** (default) follows the system: light or dark.
+- **Luminoasă** and **Întunecată** fix the light or the dark theme whatever the system says.
+- **Arctic Frost** is a light glass theme in the spirit of macOS and visionOS: a pale slate background with
+  three out-of-focus pastel shapes (pale blue, lavender, ice), and cards, sidebar, tables and forms as frosted
+  glass — translucent white, a strong backdrop blur, a white edge with a highlight along the top and a very
+  faint shadow. Text stays dark slate and primary buttons stay solid dark, so legibility never depends on what
+  is behind the glass. Drawers and input fields are nearly opaque for the same reason.
+
+Where the browser cannot blur what is behind an element, and for people who ask their system for less
+transparency or more contrast, Arctic Frost falls back to solid white surfaces without the shapes.
+
+A theme is a set of tokens under `:root[data-theme='…']` in `frontend/src/index.css`; the list offered in the
+picker is in `frontend/src/lib/theme.ts`.
+
+### States and layout
 
 - **Loading** shows skeletons shaped like the content; buttons show a spinner and cannot be pressed twice.
 - **Empty** lists say what is missing and, where it makes sense, offer the action that fills them.

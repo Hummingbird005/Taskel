@@ -1,6 +1,7 @@
 import type { User } from '../api/auth'
 import type { TagCount, View } from '../lib/taskViews'
 import Icon, { type IconName } from './Icon'
+import ThemePicker from './ThemePicker'
 
 export interface ViewCounts {
   all: number
@@ -89,6 +90,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
         <ul className="nav-list">{item({ kind: 'integrations' }, 'plug', 'Integrări')}</ul>
       </div>
 
+      <ThemePicker />
       <div className="sidebar-user">
         <span className="avatar" aria-hidden="true">
           {user.displayName.charAt(0).toUpperCase()}
