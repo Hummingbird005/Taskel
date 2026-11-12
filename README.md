@@ -20,8 +20,31 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
 | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
+| **Loading**: skeletons in the shape of the content<br>![Dashboard with grey placeholder cards while it loads](docs/screenshots/loading.png) | **Empty state**: what is missing and why<br>![Empty Direcționate view with an icon, a title and an explanation](docs/screenshots/empty.png) |
+| **Tablet**: the sidebar becomes a rail that opens on hover<br><img src="docs/screenshots/tablet.png" alt="Dashboard at tablet width with an icon-only sidebar" width="70%"> | **Tables on a phone** become cards<br><img src="docs/screenshots/mobile-team.png" alt="Team workload on a phone, one card per person" width="48%"> |
 
 Screenshots use sample data: made-up people and tasks in a test domain.
+
+## Interface design
+
+The interface is minimal and high-contrast: near-black text on white (and the reverse in the dark theme, which
+follows the system setting), one blue accent for the active item and focus, and colour otherwise only where it
+means something: red for overdue, amber for warnings, green for done. Text is set in Inter, bundled with the
+app, on a 13/15/17/22/28 px scale and a 4 px spacing grid. The tokens are at the top of
+`frontend/src/index.css`.
+
+- **Loading** shows skeletons shaped like the content; buttons show a spinner and cannot be pressed twice.
+- **Empty** lists say what is missing and, where it makes sense, offer the action that fills them.
+- **Hover and focus**: rows, buttons and fields respond to the pointer, and everything interactive has a
+  visible keyboard focus ring. Row actions appear on hover or focus, and are always visible on touch screens.
+- **Responsive**: above 1024 px the sidebar is fixed; from 641 to 1024 px it is a rail of icons that opens on
+  hover or keyboard focus (a drawer on touch tablets); up to 640 px it is a drawer, the composer stacks, tables
+  become cards and touch targets are at least 44 px. The team calendar's heat map still scrolls sideways on a
+  phone.
+- Animations are switched off for people who ask their system to reduce motion.
+
+Shared pieces live in `frontend/src/components/ui`: `Button`, `Banner`, `Panel`, `DataTable`, `EmptyState` and
+the skeletons.
 
 ## Project layout
 

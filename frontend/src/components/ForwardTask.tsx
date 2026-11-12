@@ -7,6 +7,7 @@ import { GROUP_PREFIX } from '../lib/taskViews'
 import { tasksLabel } from '../lib/text'
 import { LIMITS, validateNotes } from '../lib/validation'
 import Icon from './Icon'
+import Button from './ui/Button'
 import TargetOptions from './TargetOptions'
 
 interface Props {
@@ -119,10 +120,10 @@ export default function ForwardTask({ task, people, groups, onSubmit, onCancel }
         </p>
       )}
       <div className="reply-form-actions">
-        <button type="submit" className="button send" disabled={!target || sending}>
+        <Button type="submit" variant="primary" disabled={!target} loading={sending}>
           <Icon name="forward" />
-          {sending ? 'Se trimite…' : 'Direcționează'}
-        </button>
+          Direcționează
+        </Button>
         <button type="button" className="button ghost" onClick={onCancel} disabled={sending}>
           Anulează
         </button>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { authApi, type User } from './api/auth'
 import AuthForm from './components/AuthForm'
 import Workspace from './components/Workspace'
+import { Skeleton } from './components/ui/Skeleton'
 
 type Session =
   | { status: 'loading' }
@@ -68,7 +69,15 @@ export default function App() {
         </ul>
       </aside>
       <main className="welcome-main">
-        {session.status === 'loading' && <p className="empty">Se încarcă…</p>}
+        {session.status === 'loading' && (
+          <div className="auth-form" role="status">
+            <span className="visually-hidden">Se încarcă…</span>
+            <Skeleton width={180} height={26} />
+            <Skeleton height={40} />
+            <Skeleton height={40} />
+            <Skeleton height={42} />
+          </div>
+        )}
         {session.status === 'unreachable' && (
           <p className="error" role="alert">
             Nu am putut contacta serverul Taskel. Verifică dacă este pornit.

@@ -1,3 +1,6 @@
+import DataTable from './ui/DataTable'
+import EmptyState from './ui/EmptyState'
+import { TableSkeleton, TaskListSkeleton } from './ui/Skeleton'
 import { useEffect, useState } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
@@ -65,12 +68,12 @@ export default function Team({ user, today, onSessionExpired }: Props) {
 
   if (error) {
     return (
-      <p className="empty error" role="alert">
+      <EmptyState error title="Echipa nu a putut fi încărcată">
         {error}
-      </p>
+      </EmptyState>
     )
   }
-  if (!team) return <p className="empty">Se încarcă…</p>
+  if (!team) return <TableSkeleton />
 
   const canChooseDepartment = user.role === 'admin' && team.departments.length > 0
   const departmentPicker = canChooseDepartment && (
@@ -98,13 +101,13 @@ export default function Team({ user, today, onSessionExpired }: Props) {
     return (
       <div className="team">
         {departmentPicker}
-        <p className="empty">
+        <EmptyState icon="users" title="Nicio echipă de afișat">
           {user.role === 'admin'
             ? team.departments.length > 0
               ? 'Alege un departament ca să îi vezi încărcarea.'
               : 'Niciun utilizator nu are încă un departament. Setează departamentele din „Utilizatori”.'
             : 'Nu ai un departament setat, așa că nu există o echipă de afișat. Cere unui administrator să îl seteze.'}
-        </p>
+        </EmptyState>
       </div>
     )
   }
@@ -158,8 +161,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
             {tile('Rezolvate, 30 de zile', totals.completedLast30Days, 'checkCircle')}
           </div>
 
-          <section className="team-table-wrap" aria-label="Încărcarea pe persoane">
-            <table className="team-table">
+          <DataTable label="Încărcarea pe persoane">
               <thead>
                 <tr>
                   <th scope="col">Persoană</th>
@@ -207,7 +209,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
                           </span>
                         </button>
                       </th>
-                      <td className="load-col">
+                      <td className="load-col" data-label="Deschise">
                         <span className="load">
                           <span className="meter-track" aria-hidden="true">
                             <span className="meter-bar" style={{ width: `${(stats.open / maxOpen) * 100}%` }} />
@@ -215,7 +217,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
                           <span className="meter-figure">{stats.open}</span>
                         </span>
                       </td>
-                      <td className="num">
+                      <td className="num" data-label="Întârziate">
                         {stats.overdue > 0 ? (
                           <span className="chip overdue">
                             <Icon name="alert" size={13} />
@@ -226,11 +228,11 @@ export default function Team({ user, today, onSessionExpired }: Props) {
                           0
                         )}
                       </td>
-                      <td className="num">{stats.dueToday}</td>
-                      <td className="num">{stats.dueNext7Days}</td>
-                      <td className="num">{stats.highPriorityOpen}</td>
-                      <td className="num">{stats.completedLast7Days}</td>
-                      <td className="num">{stats.completedLast30Days}</td>
+                      <td className="num" data-label="Azi">{stats.dueToday}</td>
+                      <td className="num" data-label="Următoarele 7 zile">{stats.dueNext7Days}</td>
+                      <td className="num" data-label="Prioritate ridicată">{stats.highPriorityOpen}</td>
+                      <td className="num" data-label="Rezolvate, 7 zile">{stats.completedLast7Days}</td>
+                      <td className="num" data-label="Rezolvate, 30 de zile">{stats.completedLast30Days}</td>
                     </tr>,
                     isOpen && (
                       <tr key={`${member.user.id}-tasks`} className="member-tasks">
@@ -242,8 +244,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
                   ]
                 })}
               </tbody>
-            </table>
-          </section>
+          </DataTable>
           <p className="muted team-note">
             Fiecărei persoane i se numără task-urile de care răspunde: cele alocate ei și cele proprii, nealocate altcuiva.
             Poți doar să le citești.
@@ -255,15 +256,35 @@ export default function Team({ user, today, onSessionExpired }: Props) {
 }
 
 function MemberTaskList({ state, today, name }: { state: MemberTasks; today: string; name: string }) {
-  if (state.status === 'loading') return <p className="muted">Se încarcă…</p>
-  if (state.status === 'error') return <p className="error">Nu am putut încărca task-urile.</p>
+  if (state.status === 'loading') {
+    return (
+      <div className="member-task-lists">
+        <TaskListSkeleton rows={3} />
+      </div>
+    )
+  }
+  if (state.status === 'error') {
+    return (
+      <div className="member-task-lists">
+        <p className="error" role="alert">
+          Nu am putut încărca task-urile.
+        </p>
+      </div>
+    )
+  }
 
   const open = state.tasks.filter((t) => !t.isCompleted)
   const completed = state.tasks
     .filter((t) => t.isCompleted)
     .sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))
     .slice(0, 10)
-  if (state.tasks.length === 0) return <p className="muted">{name} nu are niciun task.</p>
+  if (state.tasks.length === 0) {
+    return (
+      <EmptyState compact icon="inbox" title="Niciun task">
+        {name} nu are niciun task.
+      </EmptyState>
+    )
+  }
 
   return (
     <div className="member-task-lists">

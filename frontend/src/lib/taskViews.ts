@@ -176,6 +176,31 @@ export function viewTitle(view: View): string {
   }
 }
 
+/** The headline and pictogram of a view with nothing in it; `emptyMessage` gives the sentence under it. */
+export function emptyTitle(view: View, searching: boolean): { title: string; icon: 'search' | 'inbox' | 'sun' | 'calendar' | 'checkCircle' | 'send' | 'hand' | 'forward' | 'hash' } {
+  if (searching) return { title: 'Niciun rezultat', icon: 'search' }
+  switch (view.kind) {
+    case 'today':
+      return { title: 'Nimic pentru azi', icon: 'sun' }
+    case 'upcoming':
+      return { title: 'Nimic programat', icon: 'calendar' }
+    case 'overdue':
+      return { title: 'Ești la zi', icon: 'checkCircle' }
+    case 'completed':
+      return { title: 'Nimic finalizat', icon: 'checkCircle' }
+    case 'delegated':
+      return { title: 'Nimic delegat', icon: 'send' }
+    case 'claimable':
+      return { title: 'Nimic de preluat', icon: 'hand' }
+    case 'forwarded':
+      return { title: 'Nimic direcționat', icon: 'forward' }
+    case 'tag':
+      return { title: 'Etichetă fără task-uri', icon: 'hash' }
+    default:
+      return { title: 'Niciun task', icon: 'inbox' }
+  }
+}
+
 export function emptyMessage(view: View, searching: boolean): string {
   if (searching) return 'Niciun task nu se potrivește căutării.'
   switch (view.kind) {

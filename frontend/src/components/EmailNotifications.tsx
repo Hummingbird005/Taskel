@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
+import Panel from './ui/Panel'
 import { notificationsApi, type NotificationSettings } from '../api/notifications'
 
 /** The user's choice about being emailed when a task reaches them. Saved as soon as it changes. */
@@ -42,8 +43,7 @@ export default function EmailNotifications({ onSessionExpired }: { onSessionExpi
   }
 
   return (
-    <section className="panel" aria-labelledby="notifications-title">
-      <h2 id="notifications-title">Notificări pe email</h2>
+    <Panel title="Notificări pe email">
       <p className="muted">
         Primești un email când cineva îți alocă sau îți direcționează un task, ori când un task este dat unui grup din
         care faci parte.
@@ -75,6 +75,6 @@ export default function EmailNotifications({ onSessionExpired }: { onSessionExpi
           )}
         </>
       )}
-    </section>
+    </Panel>
   )
 }
