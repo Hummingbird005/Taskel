@@ -34,7 +34,24 @@ public class DirectoryAccounts(TaskelDbContext db)
         }
 
         user.DisplayName = directoryUser.DisplayName;
+        // The directory decides the department when it has one, and the role when a group is configured.
+        if (directoryUser.Department is not null) user.Department = directoryUser.Department;
+        user.Role = RoleFromDirectory(user.Role, directoryUser);
         await db.SaveChangesAsync(ct);
         return user;
+    }
+
+    /// <summary>
+    /// A configured group both grants and withdraws its role. A role no group speaks for is left
+    /// as it is, so one given by hand in Taskel survives.
+    /// </summary>
+    private static UserRole RoleFromDirectory(UserRole current, DirectoryUser directoryUser)
+    {
+        var role = current;
+        if (directoryUser.IsAdmin == false && role == UserRole.Admin) role = UserRole.User;
+        if (directoryUser.IsManager == false && role == UserRole.Manager) role = UserRole.User;
+        if (directoryUser.IsManager == true && role == UserRole.User) role = UserRole.Manager;
+        if (directoryUser.IsAdmin == true) role = UserRole.Admin;
+        return role;
     }
 }

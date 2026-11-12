@@ -1,3 +1,5 @@
+using Taskel.Api.Models;
+
 namespace Taskel.Api.Directory;
 
 public enum DirectorySecurity
@@ -26,6 +28,12 @@ public class DirectoryOptions
     public string? BaseDn { get; set; }
     /// <summary>When set, only direct members of this group (by distinguished name) may sign in.</summary>
     public string? RequiredGroupDn { get; set; }
+    /// <summary>The attribute holding a user's department. Read at every sign-in when the user has one.</summary>
+    public string DepartmentAttribute { get; set; } = "department";
+    /// <summary>When set, direct members of this group are managers in Taskel, and others are not.</summary>
+    public string? ManagerGroupDn { get; set; }
+    /// <summary>When set, direct members of this group are administrators in Taskel, and others are not.</summary>
+    public string? AdminGroupDn { get; set; }
     public int TimeoutSeconds { get; set; } = 10;
 
     public bool IsUsable =>
@@ -41,4 +49,15 @@ public class AuthOptions
     public bool AllowLocalRegistration { get; set; } = true;
     /// <summary>Sign-in attempts allowed per minute from one address, to slow password guessing and protect AD lockout.</summary>
     public int LoginAttemptsPerMinute { get; set; } = 10;
+    /// <summary>
+    /// Accounts with these email addresses are always administrators. This is how the first
+    /// administrator is named; they can then give roles to others from the interface.
+    /// </summary>
+    public string[] AdminEmails { get; set; } = [];
+
+    /// <summary>The role a user acts with: the configured administrators, otherwise the account's own role.</summary>
+    public UserRole EffectiveRole(User user) => IsConfiguredAdmin(user) ? UserRole.Admin : user.Role;
+
+    public bool IsConfiguredAdmin(User user) =>
+        AdminEmails.Any(email => string.Equals(email?.Trim(), user.Email, StringComparison.OrdinalIgnoreCase));
 }

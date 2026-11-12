@@ -62,7 +62,7 @@ public class AuthController(
         }
 
         await SignInAsync(user);
-        return Ok(UserResponse.From(user));
+        return Ok(ToResponse(user));
     }
 
     [HttpPost("login")]
@@ -87,7 +87,7 @@ public class AuthController(
         }
 
         await SignInAsync(user!);
-        return Ok(UserResponse.From(user!));
+        return Ok(ToResponse(user!));
     }
 
     /// <summary>Signs in with an Active Directory account. The Taskel account is created on first use.</summary>
@@ -117,7 +117,7 @@ public class AuthController(
         }
 
         await SignInAsync(user);
-        return Ok(UserResponse.From(user));
+        return Ok(ToResponse(user));
     }
 
     [HttpPost("logout")]
@@ -139,8 +139,10 @@ public class AuthController(
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Unauthorized();
         }
-        return Ok(UserResponse.From(user));
+        return Ok(ToResponse(user));
     }
+
+    private UserResponse ToResponse(User user) => UserResponse.From(user, authOptions.Value.EffectiveRole(user));
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
 

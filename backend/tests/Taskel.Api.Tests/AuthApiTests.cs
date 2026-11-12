@@ -18,7 +18,7 @@ public class AuthApiTests(TaskelApiFactory factory)
         var registered = await client.PostAsJsonAsync("/api/auth/register", new RegisterRequest(email, "correct-horse"));
         Assert.Equal(HttpStatusCode.OK, registered.StatusCode);
 
-        var me = await client.GetFromJsonAsync<UserResponse>("/api/auth/me");
+        var me = await client.GetApiAsync<UserResponse>("/api/auth/me");
         Assert.Equal(email, me!.Email);
     }
 
