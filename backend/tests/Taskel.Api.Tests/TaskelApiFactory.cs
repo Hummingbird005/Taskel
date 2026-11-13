@@ -35,6 +35,8 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Taskel", ConnectionString);
         builder.UseSetting("Database:MigrateOnStartup", "false");
+        // The suite starts from an empty database; the sample data has its own test.
+        builder.UseSetting("Seed:DemoData", "false");
         builder.UseSetting("ActiveDirectory:Enabled", "true");
         builder.UseSetting("ActiveDirectory:Host", "dc.corp.example.com");
         builder.UseSetting("ActiveDirectory:Domain", "corp.example.com");
