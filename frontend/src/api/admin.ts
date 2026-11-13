@@ -9,6 +9,7 @@ export interface AdminUser {
   role: UserRole
   department: string | null
   isDirectoryAccount: boolean
+  isKeycloakAccount: boolean
   /** True when the role comes from the server's configuration and cannot be changed here. */
   roleIsFixed: boolean
 }

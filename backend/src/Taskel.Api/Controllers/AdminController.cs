@@ -12,16 +12,16 @@ namespace Taskel.Api.Controllers;
 /// <summary>Roles and departments, for administrators.</summary>
 [ApiController]
 [Authorize]
+[AdminOnly("Only administrators can manage users.")]
 [Route("api/admin")]
 public class AdminController(
-    TaskelDbContext db, CurrentUser currentUser, IOptions<AuthOptions> authOptions,
+    TaskelDbContext db, IOptions<AuthOptions> authOptions,
     AttachmentStore attachments, IOptions<AttachmentOptions> attachmentOptions) : ControllerBase
 {
     /// <summary>The attachment size limit, with the server default it replaces.</summary>
     [HttpGet("settings/attachments")]
     public async Task<ActionResult<AttachmentSettingsResponse>> GetAttachmentSettings(CancellationToken ct)
     {
-        if (await RequireAdminAsync(ct) is { } refusal) return refusal;
         return Ok(await AttachmentSettingsAsync(ct));
     }
 
@@ -29,7 +29,6 @@ public class AdminController(
     public async Task<ActionResult<AttachmentSettingsResponse>> UpdateAttachmentSettings(
         UpdateAttachmentSettingsRequest request, CancellationToken ct)
     {
-        if (await RequireAdminAsync(ct) is { } refusal) return refusal;
         await attachments.SetMaxFileSizeMbAsync(request.MaxFileSizeMb, ct);
         return Ok(await AttachmentSettingsAsync(ct));
     }
@@ -42,7 +41,6 @@ public class AdminController(
     [HttpGet("users")]
     public async Task<ActionResult<IEnumerable<AdminUserResponse>>> GetUsers(CancellationToken ct)
     {
-        if (await RequireAdminAsync(ct) is { } refusal) return refusal;
 
         var users = await db.Users.AsNoTracking().ToListAsync(ct);
         return Ok(users.Select(ToResponse)
@@ -53,7 +51,6 @@ public class AdminController(
     [HttpPut("users/{id:guid}")]
     public async Task<ActionResult<AdminUserResponse>> UpdateUser(Guid id, UpdateUserRequest request, CancellationToken ct)
     {
-        if (await RequireAdminAsync(ct) is { } refusal) return refusal;
 
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user is null) return NotFound();
@@ -73,14 +70,5 @@ public class AdminController(
 
     private AdminUserResponse ToResponse(User user) => new(
         user.Id, user.Email, user.DisplayName ?? user.Email, authOptions.Value.EffectiveRole(user), user.Department,
-        user.DirectoryId is not null, authOptions.Value.IsConfiguredAdmin(user));
-
-    private async Task<ActionResult?> RequireAdminAsync(CancellationToken ct)
-    {
-        var me = await currentUser.GetAsync(User, ct);
-        if (me is null) return Unauthorized();
-        return me.Value.Role == UserRole.Admin
-            ? null
-            : Problem(statusCode: StatusCodes.Status403Forbidden, title: "Only administrators can manage users.");
-    }
+        user.DirectoryId is not null, authOptions.Value.IsConfiguredAdmin(user), user.KeycloakSubject is not null);
 }

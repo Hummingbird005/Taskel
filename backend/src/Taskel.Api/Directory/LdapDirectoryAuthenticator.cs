@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Options;
 using Novell.Directory.Ldap;
+using Taskel.Api.Integrations;
 using Taskel.Api.Validation;
 
 namespace Taskel.Api.Directory;
@@ -9,14 +9,17 @@ namespace Taskel.Api.Directory;
 /// (user@domain plus their password), so no service account is needed, then reads the
 /// user's own entry for the email, display name and objectGUID.
 /// </summary>
-public class LdapDirectoryAuthenticator(IOptions<DirectoryOptions> options, ILogger<LdapDirectoryAuthenticator> logger)
+public class LdapDirectoryAuthenticator(IntegrationSettings settings, ILogger<LdapDirectoryAuthenticator> logger)
     : IDirectoryAuthenticator
 {
     private static readonly string[] BaseAttributes = ["objectGUID", "mail", "userPrincipalName", "displayName", "memberOf"];
 
-    public async Task<DirectoryUser?> AuthenticateAsync(string username, string password, CancellationToken ct = default)
+    public Task<DirectoryUser?> AuthenticateAsync(string username, string password, CancellationToken ct = default) =>
+        AuthenticateAsync(settings.Directory, username, password, ct);
+
+    public async Task<DirectoryUser?> AuthenticateAsync(
+        DirectoryOptions directory, string username, string password, CancellationToken ct = default)
     {
-        var directory = options.Value;
         if (!directory.IsUsable) throw new DirectoryUnavailableException("Active Directory sign-in is not configured.");
 
         // An empty password makes an LDAP server treat the bind as anonymous and report success.

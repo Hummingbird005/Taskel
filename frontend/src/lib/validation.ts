@@ -37,7 +37,7 @@ function isRefusedControl(code: number): boolean {
  * Finds control characters, checked by code rather than with a regular expression, so the pattern
  * holds no invisible characters itself.
  */
-const CONTROL = {
+export const CONTROL = {
   test: (text: string) => {
     for (let i = 0; i < text.length; i++) if (isRefusedControl(text.charCodeAt(i))) return true
     return false

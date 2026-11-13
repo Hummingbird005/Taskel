@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Taskel.Api.Email;
 
 /// <summary>Bound from the <c>Email:Smtp</c> configuration section.</summary>
@@ -17,7 +19,9 @@ public class SmtpOptions
     /// <summary>Only for local test servers that do not offer TLS. Never disable for a real mailbox.</summary>
     public bool RequireTls { get; set; } = true;
 
+    [JsonIgnore]
     public string? EffectiveFromAddress => string.IsNullOrWhiteSpace(FromAddress) ? Username : FromAddress;
 
+    [JsonIgnore]
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Host) && !string.IsNullOrWhiteSpace(EffectiveFromAddress);
 }

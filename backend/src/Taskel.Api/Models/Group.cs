@@ -8,7 +8,9 @@ public enum GroupKind
     /// <summary>Created and maintained in Taskel by an administrator or a manager.</summary>
     App = 0,
     /// <summary>Mirrors an Active Directory group; its members are learned as they sign in.</summary>
-    Directory = 1
+    Directory = 1,
+    /// <summary>Mirrors a Keycloak group; its members are learned as they sign in.</summary>
+    Keycloak = 2
 }
 
 /// <summary>A set of users a task can be given to. Any member can then take the task.</summary>
@@ -20,7 +22,10 @@ public class Group
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public GroupKind Kind { get; set; }
-    /// <summary>Distinguished name of the Active Directory group. Null for application groups.</summary>
+    /// <summary>
+    /// Identifies the group outside Taskel: the distinguished name of an Active Directory group, or
+    /// <c>keycloak:</c> and the group's path for a Keycloak group. Null for application groups.
+    /// </summary>
     public string? DirectoryDn { get; set; }
     /// <summary>Who created an application group. A manager manages only the groups they created.</summary>
     public Guid? CreatedById { get; set; }

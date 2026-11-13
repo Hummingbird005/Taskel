@@ -37,6 +37,17 @@ export function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+/** Date and time of a moment, e.g. "13 nov. 2026, 18:20". */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString(LOCALE, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 /** "miercuri, 11 noiembrie". */
 export function formatLongDate(iso: string): string {
   return fromIso(iso).toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })

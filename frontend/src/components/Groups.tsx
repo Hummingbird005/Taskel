@@ -5,7 +5,7 @@ import { TableSkeleton } from './ui/Skeleton'
 import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
-import { groupsApi, type GroupDetail, type GroupListItem } from '../api/groups'
+import { GROUP_KIND_LABEL, groupsApi, type GroupDetail, type GroupListItem } from '../api/groups'
 import type { UserSummary } from '../api/users'
 import { countLabel } from '../lib/text'
 import { LIMITS, validateGroupName } from '../lib/validation'
@@ -214,7 +214,7 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
                   <th scope="row">{group.name}</th>
                   <td data-label="Tip">
                     <span className={`kind-badge ${group.kind}`}>
-                      {group.kind === 'directory' ? 'Active Directory' : 'Aplicație'}
+                      {GROUP_KIND_LABEL[group.kind]}
                     </span>
                   </td>
                   <td className="num" data-label="Membri">{group.memberCount}</td>
@@ -298,9 +298,9 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
         <section className="group-form">
           <h3>{panel.group.name}</h3>
           <p className="muted">
-            {panel.group.kind === 'directory'
-              ? 'Grup din Active Directory: componența se schimbă acolo. Aici apar membrii care s-au conectat cel puțin o dată la Taskel.'
-              : 'Grup creat de altcineva: îl poți folosi, dar nu îl poți modifica.'}
+            {panel.group.kind === 'app'
+              ? 'Grup creat de altcineva: îl poți folosi, dar nu îl poți modifica.'
+              : `Grup din ${GROUP_KIND_LABEL[panel.group.kind]}: componența se schimbă acolo. Aici apar membrii care s-au conectat cel puțin o dată la Taskel.`}
           </p>
           {panel.group.members.length === 0 ? (
             <p className="muted">Niciun membru.</p>

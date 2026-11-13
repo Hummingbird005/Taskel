@@ -33,10 +33,13 @@ export default function App() {
   }, [])
 
   async function logout() {
+    let keycloakLogout: string | null = null
     try {
-      await authApi.logout()
+      keycloakLogout = await authApi.logout()
     } finally {
-      setSession({ status: 'signedOut' })
+      // A Keycloak session is ended there too; otherwise the next sign-in would go through without a password.
+      if (keycloakLogout) window.location.assign(keycloakLogout)
+      else setSession({ status: 'signedOut' })
     }
   }
 

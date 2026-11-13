@@ -26,6 +26,10 @@ public interface IDirectoryAuthenticator
     /// </summary>
     /// <exception cref="DirectoryUnavailableException">The directory could not be reached or is misconfigured.</exception>
     Task<DirectoryUser?> AuthenticateAsync(string username, string password, CancellationToken ct = default);
+
+    /// <summary>The same check against the given settings instead of the saved ones, to try them before saving.</summary>
+    /// <exception cref="DirectoryUnavailableException">The directory could not be reached or is misconfigured.</exception>
+    Task<DirectoryUser?> AuthenticateAsync(DirectoryOptions directory, string username, string password, CancellationToken ct = default);
 }
 
 public class DirectoryUnavailableException(string message, Exception? inner = null) : Exception(message, inner);

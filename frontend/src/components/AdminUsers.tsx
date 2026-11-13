@@ -1,4 +1,3 @@
-import AttachmentSettingsPanel from './AttachmentSettingsPanel'
 import DataTable from './ui/DataTable'
 import EmptyState from './ui/EmptyState'
 import { TableSkeleton } from './ui/Skeleton'
@@ -8,17 +7,20 @@ import type { User, UserRole } from '../api/auth'
 import { ApiError } from '../api/client'
 import { validateDepartment } from '../lib/validation'
 
+function accountKind(account: AdminUser): string {
+  if (account.isKeycloakAccount) return 'Keycloak'
+  return account.isDirectoryAccount ? 'Domeniu' : 'Local'
+}
+
 interface Props {
   user: User
   onSessionExpired: () => void
   /** Called after the signed-in user's own account changed, so the rest of the app can catch up. */
   onOwnAccountChanged: () => void
-  /** Called after the attachment size limit was changed. */
-  onAttachmentLimitChanged: () => void
 }
 
 /** The administrator's screen: each account's role and department. */
-export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged, onAttachmentLimitChanged }: Props) {
+export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged }: Props) {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
@@ -117,7 +119,7 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
                       {account.displayName !== account.email && <small className="muted">{account.email}</small>}
                     </span>
                   </th>
-                  <td data-label="Cont">{account.isDirectoryAccount ? 'Domeniu' : 'Local'}</td>
+                  <td data-label="Cont">{accountKind(account)}</td>
                   <td data-label="Rol">
                     <select
                       value={account.role}
@@ -174,10 +176,9 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
         ))}
       </datalist>
       <p className="muted team-note">
-        Pentru conturile de domeniu, departamentul și rolurile stabilite prin grupuri în Active Directory se reaplică la
-        fiecare conectare și pot înlocui ce setezi aici.
+        Pentru conturile de domeniu și Keycloak, departamentul și rolurile stabilite în Active Directory sau în Keycloak se
+        reaplică la fiecare conectare și pot înlocui ce setezi aici.
       </p>
-      <AttachmentSettingsPanel onSessionExpired={onSessionExpired} onChanged={onAttachmentLimitChanged} />
     </div>
   )
 }

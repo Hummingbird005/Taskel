@@ -1,24 +1,26 @@
 using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
-using Microsoft.Extensions.Options;
 using MimeKit;
+using Taskel.Api.Integrations;
 
 namespace Taskel.Api.Email;
 
-public class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSender> logger) : IEmailSender
+public class SmtpEmailSender(IntegrationSettings settings, ILogger<SmtpEmailSender> logger) : IEmailSender
 {
     private const int TimeoutMilliseconds = 15_000;
 
     public Task SendReplyAsync(ReplyEmail reply, CancellationToken ct = default) =>
-        SendAsync(smtp => BuildMessage(reply, smtp), "reply", ct);
+        SendAsync(settings.Smtp, smtp => BuildMessage(reply, smtp), "reply", ct);
 
     public Task SendAsync(EmailMessage message, CancellationToken ct = default) =>
-        SendAsync(smtp => BuildMessage(message, smtp), "notification", ct);
+        SendAsync(settings.Smtp, smtp => BuildMessage(message, smtp), "notification", ct);
 
-    private async Task SendAsync(Func<SmtpOptions, MimeMessage> build, string kind, CancellationToken ct)
+    public Task SendTestAsync(EmailMessage message, SmtpOptions smtp, CancellationToken ct = default) =>
+        SendAsync(smtp, options => BuildMessage(message, options), "test message", ct);
+
+    private async Task SendAsync(SmtpOptions smtp, Func<SmtpOptions, MimeMessage> build, string kind, CancellationToken ct)
     {
-        var smtp = options.Value;
         if (!smtp.IsConfigured) throw new EmailNotConfiguredException();
 
         try

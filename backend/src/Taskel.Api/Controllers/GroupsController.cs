@@ -167,7 +167,10 @@ public class GroupsController(TaskelDbContext db, CurrentUser currentUser) : Con
         Problem(statusCode: StatusCodes.Status403Forbidden, title: "Only managers and administrators can manage groups.");
 
     private ObjectResult CannotManage(Group group) =>
-        Problem(statusCode: StatusCodes.Status403Forbidden, title: group.Kind == GroupKind.Directory
-            ? "Active Directory groups are managed in Active Directory."
-            : "You can only manage the groups you created.");
+        Problem(statusCode: StatusCodes.Status403Forbidden, title: group.Kind switch
+        {
+            GroupKind.Directory => "Active Directory groups are managed in Active Directory.",
+            GroupKind.Keycloak => "Keycloak groups are managed in Keycloak.",
+            _ => "You can only manage the groups you created."
+        });
 }

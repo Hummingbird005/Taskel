@@ -82,6 +82,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
               {item({ kind: 'team' }, 'users', 'Echipă')}
               {item({ kind: 'groups' }, 'hand', 'Grupuri')}
               {user.role === 'admin' && item({ kind: 'admin' }, 'shield', 'Utilizatori')}
+              {user.role === 'admin' && item({ kind: 'settings' }, 'settings', 'Setări sistem')}
             </ul>
           </>
         )}

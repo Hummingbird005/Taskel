@@ -1,5 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import type { GroupListItem } from '../api/groups'
+import type { GroupKind, GroupListItem } from '../api/groups'
+
+/** Added after "grup" in the search results, to tell where the group comes from. */
+const GROUP_SUFFIX: Record<GroupKind, string> = { app: '', directory: ' AD', keycloak: ' Keycloak' }
 import type { UserSummary } from '../api/users'
 import { GROUP_PREFIX } from '../lib/taskViews'
 import { countLabel } from '../lib/text'
@@ -75,7 +78,7 @@ export default function TargetPicker({ people, groups, value, onChange, label, p
         .map((g): Option => ({
           value: GROUP_PREFIX + g.id,
           label: g.name,
-          detail: `grup${g.kind === 'directory' ? ' AD' : ''} · ${countLabel(g.memberCount, 'membru', 'membri')}`,
+          detail: `grup${GROUP_SUFFIX[g.kind]} · ${countLabel(g.memberCount, 'membru', 'membri')}`,
           kind: 'group',
         })),
     ]

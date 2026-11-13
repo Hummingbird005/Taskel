@@ -16,6 +16,7 @@ import {
   isMine,
   isOverdue,
   matchesSearch,
+  PAGE_VIEWS,
   tagCounts,
   tasksInView,
   viewHint,
@@ -38,6 +39,7 @@ import Sidebar from './Sidebar'
 import TaskDetail, { type TaskActions } from './TaskDetail'
 import Team from './Team'
 import AdminUsers from './AdminUsers'
+import SystemSettings from './SystemSettings'
 import TaskRow from './TaskRow'
 
 /** What to tell the user when completing an email task with a reply failed. */
@@ -398,7 +400,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   }
   const isDashboard = view.kind === 'dashboard'
   const showsTasks =
-    !isDashboard && view.kind !== 'integrations' && view.kind !== 'team' && view.kind !== 'groups' && view.kind !== 'admin'
+    !isDashboard && !PAGE_VIEWS.has(view.kind)
   // New tasks are written in a dialog, opened from the header of the dashboard and of every task list.
   const canAdd = !loading && (isDashboard || showsTasks)
   const newTaskButton = canAdd && (
@@ -439,7 +441,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
         onClick={() => setSidebarOpen(false)}
       />
 
-      <main className={`main${isDashboard || view.kind === 'team' || view.kind === 'groups' || view.kind === 'admin' ? ' wide' : ''}`}>
+      <main className={`main${isDashboard || (PAGE_VIEWS.has(view.kind) && view.kind !== 'integrations') ? ' wide' : ''}`}>
         <header className="main-header">
           <button
             type="button"
@@ -519,10 +521,10 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           ) : view.kind === 'groups' ? (
             <Groups user={user} onSessionExpired={onSessionExpired} onChanged={() => void refresh()} />
           ) : view.kind === 'admin' ? (
-            <AdminUsers
-              user={user}
+            <AdminUsers user={user} onSessionExpired={onSessionExpired} onOwnAccountChanged={onUserChanged} />
+          ) : view.kind === 'settings' ? (
+            <SystemSettings
               onSessionExpired={onSessionExpired}
-              onOwnAccountChanged={onUserChanged}
               onAttachmentLimitChanged={() => void attachmentsApi.limits().then(setAttachmentLimits).catch(() => {})}
             />
           ) : loading ? (

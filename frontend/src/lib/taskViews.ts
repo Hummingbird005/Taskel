@@ -16,6 +16,7 @@ export type View =
   | { kind: 'team' }
   | { kind: 'groups' }
   | { kind: 'admin' }
+  | { kind: 'settings' }
 
 export type SortBy = 'dueDate' | 'priority' | 'created'
 
@@ -62,6 +63,7 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
     case 'team':
     case 'groups':
     case 'admin':
+    case 'settings':
       return []
     default:
       // 'all', 'delegated', 'claimable' and 'forwarded' show everything they are given.
@@ -143,6 +145,9 @@ export function tagCounts(tasks: TaskItem[]): TagCount[] {
     .sort((a, b) => a.tag.localeCompare(b.tag))
 }
 
+/** Views that show a page of their own rather than a list of tasks. */
+export const PAGE_VIEWS: ReadonlySet<View['kind']> = new Set(['integrations', 'team', 'groups', 'admin', 'settings'])
+
 export function viewTitle(view: View): string {
   switch (view.kind) {
     case 'dashboard':
@@ -173,6 +178,8 @@ export function viewTitle(view: View): string {
       return 'Echipă'
     case 'admin':
       return 'Utilizatori'
+    case 'settings':
+      return 'Setări sistem'
   }
 }
 

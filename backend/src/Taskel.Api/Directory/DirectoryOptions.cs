@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Directory;
@@ -43,6 +44,7 @@ public class DirectoryOptions
     public string? GroupsBaseDn { get; set; }
     public int TimeoutSeconds { get; set; } = 10;
 
+    [JsonIgnore]
     public bool IsUsable =>
         Enabled && !string.IsNullOrWhiteSpace(Host) && !string.IsNullOrWhiteSpace(Domain) && !string.IsNullOrWhiteSpace(BaseDn);
 }

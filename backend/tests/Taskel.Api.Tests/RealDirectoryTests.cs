@@ -34,7 +34,7 @@ public class RealDirectoryTests
     private static readonly string Domain = Env("TASKEL_TEST_AD_DOMAIN", "corp.example.com");
     private static readonly string BaseDn = Env("TASKEL_TEST_AD_BASE_DN", "DC=corp,DC=example,DC=com");
 
-    private static LdapDirectoryAuthenticator Create(Action<DirectoryOptions>? configure = null)
+    private static LdapWithSettings Create(Action<DirectoryOptions>? configure = null)
     {
         var options = new DirectoryOptions
         {
@@ -45,7 +45,7 @@ public class RealDirectoryTests
             BaseDn = BaseDn
         };
         configure?.Invoke(options);
-        return new LdapDirectoryAuthenticator(Options.Create(options), NullLogger<LdapDirectoryAuthenticator>.Instance);
+        return new LdapWithSettings(options);
     }
 
     [DirectoryFact]

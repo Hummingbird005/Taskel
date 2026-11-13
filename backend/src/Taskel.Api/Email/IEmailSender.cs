@@ -19,6 +19,11 @@ public interface IEmailSender
     /// <exception cref="EmailNotConfiguredException">No SMTP server is configured.</exception>
     /// <exception cref="EmailSendException">The message could not be handed to the SMTP server.</exception>
     Task SendReplyAsync(ReplyEmail reply, CancellationToken ct = default);
+
+    /// <summary>Sends through the given server settings instead of the saved ones, to try them before saving.</summary>
+    /// <exception cref="EmailNotConfiguredException">The settings name no server or sender.</exception>
+    /// <exception cref="EmailSendException">The message could not be handed to the SMTP server.</exception>
+    Task SendTestAsync(EmailMessage message, SmtpOptions smtp, CancellationToken ct = default);
 }
 
 public class EmailNotConfiguredException() : Exception("Email sending is not configured.");

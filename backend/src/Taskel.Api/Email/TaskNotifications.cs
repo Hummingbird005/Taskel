@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Taskel.Api.Data;
+using Taskel.Api.Integrations;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Email;
@@ -74,8 +74,7 @@ public enum TaskNotificationReason
 public class TaskNotifier(
     TaskelDbContext db,
     NotificationQueue queue,
-    IOptions<NotificationOptions> options,
-    IOptions<SmtpOptions> smtp,
+    IntegrationSettings settings,
     ILogger<TaskNotifier> logger)
 {
     private static readonly CultureInfo Romanian = CultureInfo.GetCultureInfo("ro-RO");
@@ -90,7 +89,7 @@ public class TaskNotifier(
     {
         try
         {
-            if (!options.Value.Enabled || !smtp.Value.IsConfigured) return;
+            if (!settings.Notifications.Enabled || !settings.Smtp.IsConfigured) return;
             if (task.IsCompleted) return;
 
             List<User> recipients;
@@ -122,7 +121,7 @@ public class TaskNotifier(
 
             foreach (var recipient in recipients.Where(u => u.Id != actorId && u.EmailNotifications))
             {
-                var message = Compose(task, recipient, actor, group, reason, note, options.Value.PublicUrl);
+                var message = Compose(task, recipient, actor, group, reason, note, settings.Notifications.PublicUrl);
                 if (!queue.TryEnqueue(message))
                 {
                     logger.LogWarning("The notification queue is full; a task notification was dropped");
