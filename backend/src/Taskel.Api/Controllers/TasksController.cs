@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Taskel.Api.Attachments;
 using Taskel.Api.Email;
 using Taskel.Api.Models;
 using Taskel.Api.Services;
@@ -14,7 +15,8 @@ namespace Taskel.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
-public class TasksController(ITaskRepository repository, IEmailSender emailSender, TaskNotifier notifier) : ControllerBase
+public class TasksController(ITaskRepository repository, IEmailSender emailSender, TaskNotifier notifier, AttachmentStore attachments)
+    : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TaskResponse>>> GetAll(CancellationToken ct)
@@ -247,7 +249,10 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         if (found is null) return NotFound();
         if (found.Value.Access != TaskAccess.Creator) return CreatorOnly("delete");
 
+        // The rows go with the task; the files are removed once the task is really gone.
+        var files = found.Value.Task.Attachments.Select(a => a.StoredName).ToList();
         await repository.DeleteAsync(found.Value.Task, ct);
+        foreach (var file in files) attachments.Delete(file);
         return NoContent();
     }
 

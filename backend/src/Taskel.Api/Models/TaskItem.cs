@@ -38,6 +38,9 @@ public class TaskItem
     /// <summary>Each time the task was passed on. People who passed it on can still read it.</summary>
     [JsonIgnore]
     public List<TaskForward> Forwards { get; set; } = [];
+    /// <summary>Files attached to the task.</summary>
+    [JsonIgnore]
+    public List<TaskAttachment> Attachments { get; set; } = [];
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsCompleted { get; set; }
@@ -169,6 +172,7 @@ public record TaskResponse(
     UserSummary? Assignee,
     GroupSummary? Group,
     IReadOnlyList<ForwardResponse> Forwards,
+    IReadOnlyList<AttachmentResponse> Attachments,
     TaskAccess Access)
 {
     /// <summary>The task's people, group and forwards must be loaded.</summary>
@@ -187,5 +191,6 @@ public record TaskResponse(
                 f.Note,
                 f.At))
             .ToList(),
+        task.Attachments.OrderBy(a => a.UploadedAt).Select(AttachmentResponse.From).ToList(),
         access);
 }

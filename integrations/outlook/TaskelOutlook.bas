@@ -7,7 +7,8 @@ Option Explicit
 ' See README.md next to this file for installation steps.
 '
 ' Macros:
-'   SendToTaskel     - create a task from each selected (or open) email
+'   SendToTaskel     - create a task from each selected (or open) email,
+'                      with the files attached to it
 '   ConfigureTaskel  - set the Taskel address and API token
 '
 ' This file is plain ASCII on purpose: the VBA editor imports .bas files
@@ -22,6 +23,16 @@ Private Const MAX_BODY_CHARS As Long = 4000
 Private Const MAX_MESSAGE_ID_CHARS As Long = 998
 Private Const OL_MAIL As Long = 43
 Private Const PR_INTERNET_MESSAGE_ID As String = "http://schemas.microsoft.com/mapi/proptag/0x1035001F"
+Private Const PR_ATTACH_CONTENT_ID As String = "http://schemas.microsoft.com/mapi/proptag/0x3712001F"
+Private Const OL_BY_VALUE As Long = 1
+Private Const OL_EMBEDDED_ITEM As Long = 5
+Private Const OL_FORMAT_HTML As Long = 2
+Private Const UPLOAD_TIMEOUT_MS As Long = 600000
+
+' What happened to the attachments during one run of SendToTaskel.
+Private attachmentsAdded As Long
+Private attachmentProblems As String
+Private maxAttachmentBytes As Double
 
 ' ---------------------------------------------------------------------------
 ' Public macros
@@ -45,6 +56,10 @@ Public Sub SendToTaskel()
     Dim status As Long
     Dim detail As String
 
+    attachmentsAdded = 0
+    attachmentProblems = ""
+    maxAttachmentBytes = AttachmentLimitBytes()
+
     For i = 1 To mails.Count
         If PostEmail(mails(i), status, detail) Then
             added = added + 1
@@ -54,7 +69,12 @@ Public Sub SendToTaskel()
     Next i
 
     If added = mails.Count Then
-        MsgBox TaskCountText(added) & " added to Taskel.", vbInformation, APP_NAME
+        If Len(attachmentProblems) = 0 Then
+            MsgBox TaskCountText(added) & " added to Taskel." & AttachmentCountText(), vbInformation, APP_NAME
+        Else
+            MsgBox TaskCountText(added) & " added to Taskel." & AttachmentCountText() & vbCrLf & vbCrLf & _
+                "Some attachments were not added:" & vbCrLf & attachmentProblems, vbExclamation, APP_NAME
+        End If
     Else
         MsgBox FailureText(status, detail) & vbCrLf & vbCrLf & _
             TaskCountText(added) & " added before the problem (" & mails.Count & " selected).", _
@@ -147,9 +167,13 @@ Private Function PostEmail(ByVal mail As Object, ByRef status As Long, ByRef det
     payload = EmailJson(mail)
     On Error GoTo 0
 
-    If SendRequest("POST", "/api/tasks/from-email", payload, status, detail) Then
+    Dim response As String
+    If SendRequest("POST", "/api/tasks/from-email", payload, status, detail, response) Then
         PostEmail = (status = 201)
     End If
+    ' The task exists from here on. A problem with an attachment is reported at
+    ' the end and does not undo the task.
+    If PostEmail Then SendAttachments mail, JsonValue(response, "id")
     Exit Function
 
 BuildFailed:
@@ -160,11 +184,13 @@ End Function
 ' Returns True when the server answered (whatever the status code), False
 ' when it could not be reached. In that case status is 0.
 Private Function SendRequest(ByVal method As String, ByVal path As String, ByVal body As String, _
-                             ByRef status As Long, ByRef detail As String) As Boolean
+                             ByRef status As Long, ByRef detail As String, _
+                             Optional ByRef response As String) As Boolean
     Dim http As Object
 
     status = 0
     detail = ""
+    response = ""
 
     On Error GoTo RequestFailed
     Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
@@ -180,13 +206,262 @@ Private Function SendRequest(ByVal method As String, ByVal path As String, ByVal
     End If
 
     status = http.Status
-    If status < 200 Or status > 299 Then detail = Left$(http.ResponseText, 300)
+    If status < 200 Or status > 299 Then
+        detail = Left$(http.ResponseText, 300)
+    Else
+        response = http.ResponseText
+    End If
     SendRequest = True
     Exit Function
 
 RequestFailed:
     status = 0
     detail = Err.Description
+End Function
+
+' ---------------------------------------------------------------------------
+' Attachments
+' ---------------------------------------------------------------------------
+
+' Uploads the files attached to an email to the task made from it.
+' Pictures shown inside the message (logos in signatures and the like) are
+' left out: they are part of how the email looks, not files someone sent.
+Private Sub SendAttachments(ByVal mail As Object, ByVal taskId As String)
+    Dim item As Object
+    Dim fileName As String
+    Dim tempPath As String
+    Dim status As Long
+    Dim detail As String
+
+    If Len(taskId) = 0 Then Exit Sub
+
+    On Error GoTo ListFailed
+    If mail.Attachments.Count = 0 Then Exit Sub
+    On Error GoTo 0
+
+    For Each item In mail.Attachments
+        fileName = ""
+        tempPath = ""
+        On Error GoTo ItemFailed
+
+        If item.Type <> OL_BY_VALUE And item.Type <> OL_EMBEDDED_ITEM Then GoTo NextItem
+        If IsInlinePicture(mail, item) Then GoTo NextItem
+
+        fileName = AttachmentName(item)
+        If maxAttachmentBytes > 0 And item.Size > maxAttachmentBytes Then
+            NoteAttachmentProblem fileName, "larger than the limit of " & _
+                Format$(maxAttachmentBytes / 1048576#, "0") & " MB"
+            GoTo NextItem
+        End If
+
+        tempPath = TempFilePath()
+        item.SaveAsFile tempPath
+        If FileLen(tempPath) = 0 Then
+            NoteAttachmentProblem fileName, "the file is empty"
+        ElseIf UploadFile(taskId, tempPath, fileName, status, detail) Then
+            attachmentsAdded = attachmentsAdded + 1
+        Else
+            NoteAttachmentProblem fileName, UploadFailureText(status, detail)
+        End If
+
+NextItem:
+        On Error Resume Next
+        If Len(tempPath) > 0 Then Kill tempPath
+        On Error GoTo 0
+    Next item
+    Exit Sub
+
+ItemFailed:
+    If Len(fileName) = 0 Then fileName = "(attachment)"
+    NoteAttachmentProblem fileName, Err.Description
+    Resume NextItem
+
+ListFailed:
+    NoteAttachmentProblem "(attachments)", Err.Description
+End Sub
+
+' True for a picture the message displays in its body rather than offers as a file.
+Private Function IsInlinePicture(ByVal mail As Object, ByVal item As Object) As Boolean
+    Dim contentId As String
+
+    On Error GoTo NotInline
+    If mail.BodyFormat <> OL_FORMAT_HTML Then Exit Function
+    contentId = Trim$(item.PropertyAccessor.GetProperty(PR_ATTACH_CONTENT_ID))
+    If Len(contentId) = 0 Then Exit Function
+    IsInlinePicture = (InStr(1, mail.HTMLBody, "cid:" & contentId, vbTextCompare) > 0)
+    Exit Function
+
+NotInline:
+    IsInlinePicture = False
+End Function
+
+Private Function AttachmentName(ByVal item As Object) As String
+    On Error Resume Next
+    AttachmentName = Trim$(item.FileName)
+    If Len(AttachmentName) = 0 Then AttachmentName = Trim$(item.DisplayName)
+    If Len(AttachmentName) = 0 Then AttachmentName = "attachment"
+    ' An attached email has no extension of its own; it is saved as a message file.
+    If item.Type = OL_EMBEDDED_ITEM And InStr(AttachmentName, ".") = 0 Then
+        AttachmentName = AttachmentName & ".msg"
+    End If
+    On Error GoTo 0
+End Function
+
+Private Function TempFilePath() As String
+    Randomize
+    TempFilePath = Environ$("TEMP") & "\taskel-" & Format$(Now, "yyyymmddhhnnss") & "-" & _
+        CStr(Int(Rnd() * 1000000)) & ".tmp"
+End Function
+
+' Sends one file as multipart/form-data, the way a browser form would.
+' Returns True when Taskel stored it.
+Private Function UploadFile(ByVal taskId As String, ByVal filePath As String, ByVal fileName As String, _
+                            ByRef status As Long, ByRef detail As String) As Boolean
+    Dim boundary As String
+    Dim quote As String
+    Dim body As Object
+    Dim fileData As Object
+    Dim http As Object
+
+    status = 0
+    detail = ""
+    quote = Chr$(34)
+    Randomize
+    boundary = "----TaskelBoundary" & Format$(Now, "yyyymmddhhnnss") & CStr(Int(Rnd() * 1000000))
+
+    On Error GoTo UploadFailed
+    Set body = CreateObject("ADODB.Stream")
+    body.Type = 1
+    body.Open
+    body.Write Utf8Bytes("--" & boundary & vbCrLf & _
+        "Content-Disposition: form-data; name=" & quote & "file" & quote & _
+        "; filename=" & quote & HeaderFileName(fileName) & quote & vbCrLf & _
+        "Content-Type: application/octet-stream" & vbCrLf & vbCrLf)
+
+    Set fileData = CreateObject("ADODB.Stream")
+    fileData.Type = 1
+    fileData.Open
+    fileData.LoadFromFile filePath
+    body.Write fileData.Read
+    fileData.Close
+
+    body.Write Utf8Bytes(vbCrLf & "--" & boundary & "--" & vbCrLf)
+    body.Position = 0
+
+    Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
+    http.SetTimeouts 5000, 5000, UPLOAD_TIMEOUT_MS, UPLOAD_TIMEOUT_MS
+    http.Open "POST", SavedBaseUrl() & "/api/tasks/" & taskId & "/attachments", False
+    http.SetRequestHeader "Authorization", "Bearer " & SavedToken()
+    http.SetRequestHeader "Accept", "application/json"
+    http.SetRequestHeader "Content-Type", "multipart/form-data; boundary=" & boundary
+    http.Send body.Read
+    body.Close
+
+    status = http.Status
+    If status = 201 Then
+        UploadFile = True
+    Else
+        detail = Left$(http.ResponseText, 300)
+    End If
+    Exit Function
+
+UploadFailed:
+    status = 0
+    detail = Err.Description
+End Function
+
+' The bytes of a text in UTF-8, without the byte order mark ADODB puts first.
+Private Function Utf8Bytes(ByVal value As String) As Variant
+    Dim stream As Object
+
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 2
+    stream.Charset = "utf-8"
+    stream.Open
+    stream.WriteText value
+    stream.Position = 0
+    stream.Type = 1
+    stream.Position = 3
+    Utf8Bytes = stream.Read
+    stream.Close
+End Function
+
+' A file name that is safe inside the quotes of a header: no quotes,
+' backslashes or line breaks. Taskel cleans the name again on its side.
+Private Function HeaderFileName(ByVal fileName As String) As String
+    Dim result As String
+
+    result = Replace(fileName, Chr$(34), "'")
+    result = Replace(result, "\", "_")
+    result = Replace(result, vbCr, " ")
+    result = Replace(result, vbLf, " ")
+    HeaderFileName = Left$(result, 200)
+End Function
+
+' Asks Taskel for the largest file it accepts, so an oversized attachment is
+' skipped without being sent. Returns 0 when Taskel did not say.
+Private Function AttachmentLimitBytes() As Double
+    Dim status As Long
+    Dim detail As String
+    Dim response As String
+
+    If SendRequest("GET", "/api/attachments/limits", "", status, detail, response) Then
+        If status = 200 Then AttachmentLimitBytes = Val(JsonValue(response, "maxFileSizeBytes"))
+    End If
+End Function
+
+' Reads one simple value (a string or a number) from a JSON object by name.
+' Enough for the small, flat answers this macro needs from Taskel.
+Private Function JsonValue(ByVal json As String, ByVal propName As String) As String
+    Dim quote As String
+    Dim position As Long
+    Dim finish As Long
+
+    quote = Chr$(34)
+    position = InStr(1, json, quote & propName & quote & ":", vbBinaryCompare)
+    If position = 0 Then Exit Function
+    position = position + Len(propName) + 3
+
+    If Mid$(json, position, 1) = quote Then
+        finish = InStr(position + 1, json, quote, vbBinaryCompare)
+        If finish > 0 Then JsonValue = Mid$(json, position + 1, finish - position - 1)
+    Else
+        finish = position
+        Do While finish <= Len(json)
+            If InStr("0123456789.-", Mid$(json, finish, 1)) = 0 Then Exit Do
+            finish = finish + 1
+        Loop
+        JsonValue = Mid$(json, position, finish - position)
+    End If
+End Function
+
+Private Sub NoteAttachmentProblem(ByVal fileName As String, ByVal reason As String)
+    ' Keep the final message readable when many attachments fail.
+    If Len(attachmentProblems) > 900 Then Exit Sub
+    attachmentProblems = attachmentProblems & "- " & Left$(fileName, 80) & ": " & Left$(reason, 160) & vbCrLf
+End Sub
+
+Private Function UploadFailureText(ByVal status As Long, ByVal detail As String) As String
+    Select Case status
+        Case 0
+            UploadFailureText = "could not be sent (" & detail & ")"
+        Case 413
+            UploadFailureText = "larger than Taskel accepts"
+        Case 409
+            UploadFailureText = "the task already has the most files it can hold"
+        Case 401
+            UploadFailureText = "the API token was rejected"
+        Case Else
+            UploadFailureText = "Taskel answered with an error (" & status & ")"
+    End Select
+End Function
+
+Private Function AttachmentCountText() As String
+    If attachmentsAdded = 1 Then
+        AttachmentCountText = vbCrLf & "1 attachment added."
+    ElseIf attachmentsAdded > 1 Then
+        AttachmentCountText = vbCrLf & attachmentsAdded & " attachments added."
+    End If
 End Function
 
 Private Function EmailJson(ByVal mail As Object) As String

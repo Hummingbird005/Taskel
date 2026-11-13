@@ -1,3 +1,4 @@
+import { attachmentsApi } from '../api/attachments'
 import DataTable from './ui/DataTable'
 import EmptyState from './ui/EmptyState'
 import { TableSkeleton, TaskListSkeleton } from './ui/Skeleton'
@@ -237,7 +238,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
                     isOpen && (
                       <tr key={`${member.user.id}-tasks`} className="member-tasks">
                         <td colSpan={8}>
-                          <MemberTaskList state={memberTasks} today={today} name={member.user.displayName} />
+                          <MemberTaskList state={memberTasks} today={today} name={member.user.displayName} memberId={member.user.id} />
                         </td>
                       </tr>
                     ),
@@ -255,7 +256,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
   )
 }
 
-function MemberTaskList({ state, today, name }: { state: MemberTasks; today: string; name: string }) {
+function MemberTaskList({ state, today, name, memberId }: { state: MemberTasks; today: string; name: string; memberId: string }) {
   if (state.status === 'loading') {
     return (
       <div className="member-task-lists">
@@ -294,7 +295,12 @@ function MemberTaskList({ state, today, name }: { state: MemberTasks; today: str
       ) : (
         <ul className="task-list">
           {open.map((task) => (
-            <ReadOnlyTask key={task.id} task={task} today={today} />
+            <ReadOnlyTask
+              key={task.id}
+              task={task}
+              today={today}
+              attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(memberId, task.id, file.id)}
+            />
           ))}
         </ul>
       )}
@@ -303,7 +309,12 @@ function MemberTaskList({ state, today, name }: { state: MemberTasks; today: str
               <h3>Ultimele finalizate</h3>
               <ul className="task-list">
                 {completed.map((task) => (
-                  <ReadOnlyTask key={task.id} task={task} today={today} />
+                  <ReadOnlyTask
+              key={task.id}
+              task={task}
+              today={today}
+              attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(memberId, task.id, file.id)}
+            />
                 ))}
               </ul>
         </>

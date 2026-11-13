@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
 import { DEFAULT_DASHBOARD_SETTINGS, dashboardApi, type DashboardSettings } from '../api/dashboard'
+import { attachmentsApi, DEFAULT_ATTACHMENT_LIMITS, uploadErrorText, type AttachmentLimits } from '../api/attachments'
 import { groupsApi, type GroupListItem } from '../api/groups'
 import { tasksApi, type TaskDraft, type TaskItem, type TaskTarget } from '../api/tasks'
 import { usersApi, type UserSummary } from '../api/users'
@@ -77,6 +78,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [forwardingId, setForwardingId] = useState<string | null>(null)
   const [groups, setGroups] = useState<GroupListItem[]>([])
+  const [attachmentLimits, setAttachmentLimits] = useState<AttachmentLimits>(DEFAULT_ATTACHMENT_LIMITS)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [settings, setSettings] = useState<DashboardSettings>(DEFAULT_DASHBOARD_SETTINGS)
   const [customizing, setCustomizing] = useState(false)
@@ -129,13 +131,15 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
       dashboardApi.get().catch(() => DEFAULT_DASHBOARD_SETTINGS),
       usersApi.list().catch(() => [] as UserSummary[]),
       groupsApi.list().catch(() => [] as GroupListItem[]),
+      attachmentsApi.limits().catch(() => DEFAULT_ATTACHMENT_LIMITS),
     ])
-      .then(([loaded, loadedSettings, loadedPeople, loadedGroups]) => {
+      .then(([loaded, loadedSettings, loadedPeople, loadedGroups, loadedLimits]) => {
         if (cancelled) return
         setTasks(loaded)
         setSettings(loadedSettings)
         setPeople(loadedPeople.filter((person) => person.id !== user.id))
         setGroups(loadedGroups)
+        setAttachmentLimits(loadedLimits)
         const now = todayIso()
         // Only the user's own work calls for the reminder, not what they handed to others.
         const needsAttention = loaded.some(
@@ -218,11 +222,31 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
     }
   }
 
-  async function add(draft: TaskDraft): Promise<boolean> {
+  async function add(draft: TaskDraft, files: File[] = []): Promise<boolean> {
     try {
-      const created = await tasksApi.create(draft)
+      let created = await tasksApi.create(draft)
       setTasks((prev) => [...prev, created])
       setError(null)
+      // The task exists from here on: a file that fails is reported, and can be added again on the task.
+      for (const [index, file] of files.entries()) {
+        const label = files.length > 1 ? ` (${index + 1} din ${files.length})` : ''
+        setNotice(`Se încarcă „${file.name}”${label}…`)
+        try {
+          const attachment = await attachmentsApi.upload(created.id, file, (fraction) =>
+            setNotice(`Se încarcă „${file.name}”${label}… ${Math.round(fraction * 100)}%`),
+          )
+          const withFile = { ...created, attachments: [...created.attachments, attachment] }
+          created = withFile
+          setTasks((prev) => prev.map((t) => (t.id === withFile.id ? withFile : t)))
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 401) {
+            onSessionExpired()
+            return true
+          }
+          setError(`Task-ul a fost adăugat, dar fără toate fișierele. ${uploadErrorText(err, file.name, attachmentLimits)}`)
+          break
+        }
+      }
       // A task given to someone else leaves this view, so say where it went.
       setNotice(
         created.assignee
@@ -439,6 +463,11 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
         }}
         onDelete={() => remove(task.id)}
         onTagClick={(tag) => selectView({ kind: 'tag', tag })}
+        attachmentLimits={attachmentLimits}
+        onAttachmentsChange={(attachments) =>
+          setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, attachments } : t)))
+        }
+        onSessionExpired={onSessionExpired}
       />
     )
   }
@@ -531,7 +560,12 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           ) : view.kind === 'groups' ? (
             <Groups user={user} onSessionExpired={onSessionExpired} onChanged={() => void refresh()} />
           ) : view.kind === 'admin' ? (
-            <AdminUsers user={user} onSessionExpired={onSessionExpired} onOwnAccountChanged={onUserChanged} />
+            <AdminUsers
+              user={user}
+              onSessionExpired={onSessionExpired}
+              onOwnAccountChanged={onUserChanged}
+              onAttachmentLimitChanged={() => void attachmentsApi.limits().then(setAttachmentLimits).catch(() => {})}
+            />
           ) : loading ? (
             isDashboard ? (
               <CardsSkeleton />
@@ -592,6 +626,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
               people={people}
               groups={groups}
               currentUser={user}
+              attachmentLimits={attachmentLimits}
               submitLabel="Adaugă"
               placeholder={view.kind === 'tag' ? `Adaugă un task în #${view.tag}` : 'Adaugă un task'}
               onSubmit={add}

@@ -11,6 +11,8 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<TaskForward> TaskForwards => Set<TaskForward>();
+    public DbSet<TaskAttachment> Attachments => Set<TaskAttachment>();
+    public DbSet<AppSetting> Settings => Set<AppSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -72,6 +74,26 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             token.Property(t => t.TokenHash).HasMaxLength(64).IsRequired();
             token.HasIndex(t => t.TokenHash).IsUnique();
             token.HasOne<User>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TaskAttachment>(attachment =>
+        {
+            attachment.ToTable("task_attachments");
+            attachment.HasKey(a => a.Id);
+            attachment.Property(a => a.Id).ValueGeneratedNever();
+            attachment.Property(a => a.FileName).HasMaxLength(255).IsRequired();
+            attachment.Property(a => a.ContentType).HasMaxLength(100).IsRequired();
+            attachment.Property(a => a.StoredName).HasMaxLength(32).IsRequired();
+            attachment.HasOne<TaskItem>().WithMany(t => t.Attachments).HasForeignKey(a => a.TaskId).OnDelete(DeleteBehavior.Cascade);
+            attachment.HasOne(a => a.UploadedBy).WithMany().HasForeignKey(a => a.UploadedById).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<AppSetting>(setting =>
+        {
+            setting.ToTable("app_settings");
+            setting.HasKey(s => s.Key);
+            setting.Property(s => s.Key).HasMaxLength(100);
+            setting.Property(s => s.Value).HasMaxLength(1000).IsRequired();
         });
 
         modelBuilder.Entity<TaskItem>(task =>

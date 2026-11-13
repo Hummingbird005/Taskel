@@ -828,6 +828,46 @@ button.chip.tag:hover { background: var(--text); color: var(--bg); }
   .button.is-loading::after { animation-duration: 2s; }
 }
 
+/* ---------- Attachments ---------- */
+.attachment-list { list-style: none; margin: var(--s2) 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.attachment-list li {
+  display: flex; align-items: center; gap: var(--s2); min-height: 32px; padding: 0 var(--s2); border-radius: var(--radius);
+  color: var(--muted); transition: background-color 0.12s;
+}
+.attachment-list li:hover { background: var(--hover); }
+.attachment-list a {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 500;
+  text-decoration: underline; text-decoration-color: var(--field-border); text-underline-offset: 3px;
+}
+.attachment-list a:hover { text-decoration-color: var(--text); }
+.attachment-meta { flex-shrink: 0; font-size: var(--fs-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.attachment-remove, .composer-files button {
+  display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; margin-left: auto; padding: 0; border: 0;
+  border-radius: 4px; background: transparent; color: var(--muted);
+}
+.attachment-remove:hover, .composer-files button:hover { background: var(--danger-soft); color: var(--danger); }
+.attachment-add { margin-top: var(--s2); }
+.attachment-hint { margin-left: var(--s3); font-size: var(--fs-xs); }
+.attachment-error { margin: var(--s2) 0 0; }
+.attachments .attachment-error, .task-details.attachments p.attachment-error { padding: 0; border: 0; color: var(--danger); white-space: normal; }
+.upload-progress { display: flex; flex-direction: column; gap: var(--s1); margin-top: var(--s2); color: var(--text); }
+.upload-progress progress { width: 100%; max-width: 360px; height: 6px; accent-color: var(--text); }
+.composer-files { list-style: none; margin: 0; padding: 0 var(--s4) var(--s2); display: flex; flex-wrap: wrap; gap: var(--s2); }
+.composer-files .chip { gap: var(--s2); padding-right: 2px; color: var(--text); }
+.composer-file-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+.composer-files button { width: 20px; height: 20px; margin-left: 0; }
+button.composer-attach { background: transparent; cursor: pointer; }
+.limit-form { display: flex; align-items: flex-end; gap: var(--s3); flex-wrap: wrap; }
+.limit-form .field input { width: 160px; }
+.limit-form .saved { align-self: center; }
+.team > .panel { max-width: none; }
+@media (max-width: 640px) {
+  .attachment-remove { width: 44px; height: 44px; }
+  .attachment-list li { min-height: 44px; }
+  .attachment-hint { display: block; margin: var(--s2) 0 0; }
+  .composer-attach { justify-content: center; }
+}
+
 /* ---------- Theme picker ---------- */
 .theme-picker {
   display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s4); border-top: 1px solid var(--border);

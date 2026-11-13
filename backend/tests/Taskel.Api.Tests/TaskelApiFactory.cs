@@ -24,6 +24,9 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// <summary>Stands in for the SMTP server; holds the replies the API tried to send.</summary>
     public FakeEmailSender Emails { get; } = new();
 
+    /// <summary>Where uploaded files land during the tests: a folder of its own, removed afterwards.</summary>
+    public string AttachmentsPath { get; } = Path.Combine(Path.GetTempPath(), $"taskel-tests-{Guid.NewGuid():N}");
+
     /// <summary>Stands in for Active Directory.</summary>
     public FakeDirectory Directory { get; } = new();
 
@@ -38,6 +41,8 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("ActiveDirectory:BaseDn", "DC=corp,DC=example,DC=com");
         // The whole suite signs in from one address; the limit has its own test.
         builder.UseSetting("Auth:LoginAttemptsPerMinute", "100000");
+        builder.UseSetting("Attachments:Path", AttachmentsPath);
+        builder.UseSetting("Attachments:MaxFilesPerTask", "3");
         // Enough for Taskel to consider email set up; the fake sender takes the messages.
         builder.UseSetting("Email:Smtp:Host", "smtp.test.invalid");
         builder.UseSetting("Email:Smtp:FromAddress", "taskel@test.invalid");
@@ -125,7 +130,18 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         return await db.Users.Where(u => u.Email == email).Select(u => u.PasswordHash).SingleOrDefaultAsync();
     }
 
-    Task IAsyncLifetime.DisposeAsync() => Task.CompletedTask;
+    Task IAsyncLifetime.DisposeAsync()
+    {
+        try
+        {
+            if (System.IO.Directory.Exists(AttachmentsPath)) System.IO.Directory.Delete(AttachmentsPath, recursive: true);
+        }
+        catch (IOException)
+        {
+            // A leftover temp folder is not worth failing the run for.
+        }
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>Shares one API instance and one database across all API test classes.</summary>
