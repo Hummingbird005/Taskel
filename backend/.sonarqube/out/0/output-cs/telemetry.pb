@@ -1,1 +1,0 @@
-QR:/home/user/taskel/backend/src/Taskel.Api/Taskel.Api.csproj¢net10.0òCSharp14
