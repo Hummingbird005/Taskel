@@ -82,6 +82,8 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         {
             task.IsCompleted = request.IsCompleted;
             task.CompletedAt = request.IsCompleted ? DateTime.UtcNow : null;
+            // Finished is no longer on hold; reopened starts as open, not as it was before.
+            ClearWaiting(task);
         }
         task.StartDate = request.StartDate;
         task.DueDate = request.DueDate;
@@ -238,6 +240,51 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         task.IsCompleted = true;
         task.CompletedAt = DateTime.UtcNow;
         task.CompletionResponse = response;
+        ClearWaiting(task);
+        await repository.SaveAsync(task, ct);
+        return Ok(TaskResponse.From(task, access));
+    }
+
+    /// <summary>
+    /// Puts an open task on hold, with the reason it waits. Calling it again on a task already on hold
+    /// replaces the reason and keeps the date it started waiting.
+    /// </summary>
+    [HttpPost("{id:guid}/wait")]
+    public async Task<ActionResult<TaskResponse>> Wait(Guid id, WaitTaskRequest request, CancellationToken ct)
+    {
+        var found = await LoadAsync(id, ct);
+        if (found is null) return NotFound();
+        var (task, access) = found.Value;
+        if (!CanWork(access)) return ReadOnly(access);
+        if (task.IsCompleted)
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: "A completed task cannot be put on hold. Reopen it first.");
+
+        var reason = NullIfBlank(request.Reason);
+        if (reason is null)
+        {
+            ModelState.AddModelError(nameof(request.Reason), "Say what the task is waiting for.");
+            return ValidationProblem(ModelState);
+        }
+
+        task.WaitingReason = reason;
+        // Stored to the microsecond, PostgreSQL's precision, so the answer matches what is read back later.
+        task.WaitingSince ??= DateTime.UnixEpoch.AddTicks((DateTime.UtcNow - DateTime.UnixEpoch).Ticks / 10 * 10);
+        await repository.SaveAsync(task, ct);
+        return Ok(TaskResponse.From(task, access));
+    }
+
+    /// <summary>Takes a task off hold: it is open again.</summary>
+    [HttpPost("{id:guid}/resume")]
+    public async Task<ActionResult<TaskResponse>> Resume(Guid id, CancellationToken ct)
+    {
+        var found = await LoadAsync(id, ct);
+        if (found is null) return NotFound();
+        var (task, access) = found.Value;
+        if (!CanWork(access)) return ReadOnly(access);
+        if (task.State != TaskState.Waiting)
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: "This task is not on hold.");
+
+        ClearWaiting(task);
         await repository.SaveAsync(task, ct);
         return Ok(TaskResponse.From(task, access));
     }
@@ -272,6 +319,12 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         if (task.AssigneeId == userId) return TaskAccess.Assignee;
         if (task.AssigneeId is null && task.GroupId is { } group && userGroups.Contains(group)) return TaskAccess.Group;
         return TaskAccess.Viewer;
+    }
+
+    private static void ClearWaiting(TaskItem task)
+    {
+        task.WaitingReason = null;
+        task.WaitingSince = null;
     }
 
     private static bool CanWork(TaskAccess access) => access is TaskAccess.Creator or TaskAccess.Assignee;

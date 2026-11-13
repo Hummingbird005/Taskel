@@ -72,6 +72,15 @@ public class TaskItem
     public string? CompletionResponse { get; set; }
     public DateTime? CompletedAt { get; set; }
 
+    /// <summary>Why the task is on hold. Set together with <see cref="WaitingSince"/>; both null while it is not.</summary>
+    public string? WaitingReason { get; set; }
+    /// <summary>When the task was put on hold. A task on hold is still open: it counts as open work everywhere.</summary>
+    public DateTime? WaitingSince { get; set; }
+
+    /// <summary>Where the task stands, as people see it.</summary>
+    [JsonIgnore]
+    public TaskState State => IsCompleted ? TaskState.Completed : WaitingSince is not null ? TaskState.Waiting : TaskState.Open;
+
     /// <summary>True when completing this task must go through a response that is emailed back.</summary>
     [JsonIgnore]
     public bool RequiresCompletionReply => !string.IsNullOrEmpty(SourceEmailAddress);
@@ -124,6 +133,19 @@ public static class TaskInterval
 /// <summary>Completes a task. <see cref="Response"/> is required for tasks created from an email.</summary>
 public record CompleteTaskRequest([StringLength(4000), SafeText(Multiline = true)] string? Response = null);
 
+/// <summary>Where a task stands.</summary>
+public enum TaskState
+{
+    /// <summary>Being worked on, or not started.</summary>
+    Open,
+    /// <summary>On hold, with a reason: waiting on someone or something.</summary>
+    Waiting,
+    Completed
+}
+
+/// <summary>Puts a task on hold. The reason is required: it tells everyone involved what the task waits for.</summary>
+public record WaitTaskRequest([Required, StringLength(1000, MinimumLength = 1), SafeText(Multiline = true)] string Reason);
+
 /// <summary>
 /// Assigns a task to a user or to a group (not both). With neither, it returns to its creator.
 /// </summary>
@@ -168,6 +190,9 @@ public record TaskResponse(
     string? SourceEmailAddress,
     string? CompletionResponse,
     DateTime? CompletedAt,
+    TaskState State,
+    string? WaitingReason,
+    DateTime? WaitingSince,
     UserSummary CreatedBy,
     UserSummary? Assignee,
     GroupSummary? Group,
@@ -179,6 +204,7 @@ public record TaskResponse(
     public static TaskResponse From(TaskItem task, TaskAccess access) => new(
         task.Id, task.Title, task.Description, task.IsCompleted, task.StartDate, task.DueDate, task.Priority, task.Tags,
         task.CreatedAt, task.SourceEmailAddress, task.CompletionResponse, task.CompletedAt,
+        task.State, task.WaitingReason, task.WaitingSince,
         UserSummary.From(task.Owner ?? throw new InvalidOperationException("Task owner is not loaded.")),
         task.Assignee is null ? null : UserSummary.From(task.Assignee),
         task.Group is null ? null : GroupSummary.From(task.Group),

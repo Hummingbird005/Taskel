@@ -98,6 +98,8 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
 
         modelBuilder.Entity<TaskItem>(task =>
         {
+            task.Property(t => t.WaitingReason).HasMaxLength(1000);
+            task.Ignore(t => t.State);
             task.ToTable("tasks");
             task.HasKey(t => t.Id);
             task.Property(t => t.Title).HasMaxLength(200).IsRequired();
