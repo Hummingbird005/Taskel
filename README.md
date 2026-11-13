@@ -20,6 +20,7 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
 | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
+| **Files on a task**: download, add and remove<br>![A task with two attached files listed under it and an Adaugă fișier button](docs/screenshots/attachments.png) | **Attaching files to a new task**, from the composer<br>![Task composer with two files picked, shown as chips](docs/screenshots/attach-composer.png) |
 | **Arctic Frost** theme: frosted glass over soft pastel shapes<br>![Dashboard in the Arctic Frost theme, with translucent cards over a pale blue and lavender background](docs/screenshots/frost-dashboard.png) | **Arctic Frost**, task list<br>![Task list in the Arctic Frost theme](docs/screenshots/frost-tasks.png) |
 | **Amber Glass** theme: smoked glass in a warm, lamp-lit room<br>![Dashboard in the Amber Glass theme, dark translucent cards over amber and orange light](docs/screenshots/amber-dashboard.png) | **Amber Glass**, task list<br>![Task list in the Amber Glass theme](docs/screenshots/amber-tasks.png) |
 | **Loading**: skeletons in the shape of the content<br>![Dashboard with grey placeholder cards while it loads](docs/screenshots/loading.png) | **Empty state**: what is missing and why<br>![Empty Direcționate view with an icon, a title and an explanation](docs/screenshots/empty.png) |
@@ -146,6 +147,13 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/team/members/{id}/tasks` | manager | A team member's tasks, read only |
 | GET    | `/api/admin/users`   | admin | Accounts with their role and department      |
 | PUT    | `/api/admin/users/{id}` | admin | Set an account's role and department      |
+| GET    | `/api/attachments/limits` | ✓ | Largest file accepted and files per task     |
+| POST   | `/api/tasks/{id}/attachments` | ✓ | Attach a file (multipart/form-data, part `file`) |
+| GET    | `/api/tasks/{id}/attachments/{fileId}` | ✓ | Download a file                      |
+| DELETE | `/api/tasks/{id}/attachments/{fileId}` | ✓ | Remove a file                        |
+| GET    | `/api/team/members/{id}/tasks/{taskId}/attachments/{fileId}` | manager | Download a file of a team member's task |
+| GET    | `/api/admin/settings/attachments` | admin | The attachment size limit              |
+| PUT    | `/api/admin/settings/attachments` | admin | Change the attachment size limit       |
 | GET    | `/api/groups`        | ✓    | Groups a task can be given to                 |
 | GET    | `/api/groups/{id}`   | manager | A group with its members                   |
 | GET    | `/api/groups/candidates` | manager | People you may put in a group          |
@@ -463,6 +471,47 @@ Things to know:
 - Sent replies are not saved to a "Sent" folder by Taskel (Gmail keeps its own copy of mail sent through its SMTP server).
 - Any signed-in user can make the server send one email per completed email task, to the address stored on that
   task. Do not expose a server with open registration and SMTP configured to the internet.
+
+## File attachments
+
+Tasks can carry files, whether they were made in Taskel or from an email.
+
+- **In the interface:** pick files in the composer when adding a task (**Fișiere**), or open **Fișiere** /
+  **Atașează fișiere** on an existing task. Uploads show their progress.
+- **From Outlook:** the macro sends the files attached to each email along with it. Pictures shown inside the
+  message, such as signature logos, are left out.
+- **Who can do what:** everyone who can see a task can download its files, including the members of a group it
+  waits on, someone who forwarded it, and the manager of the person responsible. Its creator and its assignee
+  add and remove files.
+- Deleting a task deletes its files.
+
+### Limits and settings
+
+| Setting           | Environment variable             | Notes                                                    |
+|-------------------|----------------------------------|----------------------------------------------------------|
+| `MaxFileSizeMb`   | `Attachments__MaxFileSizeMb`     | Default `100`. Largest file accepted, in megabytes       |
+| `MaxFilesPerTask` | `Attachments__MaxFilesPerTask`   | Default `20`                                             |
+| `Path`            | `Attachments__Path`              | Default `data/attachments`, under the application folder |
+
+An administrator can change the size limit from the interface, under **Utilizatori → Fișiere atașate** (1 to
+2048 MB). A value set there is stored in the database, applies at once and wins over `MaxFileSizeMb`.
+
+Things to know:
+
+- **Where files live.** On the server's disk, in `Path`, under generated names; the original name is kept only
+  in the database. Back this folder up together with the database, and put it on a volume that survives a
+  redeploy (in a container, mount it).
+- **Disk use is not capped overall.** The limits are per file and per task. Any signed-in user can fill the
+  disk given enough tasks, so watch free space on servers open to many people.
+- **Reverse proxies have their own limit.** nginx, for example, refuses bodies over 1 MB unless
+  `client_max_body_size` is raised. Set it at least as high as the limit here.
+- **Downloads are never displayed.** Every file is sent as a download of unspecified type, with
+  `X-Content-Type-Options: nosniff`, whatever was uploaded, so an uploaded HTML page cannot run as part of
+  Taskel. Files are not scanned for viruses.
+- The limit is checked while the file arrives: an oversized upload is cut off and nothing is kept. Files are
+  streamed to disk, not held in memory.
+- An upload is one request. A file that takes longer than the proxy's or browser's patience fails and has to
+  be sent again from the start.
 
 ## Email notifications for received tasks
 

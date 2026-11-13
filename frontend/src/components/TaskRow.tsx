@@ -2,6 +2,8 @@ import type { TaskItem } from '../api/tasks'
 import { formatDueDate, formatRange } from '../lib/dates'
 import { isOverdue } from '../lib/taskViews'
 import Icon from './Icon'
+import type { Attachment, AttachmentLimits } from '../api/attachments'
+import TaskAttachments from './TaskAttachments'
 import TaskTrail from './TaskTrail'
 
 interface Props {
@@ -13,6 +15,10 @@ interface Props {
   onForward: () => void
   /** Hands a task taken from a group back to it. */
   onRelease: () => void
+  attachmentLimits: AttachmentLimits
+  /** Called with the new list after a file was added to or removed from the task. */
+  onAttachmentsChange: (attachments: Attachment[]) => void
+  onSessionExpired: () => void
   onToggle: () => void
   onEdit: () => void
   onDelete: () => void
@@ -34,6 +40,9 @@ export default function TaskRow({
   onClaim,
   onForward,
   onRelease,
+  attachmentLimits,
+  onAttachmentsChange,
+  onSessionExpired,
 }: Props) {
   const overdue = isOverdue(task, today)
   const isCreator = task.access === 'creator'
@@ -104,6 +113,13 @@ export default function TaskRow({
               {!task.assignee && ' · nepreluat'}
             </span>
           )}
+          {task.attachments.length > 0 && (
+            <span className="chip" title={task.attachments.map((file) => file.fileName).join(', ')}>
+              <Icon name="paperclip" size={13} />
+              {task.attachments.length}
+              <span className="visually-hidden">{task.attachments.length === 1 ? ' fișier atașat' : ' fișiere atașate'}</span>
+            </span>
+          )}
           {task.sourceEmailAddress && (
             <span className="chip" title={`Dintr-un email trimis de ${task.sourceEmailAddress}`}>
               <Icon name="mail" size={13} />
@@ -142,6 +158,13 @@ export default function TaskRow({
             <p>{task.description}</p>
           </details>
         )}
+        <TaskAttachments
+          task={task}
+          limits={attachmentLimits}
+          canEdit={!waitsOnGroup}
+          onChange={onAttachmentsChange}
+          onSessionExpired={onSessionExpired}
+        />
         <TaskTrail task={task} />
       </div>
       {waitsOnGroup && (

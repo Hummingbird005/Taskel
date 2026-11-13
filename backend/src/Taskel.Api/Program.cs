@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Taskel.Api.Attachments;
 using Taskel.Api.Auth;
 using System.Threading.RateLimiting;
 using Taskel.Api.Controllers;
@@ -20,6 +21,7 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
                      ?? ["http://localhost:5173"];
 
 // The API takes small JSON documents; refuse anything larger outright.
+// File uploads raise this limit for their own request, up to the attachment size limit.
 builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = 1_000_000);
 
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -46,6 +48,8 @@ builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOpt
 builder.Services.AddSingleton<IDirectoryAuthenticator, LdapDirectoryAuthenticator>();
 builder.Services.AddScoped<DirectoryAccounts>();
 builder.Services.AddScoped<CurrentUser>();
+builder.Services.Configure<AttachmentOptions>(builder.Configuration.GetSection(AttachmentOptions.Section));
+builder.Services.AddScoped<AttachmentStore>();
 
 // Sign-in attempts are limited per client address, to slow password guessing and to keep
 // repeated failures from locking accounts in Active Directory.

@@ -2,6 +2,8 @@ import type { TaskItem } from '../api/tasks'
 import { formatDueDate, formatRange } from '../lib/dates'
 import { isOverdue } from '../lib/taskViews'
 import Icon from './Icon'
+import { DEFAULT_ATTACHMENT_LIMITS, type Attachment } from '../api/attachments'
+import TaskAttachments from './TaskAttachments'
 import TaskTrail from './TaskTrail'
 
 interface Props {
@@ -9,13 +11,15 @@ interface Props {
   today: string
   /** Also say who has the task now, for someone following a task they passed on. */
   showHolder?: boolean
+  /** Where this viewer downloads the task's files from, when not through the task itself. */
+  attachmentUrl?: (attachment: Attachment) => string
 }
 
 /**
  * A task shown for reading only: as a manager sees the tasks of someone in their department,
  * or as someone sees a task they forwarded.
  */
-export default function ReadOnlyTask({ task, today, showHolder = false }: Props) {
+export default function ReadOnlyTask({ task, today, showHolder = false, attachmentUrl }: Props) {
   const overdue = isOverdue(task, today)
   const hasInterval = task.startDate !== null && task.dueDate !== null && task.startDate !== task.dueDate
   const dueLabel = !task.dueDate
@@ -71,6 +75,13 @@ export default function ReadOnlyTask({ task, today, showHolder = false }: Props)
               {!task.assignee && ' · nepreluat'}
             </span>
           )}
+          {task.attachments.length > 0 && (
+            <span className="chip" title={task.attachments.map((file) => file.fileName).join(', ')}>
+              <Icon name="paperclip" size={13} />
+              {task.attachments.length}
+              <span className="visually-hidden">{task.attachments.length === 1 ? ' fișier atașat' : ' fișiere atașate'}</span>
+            </span>
+          )}
           {task.sourceEmailAddress && (
             <span className="chip" title={`Dintr-un email trimis de ${task.sourceEmailAddress}`}>
               <Icon name="mail" size={13} />
@@ -97,6 +108,7 @@ export default function ReadOnlyTask({ task, today, showHolder = false }: Props)
             <p>{task.description}</p>
           </details>
         )}
+        <TaskAttachments task={task} limits={DEFAULT_ATTACHMENT_LIMITS} downloadUrl={attachmentUrl} />
         <TaskTrail task={task} />
       </div>
     </li>

@@ -8,3 +8,6 @@ dist/
 !.vscode/extensions.json
 .idea/
 .DS_Store
+
+# Uploaded attachments (default Attachments:Path)
+backend/src/Taskel.Api/data/
