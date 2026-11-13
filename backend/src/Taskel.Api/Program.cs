@@ -121,6 +121,23 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDe
     await scope.ServiceProvider.GetRequiredService<TaskelDbContext>().Database.MigrateAsync();
 }
 
+// Sample accounts and tasks, for trying Taskel out. Off unless asked for (on in Development):
+// the passwords of these accounts are published in docs/DEMO-ACCOUNTS.md.
+if (app.Configuration.GetValue("Seed:DemoData", false))
+{
+    using var scope = app.Services.CreateScope();
+    var seeded = await DemoData.SeedAsync(
+        scope.ServiceProvider.GetRequiredService<TaskelDbContext>(),
+        scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>(),
+        DateOnly.FromDateTime(DateTime.Now));
+    if (seeded)
+    {
+        app.Logger.LogWarning(
+            "Demo accounts and tasks were added (Seed:DemoData). Their passwords are public: see docs/DEMO-ACCOUNTS.md. " +
+            "Never enable this on a server real people use.");
+    }
+}
+
 app.UseCors(FrontendCorsPolicy);
 app.UseAuthentication();
 app.UseAuthorization();
