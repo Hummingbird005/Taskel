@@ -28,8 +28,21 @@ const EMAIL = /^[^\s<>@,;:"()[\]\\]+@(?:[^\s<>@,;:"()[\]\\.]+\.)+[^\s<>@,;:"()[\
 const DIRECTORY_USERNAME = /^(?:[A-Za-z0-9][A-Za-z0-9-]{0,14}\\)?[A-Za-z0-9][A-Za-z0-9._-]{0,63}(?:@[A-Za-z0-9.-]+)?$/
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 // Control characters other than tab and line breaks.
-// eslint-disable-next-line no-control-regex
-const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/
+/** True for a control character other than tab, line feed and carriage return: the ones the API refuses. */
+function isRefusedControl(code: number): boolean {
+  return (code <= 0x1f && code !== 0x09 && code !== 0x0a && code !== 0x0d) || (code >= 0x7f && code <= 0x9f)
+}
+
+/**
+ * Finds control characters, checked by code rather than with a regular expression, so the pattern
+ * holds no invisible characters itself.
+ */
+const CONTROL = {
+  test: (text: string) => {
+    for (let i = 0; i < text.length; i++) if (isRefusedControl(text.charCodeAt(i))) return true
+    return false
+  },
+}
 
 export function validateEmail(value: string): string | null {
   const email = value.trim()

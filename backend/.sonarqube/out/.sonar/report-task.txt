@@ -1,0 +1,6 @@
+projectKey=taskel-backend
+serverUrl=http://localhost:9000
+serverVersion=25.1.0.102122
+dashboardUrl=http://localhost:9000/dashboard?id=taskel-backend
+ceTaskId=abc2dcbb-016d-4473-a6a8-45559546a3bc
+ceTaskUrl=http://localhost:9000/api/ce/task?id=abc2dcbb-016d-4473-a6a8-45559546a3bc

@@ -8,10 +8,14 @@ namespace Taskel.Api.Data;
 /// Sample accounts and tasks for trying Taskel out: one account per kind of role, in two
 /// departments, with tasks in every state the interface shows. The passwords are published in
 /// docs/DEMO-ACCOUNTS.md, so this must never run on a server real people use: it only runs when
-/// <c>Seed:DemoData</c> is true, and only into a database that has no accounts yet.
+/// <c>Seed:DemoData</c> is true, only into a database that has no accounts yet, and never in the
+/// Production environment (see <c>Program.cs</c>).
 /// </summary>
 public static class DemoData
 {
+    // These are not secrets: they are published in docs/DEMO-ACCOUNTS.md so testers can sign in.
+    // Reviewed for SonarQube hotspot S2068 (hard-coded credentials): accepted, because seeding is
+    // off by default, refused in Production, and only runs on an empty database.
     public const string AdminPassword = "Admin-Demo-2026";
     public const string ManagerPassword = "Manager-Demo-2026";
     public const string UserPassword = "User-Demo-2026";

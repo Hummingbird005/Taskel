@@ -1,0 +1,223 @@
+{
+  "$schema": "http://json.schemastore.org/sarif-1.0.0",
+  "version": "1.0.0",
+  "runs": [
+    {
+      "tool": {
+        "name": "Microsoft (R) Visual C# Compiler",
+        "version": "5.0.0.0",
+        "fileVersion": "5.0.0-2.26529.108 (8e0f8ed2)",
+        "semanticVersion": "5.0.0"
+      },
+      "results": [
+        {
+          "ruleId": "CA1861",
+          "level": "note",
+          "message": "Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/TaskDetailsApiTests.cs",
+                "region": {
+                  "startLine": 45,
+                  "startColumn": 84,
+                  "endLine": 45,
+                  "endColumn": 97
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1,
+            "customProperties": {
+              "paramName": "body"
+            }
+          }
+        },
+        {
+          "ruleId": "CA1861",
+          "level": "note",
+          "message": "Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/DashboardTests.cs",
+                "region": {
+                  "startLine": 63,
+                  "startColumn": 25,
+                  "endLine": 63,
+                  "endColumn": 51
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1,
+            "customProperties": {
+              "paramName": "p"
+            }
+          }
+        },
+        {
+          "ruleId": "CA1861",
+          "level": "note",
+          "message": "Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/DashboardTests.cs",
+                "region": {
+                  "startLine": 64,
+                  "startColumn": 25,
+                  "endLine": 64,
+                  "endColumn": 46
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1,
+            "customProperties": {
+              "paramName": "p"
+            }
+          }
+        },
+        {
+          "ruleId": "CA1861",
+          "level": "note",
+          "message": "Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/DashboardTests.cs",
+                "region": {
+                  "startLine": 65,
+                  "startColumn": 25,
+                  "endLine": 65,
+                  "endColumn": 37
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1,
+            "customProperties": {
+              "paramName": "p"
+            }
+          }
+        },
+        {
+          "ruleId": "xUnit1045",
+          "level": "note",
+          "message": "The type argument object might not be serializable, which may cause Test Explorer to not enumerate individual data rows. Consider using a type that is known to be serializable.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/EmailTaskTests.cs",
+                "region": {
+                  "startLine": 98,
+                  "startColumn": 6,
+                  "endLine": 98,
+                  "endColumn": 39
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "xUnit1045",
+          "level": "note",
+          "message": "The type argument object might not be serializable, which may cause Test Explorer to not enumerate individual data rows. Consider using a type that is known to be serializable.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/DashboardTests.cs",
+                "region": {
+                  "startLine": 73,
+                  "startColumn": 6,
+                  "endLine": 73,
+                  "endColumn": 41
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "xUnit1045",
+          "level": "note",
+          "message": "The type argument object might not be serializable, which may cause Test Explorer to not enumerate individual data rows. Consider using a type that is known to be serializable.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/TaskDetailsApiTests.cs",
+                "region": {
+                  "startLine": 113,
+                  "startColumn": 6,
+                  "endLine": 113,
+                  "endColumn": 39
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        },
+        {
+          "ruleId": "xUnit1045",
+          "level": "note",
+          "message": "The type argument object might not be serializable, which may cause Test Explorer to not enumerate individual data rows. Consider using a type that is known to be serializable.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///home/user/taskel/backend/tests/Taskel.Api.Tests/TeamTests.cs",
+                "region": {
+                  "startLine": 240,
+                  "startColumn": 6,
+                  "endLine": 240,
+                  "endColumn": 44
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        }
+      ],
+      "rules": {
+        "CA1861": {
+          "id": "CA1861",
+          "shortDescription": "Avoid constant arrays as arguments",
+          "fullDescription": "Constant arrays passed as arguments are not reused when called repeatedly, which implies a new array is created each time. Consider extracting them to 'static readonly' fields to improve performance if the passed array is not mutated within the called method.",
+          "defaultLevel": "note",
+          "helpUri": "https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca1861",
+          "properties": {
+            "category": "Performance",
+            "isEnabledByDefault": true,
+            "tags": [
+              "Telemetry",
+              "EnabledRuleInAggressiveMode"
+            ]
+          }
+        },
+        "xUnit1045": {
+          "id": "xUnit1045",
+          "shortDescription": "Avoid using TheoryData type arguments that might not be serializable",
+          "defaultLevel": "note",
+          "helpUri": "https://xunit.net/xunit.analyzers/rules/xUnit1045",
+          "properties": {
+            "category": "Usage",
+            "isEnabledByDefault": true
+          }
+        }
+      }
+    }
+  ]
+}

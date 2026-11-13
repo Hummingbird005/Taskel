@@ -1,0 +1,136 @@
+{
+  "scannerProperties": [
+    {
+      "key": "sonar.scanner.app",
+      "value": "ScannerMSBuild"
+    },
+    {
+      "key": "sonar.scanner.appVersion",
+      "value": "12.1"
+    },
+    {
+      "key": "sonar.scanner.bootstrapStartTime",
+      "value": "1794591963000"
+    },
+    {
+      "key": "sonar.projectKey",
+      "value": "taskel-backend"
+    },
+    {
+      "key": "sonar.working.directory",
+      "value": "/home/user/taskel/backend/.sonarqube/out/.sonar"
+    },
+    {
+      "key": "sonar.projectBaseDir",
+      "value": "/home/user/taskel/backend"
+    },
+    {
+      "key": "sonar.pullrequest.cache.basepath",
+      "value": "/home/user/taskel/backend"
+    },
+    {
+      "key": "sonar.sources",
+      "value": "/home/user/taskel/backend/dotnet-tools.json"
+    },
+    {
+      "key": "sonar.tests",
+      "value": ""
+    },
+    {
+      "key": "sonar.modules",
+      "value": "0376DE23-F0BB-7DD7-B30D-372B1900266D,4265C4D9-BDAF-292B-CFE5-83D40A034836"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.projectKey",
+      "value": "taskel-backend:0376DE23-F0BB-7DD7-B30D-372B1900266D"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.projectName",
+      "value": "Taskel.Api"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.projectBaseDir",
+      "value": "/home/user/taskel/backend/src/Taskel.Api"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.working.directory",
+      "value": "/home/user/taskel/backend/.sonarqube/out/.sonar/mod0"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.sourceEncoding",
+      "value": "utf-8"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.tests",
+      "value": ""
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.sources",
+      "value": "/home/user/taskel/backend/src/Taskel.Api/Attachments/AttachmentDownload.cs,/home/user/taskel/backend/src/Taskel.Api/Attachments/AttachmentOptions.cs,/home/user/taskel/backend/src/Taskel.Api/Attachments/AttachmentStore.cs,/home/user/taskel/backend/src/Taskel.Api/Attachments/StreamedUploadAttribute.cs,/home/user/taskel/backend/src/Taskel.Api/Auth/ApiTokenAuthentication.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/AdminController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/ApiTokensController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/AttachmentsController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/AuthController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/ClaimsPrincipalExtensions.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/CurrentUser.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/DashboardController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/GroupsController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/NotificationsController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/TasksController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/TeamController.cs,/home/user/taskel/backend/src/Taskel.Api/Controllers/UsersController.cs,/home/user/taskel/backend/src/Taskel.Api/Data/DemoData.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111190344_InitialCreate.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111190344_InitialCreate.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111190836_AddUsersAndTaskOwner.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111190836_AddUsersAndTaskOwner.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111191702_AddTaskDueDatePriorityTags.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111191702_AddTaskDueDatePriorityTags.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111194627_AddApiTokens.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111194627_AddApiTokens.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111200630_AddTaskEmailSourceAndCompletion.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111200630_AddTaskEmailSourceAndCompletion.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111203245_AddDashboardSettings.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261111203245_AddDashboardSettings.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112091007_AddAssignmentAndDirectoryAccounts.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112091007_AddAssignmentAndDirectoryAccounts.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112151115_AddRolesAndDepartments.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112151115_AddRolesAndDepartments.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112161923_AddTaskStartDate.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112161923_AddTaskStartDate.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112164501_AddGroupsAndForwarding.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112164501_AddGroupsAndForwarding.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112211631_AddEmailNotificationPreference.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112211631_AddEmailNotificationPreference.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112215655_AddAttachmentsAndSettings.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261112215655_AddAttachmentsAndSettings.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261113165153_AddTaskWaiting.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/20261113165153_AddTaskWaiting.Designer.cs,/home/user/taskel/backend/src/Taskel.Api/Data/Migrations/TaskelDbContextModelSnapshot.cs,/home/user/taskel/backend/src/Taskel.Api/Data/TaskelDbContext.cs,/home/user/taskel/backend/src/Taskel.Api/Directory/DirectoryAccounts.cs,/home/user/taskel/backend/src/Taskel.Api/Directory/DirectoryNames.cs,/home/user/taskel/backend/src/Taskel.Api/Directory/DirectoryOptions.cs,/home/user/taskel/backend/src/Taskel.Api/Directory/IDirectoryAuthenticator.cs,/home/user/taskel/backend/src/Taskel.Api/Directory/LdapDirectoryAuthenticator.cs,/home/user/taskel/backend/src/Taskel.Api/Email/IEmailSender.cs,/home/user/taskel/backend/src/Taskel.Api/Email/SmtpEmailSender.cs,/home/user/taskel/backend/src/Taskel.Api/Email/SmtpOptions.cs,/home/user/taskel/backend/src/Taskel.Api/Email/TaskNotifications.cs,/home/user/taskel/backend/src/Taskel.Api/Models/ApiToken.cs,/home/user/taskel/backend/src/Taskel.Api/Models/Attachment.cs,/home/user/taskel/backend/src/Taskel.Api/Models/Dashboard.cs,/home/user/taskel/backend/src/Taskel.Api/Models/EmailTask.cs,/home/user/taskel/backend/src/Taskel.Api/Models/Group.cs,/home/user/taskel/backend/src/Taskel.Api/Models/TagList.cs,/home/user/taskel/backend/src/Taskel.Api/Models/TaskItem.cs,/home/user/taskel/backend/src/Taskel.Api/Models/Team.cs,/home/user/taskel/backend/src/Taskel.Api/Models/User.cs,/home/user/taskel/backend/src/Taskel.Api/Program.cs,/home/user/taskel/backend/src/Taskel.Api/Services/EfTaskRepository.cs,/home/user/taskel/backend/src/Taskel.Api/Services/EmailTaskFactory.cs,/home/user/taskel/backend/src/Taskel.Api/Services/ITaskRepository.cs,/home/user/taskel/backend/src/Taskel.Api/Validation/DueDateRangeAttribute.cs,/home/user/taskel/backend/src/Taskel.Api/Validation/SafeText.cs,/home/user/taskel/backend/src/Taskel.Api/Validation/StrictEmailAttribute.cs,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/Taskel.Api.GlobalUsings.g.cs,\"/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs\",/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/Taskel.Api.AssemblyInfo.cs,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/Taskel.Api.MvcApplicationPartsAssemblyInfo.cs,/home/user/taskel/backend/src/Taskel.Api/appsettings.Development.json,/home/user/taskel/backend/src/Taskel.Api/appsettings.json,/home/user/taskel/backend/src/Taskel.Api/data/attachments/1ebbc87bf60f4eeda524df24573ca78f,/home/user/taskel/backend/src/Taskel.Api/data/attachments/25123700816144639197ff4b5f59487e,/home/user/taskel/backend/src/Taskel.Api/data/attachments/311a36db86ea4acdaf0613167f245999,/home/user/taskel/backend/src/Taskel.Api/data/attachments/5a20924323184731a0b6b9653333c18f,/home/user/taskel/backend/src/Taskel.Api/data/attachments/5dfb6c4e0a824d5b90d14999edaafc94,/home/user/taskel/backend/src/Taskel.Api/data/attachments/72e458ac28164c76a3679b0d37163fc0,/home/user/taskel/backend/src/Taskel.Api/data/attachments/88fc7d776ba54b52af448953b0d5bb6f,/home/user/taskel/backend/src/Taskel.Api/data/attachments/9ca4609e05b9480bbe5f7f647455add2,/home/user/taskel/backend/src/Taskel.Api/data/attachments/9cc773720ef94999b6d0bd5cd50d20e2,/home/user/taskel/backend/src/Taskel.Api/data/attachments/a10a2de5ea834239afdf85f3f1bc7ce0,/home/user/taskel/backend/src/Taskel.Api/data/attachments/ab4b6de494514876bb88423b9e6011eb,/home/user/taskel/backend/src/Taskel.Api/data/attachments/b8c958a7889c4b4dbca98e70a14f6e87,/home/user/taskel/backend/src/Taskel.Api/data/attachments/bdbf4e3136034b91aaa8dccc84a5dc0b,/home/user/taskel/backend/src/Taskel.Api/data/attachments/d4e5d04875434cb590d59c5f9c07e13f,/home/user/taskel/backend/src/Taskel.Api/data/attachments/d84ba3af3569409f9f9e904f290e9f34,/home/user/taskel/backend/src/Taskel.Api/data/attachments/dfe1f3fba24047a293c2d9ac1c358326,/home/user/taskel/backend/src/Taskel.Api/Properties/launchSettings.json,/home/user/taskel/backend/src/Taskel.Api/obj/Taskel.Api.csproj.nuget.dgspec.json,/home/user/taskel/backend/src/Taskel.Api/obj/project.assets.json,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/Taskel.Api.sourcelink.json,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/staticwebassets.build.json,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/rjsmcshtml.dswa.cache.json,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/rpswa.dswa.cache.json,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/staticwebassets.build.endpoints.json,/home/user/taskel/backend/src/Taskel.Api/obj/Debug/net10.0/rjsmrazor.dswa.cache.json,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/Taskel.Api.deps.json,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/Taskel.Api.runtimeconfig.json,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/Taskel.Api.staticwebassets.endpoints.json,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/appsettings.Development.json,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/appsettings.json,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/BuildHost-net472/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.exe.config,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.deps.json,/home/user/taskel/backend/src/Taskel.Api/bin/Debug/net10.0/BuildHost-netcore/Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.runtimeconfig.json"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.cs.analyzer.projectOutPaths",
+      "value": "/home/user/taskel/backend/.sonarqube/out/0"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.cs.roslyn.reportFilePaths",
+      "value": "/home/user/taskel/backend/.sonarqube/out/0/Issues.json"
+    },
+    {
+      "key": "0376DE23-F0BB-7DD7-B30D-372B1900266D.sonar.cs.scanner.telemetry",
+      "value": "/home/user/taskel/backend/.sonarqube/out/0/Telemetry.json"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.projectKey",
+      "value": "taskel-backend:4265C4D9-BDAF-292B-CFE5-83D40A034836"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.projectName",
+      "value": "Taskel.Api.Tests"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.projectBaseDir",
+      "value": "/home/user/taskel/backend/tests/Taskel.Api.Tests"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.working.directory",
+      "value": "/home/user/taskel/backend/.sonarqube/out/.sonar/mod1"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.sourceEncoding",
+      "value": "utf-8"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.sources",
+      "value": ""
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.tests",
+      "value": "/home/user/taskel/backend/tests/Taskel.Api.Tests/obj/Taskel.Api.Tests.csproj.nuget.dgspec.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/obj/project.assets.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/obj/Debug/net10.0/Taskel.Api.Tests.sourcelink.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/obj/Debug/net10.0/MvcTestingAppManifest.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/Taskel.Api.deps.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/Taskel.Api.Tests.deps.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/Taskel.Api.runtimeconfig.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/MvcTestingAppManifest.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/Taskel.Api.Tests.runtimeconfig.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/Taskel.Api.staticwebassets.endpoints.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/appsettings.Development.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/bin/Debug/net10.0/appsettings.json,/home/user/taskel/backend/tests/Taskel.Api.Tests/ApiJson.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/ApiTokenTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/AssignmentTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/AttachmentTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/AuthApiTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/CompletionReplyTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/DashboardTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/DemoDataTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/DirectoryLoginTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/EmailTaskTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/FakeDirectory.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/FakeEmailSender.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/ForwardAndGroupTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/IntervalAndCalendarTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/NotificationTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/RealDirectoryTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/SmtpMessageTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/TaskDetailsApiTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/TaskelApiFactory.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/TasksApiTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/TaskStateTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/TeamTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/UnderPostingTests.cs,/home/user/taskel/backend/tests/Taskel.Api.Tests/ValidationTests.cs"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.cs.analyzer.projectOutPaths",
+      "value": "/home/user/taskel/backend/.sonarqube/out/1"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.cs.roslyn.reportFilePaths",
+      "value": "/home/user/taskel/backend/.sonarqube/out/1/Issues.json"
+    },
+    {
+      "key": "4265C4D9-BDAF-292B-CFE5-83D40A034836.sonar.cs.scanner.telemetry",
+      "value": "/home/user/taskel/backend/.sonarqube/out/1/Telemetry.json"
+    },
+    {
+      "key": "sonar.token",
+      "value": "***"
+    },
+    {
+      "key": "sonar.host.url",
+      "value": "http://localhost:9000"
+    },
+    {
+      "key": "sonar.exclusions",
+      "value": "**/Migrations/**"
+    }
+  ]
+}

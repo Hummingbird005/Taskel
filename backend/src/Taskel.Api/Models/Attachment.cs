@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 using Taskel.Api.Attachments;
 
@@ -40,4 +41,4 @@ public record AttachmentLimitsResponse(int MaxFileSizeMb, long MaxFileSizeBytes,
 /// <param name="DefaultMaxFileSizeMb">The server's configured default, used until an administrator sets a value.</param>
 public record AttachmentSettingsResponse(int MaxFileSizeMb, int DefaultMaxFileSizeMb, int MaxConfigurableMb);
 
-public record UpdateAttachmentSettingsRequest([Range(1, AttachmentOptions.MaxConfigurableMb)] int MaxFileSizeMb);
+public record UpdateAttachmentSettingsRequest([property: JsonRequired][Range(1, AttachmentOptions.MaxConfigurableMb)] int MaxFileSizeMb);
