@@ -14,6 +14,7 @@ public class EfTaskRepository(TaskelDbContext db) : ITaskRepository
             .Include(t => t.Forwards).ThenInclude(f => f.From)
             .Include(t => t.Forwards).ThenInclude(f => f.ToUser)
             .Include(t => t.Forwards).ThenInclude(f => f.ToGroup)
+            .Include(t => t.Attachments).ThenInclude(a => a.UploadedBy)
             .AsSplitQuery();
 
     private IQueryable<TaskItem> VisibleTo(Guid userId) =>
@@ -72,5 +73,6 @@ public class EfTaskRepository(TaskelDbContext db) : ITaskRepository
         await entry.Collection(t => t.Forwards).Query()
             .Include(f => f.From).Include(f => f.ToUser).Include(f => f.ToGroup)
             .LoadAsync(ct);
+        await entry.Collection(t => t.Attachments).Query().Include(a => a.UploadedBy).LoadAsync(ct);
     }
 }

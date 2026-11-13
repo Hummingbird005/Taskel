@@ -145,6 +145,7 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser) : Contr
             .Include(t => t.Forwards).ThenInclude(f => f.From)
             .Include(t => t.Forwards).ThenInclude(f => f.ToUser)
             .Include(t => t.Forwards).ThenInclude(f => f.ToGroup)
+            .Include(t => t.Attachments).ThenInclude(a => a.UploadedBy)
             .AsSplitQuery()
             .Where(t => t.AssigneeId == id || (t.AssigneeId == null && t.GroupId == null && t.UserId == id))
             .OrderBy(t => t.CreatedAt)

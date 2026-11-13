@@ -58,6 +58,22 @@ namespace Taskel.Api.Data.Migrations
                     b.ToTable("api_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Taskel.Api.Models.AppSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("app_settings", (string)null);
+                });
+
             modelBuilder.Entity("Taskel.Api.Models.Group", b =>
                 {
                     b.Property<Guid>("Id")
@@ -105,6 +121,47 @@ namespace Taskel.Api.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("group_members", (string)null);
+                });
+
+            modelBuilder.Entity("Taskel.Api.Models.TaskAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StoredName")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UploadedById")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("UploadedById");
+
+                    b.ToTable("task_attachments", (string)null);
                 });
 
             modelBuilder.Entity("Taskel.Api.Models.TaskForward", b =>
@@ -314,6 +371,22 @@ namespace Taskel.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Taskel.Api.Models.TaskAttachment", b =>
+                {
+                    b.HasOne("Taskel.Api.Models.TaskItem", null)
+                        .WithMany("Attachments")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Taskel.Api.Models.User", "UploadedBy")
+                        .WithMany()
+                        .HasForeignKey("UploadedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("UploadedBy");
+                });
+
             modelBuilder.Entity("Taskel.Api.Models.TaskForward", b =>
                 {
                     b.HasOne("Taskel.Api.Models.User", "From")
@@ -377,6 +450,8 @@ namespace Taskel.Api.Data.Migrations
 
             modelBuilder.Entity("Taskel.Api.Models.TaskItem", b =>
                 {
+                    b.Navigation("Attachments");
+
                     b.Navigation("Forwards");
                 });
 #pragma warning restore 612, 618
