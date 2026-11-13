@@ -1,3 +1,4 @@
+import AttachmentSettingsPanel from './AttachmentSettingsPanel'
 import DataTable from './ui/DataTable'
 import EmptyState from './ui/EmptyState'
 import { TableSkeleton } from './ui/Skeleton'
@@ -12,10 +13,12 @@ interface Props {
   onSessionExpired: () => void
   /** Called after the signed-in user's own account changed, so the rest of the app can catch up. */
   onOwnAccountChanged: () => void
+  /** Called after the attachment size limit was changed. */
+  onAttachmentLimitChanged: () => void
 }
 
 /** The administrator's screen: each account's role and department. */
-export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged }: Props) {
+export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged, onAttachmentLimitChanged }: Props) {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
@@ -174,6 +177,7 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
         Pentru conturile de domeniu, departamentul și rolurile stabilite prin grupuri în Active Directory se reaplică la
         fiecare conectare și pot înlocui ce setezi aici.
       </p>
+      <AttachmentSettingsPanel onSessionExpired={onSessionExpired} onChanged={onAttachmentLimitChanged} />
     </div>
   )
 }

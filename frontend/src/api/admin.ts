@@ -13,7 +13,19 @@ export interface AdminUser {
   roleIsFixed: boolean
 }
 
+export interface AttachmentSettings {
+  /** Largest file accepted, in megabytes. */
+  maxFileSizeMb: number
+  /** The server's configured default, used until an administrator sets a value. */
+  defaultMaxFileSizeMb: number
+  /** The largest value that can be set here. */
+  maxConfigurableMb: number
+}
+
 export const adminApi = {
+  attachmentSettings: () => request<AttachmentSettings>('/admin/settings/attachments'),
+  saveAttachmentSettings: (maxFileSizeMb: number) =>
+    request<AttachmentSettings>('/admin/settings/attachments', { method: 'PUT', body: JSON.stringify({ maxFileSizeMb }) }),
   users: () => request<AdminUser[]>('/admin/users'),
   updateUser: (id: string, role: UserRole, department: string | null) =>
     request<AdminUser>(`/admin/users/${id}`, { method: 'PUT', body: JSON.stringify({ role, department }) }),

@@ -65,6 +65,11 @@ Tasks sent by the old macro still get a reply, but it may not be threaded with t
   `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\Taskel\Outlook`, in plain text. Revoke
   the token in Taskel (**Integrări → Revocă**) if the computer is shared or lost.
 - A token can read and change your tasks, but cannot create or revoke tokens.
-- Only the first 4000 characters of the body are sent, as plain text. Attachments are not sent.
+- Only the first 4000 characters of the body are sent, as plain text.
+- The files attached to an email are added to its task. Pictures shown inside the message (signature logos and
+  the like) are skipped. A file larger than Taskel's limit (100 MB unless an administrator changed it) is
+  skipped too. The task is created either way, and the final message lists any attachment that was not added.
+- Each attachment is saved to your temporary folder, sent, then deleted from there. Large files are read into
+  memory while they are sent, so very large attachments can make Outlook pause.
 - Use an `https://` address when Taskel is not on the same computer, so the token and email text
   are encrypted in transit.

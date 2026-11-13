@@ -1,4 +1,5 @@
 import { request } from './client'
+import type { Attachment } from './attachments'
 import type { GroupSummary } from './groups'
 import type { UserSummary } from './users'
 
@@ -56,6 +57,8 @@ export interface TaskItem {
   group: GroupSummary | null
   /** Each time the task was forwarded, oldest first. */
   forwards: TaskForward[]
+  /** Files attached to the task, oldest first. */
+  attachments: Attachment[]
   access: TaskAccess
 }
 

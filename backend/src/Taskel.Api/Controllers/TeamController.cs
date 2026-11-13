@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Taskel.Api.Attachments;
 using Taskel.Api.Data;
 using Taskel.Api.Models;
 using Taskel.Api.Validation;
@@ -16,7 +17,8 @@ namespace Taskel.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/team")]
-public class TeamController(TaskelDbContext db, CurrentUser currentUser) : ControllerBase
+public class TeamController(TaskelDbContext db, CurrentUser currentUser, AttachmentStore attachments, ILogger<TeamController> logger)
+    : ControllerBase
 {
     /// <param name="department">The department to show. Managers may only name their own.</param>
     /// <param name="today">The caller's local date, so "overdue" and "due today" match what they see. Defaults to the server's date.</param>
@@ -174,6 +176,30 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser) : Contr
     {
         var serverToday = DateOnly.FromDateTime(DateTime.UtcNow);
         return requested is { } day && Math.Abs(day.DayNumber - serverToday.DayNumber) <= 1 ? day : serverToday;
+    }
+
+    /// <summary>
+    /// Downloads a file of a task a team member is responsible for. Managers read their people's
+    /// tasks in full, files included, without being part of those tasks.
+    /// </summary>
+    [HttpGet("members/{id:guid}/tasks/{taskId:guid}/attachments/{attachmentId:guid}")]
+    public async Task<IActionResult> DownloadMemberAttachment(Guid id, Guid taskId, Guid attachmentId, CancellationToken ct)
+    {
+        var me = await currentUser.GetAsync(User, ct);
+        if (me is null) return Unauthorized();
+        var (user, role) = me.Value;
+        if (role == UserRole.User) return NotAManager();
+
+        var member = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (member is null) return NotFound();
+        if (role != UserRole.Admin && (member.Department is null || !SameDepartment(member.Department, user.Department)))
+            return OtherDepartment();
+
+        var attachment = await db.Attachments.AsNoTracking().FirstOrDefaultAsync(a =>
+            a.Id == attachmentId && a.TaskId == taskId
+            && db.Tasks.Any(t => t.Id == taskId
+                && (t.AssigneeId == id || (t.AssigneeId == null && t.GroupId == null && t.UserId == id))), ct);
+        return attachment is null ? NotFound() : AttachmentDownload.Send(this, attachments, attachment, logger);
     }
 
     private async Task<List<string>> AllDepartmentsAsync(CancellationToken ct)

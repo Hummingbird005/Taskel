@@ -142,10 +142,7 @@ public class AttachmentsController(ITaskRepository tasks, TaskelDbContext db, At
         return CreatedAtAction(nameof(Download), new { taskId, id = attachment.Id }, AttachmentResponse.From(attachment));
     }
 
-    /// <summary>
-    /// Sends a file back. Always as a download of unspecified type, whatever was uploaded, so a
-    /// browser never opens an uploaded page or script as part of Taskel.
-    /// </summary>
+    /// <summary>Downloads a file of a task the caller can see.</summary>
     [HttpGet("tasks/{taskId:guid}/attachments/{id:guid}")]
     public async Task<IActionResult> Download(Guid taskId, Guid id, CancellationToken ct)
     {
@@ -153,15 +150,7 @@ public class AttachmentsController(ITaskRepository tasks, TaskelDbContext db, At
         var attachment = task?.Attachments.FirstOrDefault(a => a.Id == id);
         if (attachment is null) return NotFound();
 
-        var content = store.Open(attachment.StoredName);
-        if (content is null)
-        {
-            logger.LogError("The file of attachment {AttachmentId} is missing from disk", id);
-            return Problem(statusCode: StatusCodes.Status404NotFound, title: "The file is no longer stored on the server.");
-        }
-        Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.ContentSecurityPolicy = "default-src 'none'; sandbox";
-        return File(content, "application/octet-stream", attachment.FileName);
+        return AttachmentDownload.Send(this, store, attachment, logger);
     }
 
     [HttpDelete("tasks/{taskId:guid}/attachments/{id:guid}")]

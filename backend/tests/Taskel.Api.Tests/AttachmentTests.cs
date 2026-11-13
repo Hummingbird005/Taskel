@@ -325,6 +325,40 @@ public class AttachmentTests(TaskelApiFactory factory)
     }
 
     [Fact]
+    public async Task A_Manager_Downloads_The_Files_Of_Their_People_Only()
+    {
+        var department = $"Dept {Guid.NewGuid():N}"[..16];
+        var (manager, managerUser) = await factory.CreateUserAsync();
+        await factory.SetRoleAsync(managerUser.Id, UserRole.Manager, department);
+        var (member, memberUser) = await factory.CreateUserAsync();
+        await factory.SetRoleAsync(memberUser.Id, UserRole.User, department);
+        var (outsider, outsiderUser) = await factory.CreateUserAsync();
+        await factory.SetRoleAsync(outsiderUser.Id, UserRole.User, "Altundeva");
+        var task = await CreateAsync(member, "Al membrului");
+        var attachment = await UploadedAsync(member, task.Id, Bytes(500), "intern.pdf");
+        var foreign = await CreateAsync(outsider, "Din alt departament");
+        var foreignFile = await UploadedAsync(outsider, foreign.Id, Bytes(10));
+
+        // Not through the task itself, which the manager is not part of...
+        Assert.Equal(HttpStatusCode.NotFound, (await manager.GetAsync($"/api/tasks/{task.Id}/attachments/{attachment.Id}")).StatusCode);
+        // ...but through the team view, where the file is also listed.
+        var listed = (await manager.GetApiAsync<List<TaskResponse>>($"/api/team/members/{memberUser.Id}/tasks"))!;
+        Assert.Equal(attachment.Id, Assert.Single(Assert.Single(listed).Attachments).Id);
+        var download = await manager.GetAsync($"/api/team/members/{memberUser.Id}/tasks/{task.Id}/attachments/{attachment.Id}");
+        Assert.Equal(HttpStatusCode.OK, download.StatusCode);
+        Assert.Equal(Bytes(500), await download.Content.ReadAsByteArrayAsync());
+        Assert.Equal("attachment", download.Content.Headers.ContentDisposition!.DispositionType);
+
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await manager.GetAsync($"/api/team/members/{outsiderUser.Id}/tasks/{foreign.Id}/attachments/{foreignFile.Id}")).StatusCode);
+        // Another person's task cannot be reached by naming a member of the manager's own team.
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await manager.GetAsync($"/api/team/members/{memberUser.Id}/tasks/{foreign.Id}/attachments/{foreignFile.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await member.GetAsync($"/api/team/members/{memberUser.Id}/tasks/{task.Id}/attachments/{attachment.Id}")).StatusCode);
+    }
+
+    [Fact]
     public async Task The_Outlook_Macro_Can_Attach_Files_With_Its_Token()
     {
         var (session, _) = await factory.CreateUserAsync();

@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { checkFiles, type AttachmentLimits } from '../api/attachments'
 import type { GroupListItem } from '../api/groups'
 import type { TaskDraft, TaskPriority } from '../api/tasks'
 import { usersApi, type UserSummary } from '../api/users'
 import { describePeriod } from '../lib/dates'
 import { GROUP_PREFIX } from '../lib/taskViews'
-import { tasksLabel } from '../lib/text'
+import { formatBytes, tasksLabel } from '../lib/text'
 import {
   firstError,
   LIMITS,
@@ -34,8 +35,13 @@ interface Props {
   initial?: TaskDraft
   placeholder?: string
   submitLabel: string
-  /** Resolves to true when the task was saved. */
-  onSubmit: (draft: TaskDraft) => Promise<boolean>
+  /** Resolves to true when the task was saved. `files` are the ones picked to attach to it. */
+  onSubmit: (draft: TaskDraft, files: File[]) => Promise<boolean>
+  /**
+   * With these, the form offers to attach files to the new task. Left out in edit mode, where
+   * files are managed on the task itself.
+   */
+  attachmentLimits?: AttachmentLimits
   /** Present in edit mode, which also shows the notes field. */
   onCancel?: () => void
   /**
@@ -70,7 +76,10 @@ export default function TaskForm({
   groups = [],
   currentUser,
   taskId,
+  attachmentLimits,
 }: Props) {
+  const [files, setFiles] = useState<File[]>([])
+  const fileInput = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(initial.title)
   const [startDate, setStartDate] = useState(initial.startDate ?? '')
   const [dueDate, setDueDate] = useState(initial.dueDate ?? '')
@@ -152,7 +161,8 @@ export default function TaskForm({
     }
     setFormError(null)
     setSubmitting(true)
-    const saved = await onSubmit({
+    const saved = await onSubmit(
+    {
       title: trimmed,
       startDate: startDate || null,
       dueDate: dueDate || null,
@@ -162,7 +172,9 @@ export default function TaskForm({
       ...(isEditing ? { description: description.trim() || null } : {}),
       // Only sent when the form offers the choice.
       ...(people.length > 0 ? { assigneeId: assigneeId || null, groupId } : {}),
-    })
+    },
+    files,
+    )
     setSubmitting(false)
     if (saved && !isEditing) {
       setTitle('')
@@ -171,6 +183,7 @@ export default function TaskForm({
       setPriority(initial.priority)
       setTags(initial.tags.join(', '))
       setTarget(initialTarget)
+      setFiles([])
     }
   }
 
@@ -205,6 +218,25 @@ export default function TaskForm({
           rows={4}
           aria-label="Note"
         />
+      )}
+      {files.length > 0 && (
+        <ul className="composer-files">
+          {files.map((file, index) => (
+            <li key={`${file.name}-${index}`} className="chip">
+              <Icon name="paperclip" size={13} />
+              <span className="composer-file-name">{file.name}</span>
+              <span className="muted">{formatBytes(file.size)}</span>
+              <button
+                type="button"
+                onClick={() => change(setFiles, files.filter((_, i) => i !== index))}
+                aria-label={`Renunță la fișierul ${file.name}`}
+                title="Renunță la fișier"
+              >
+                <Icon name="close" size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
       {formError && (
         <p className="composer-error" role="alert">
@@ -273,6 +305,33 @@ export default function TaskForm({
               <TargetOptions people={people} groups={groups} />
             </select>
           </label>
+        )}
+        {attachmentLimits && (
+          <>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              hidden
+              onChange={(e) => {
+                const next = [...files, ...(e.target.files ?? [])]
+                e.target.value = ''
+                const invalid = checkFiles(next, 0, attachmentLimits)
+                if (invalid) setFormError(invalid)
+                else change(setFiles, next)
+              }}
+            />
+            <button
+              type="button"
+              className="composer-field composer-attach"
+              onClick={() => fileInput.current?.click()}
+              title={`Atașează fișiere (cel mult ${attachmentLimits.maxFileSizeMb} MB fiecare)`}
+              aria-label="Atașează fișiere"
+            >
+              <Icon name="paperclip" />
+              <span className="field-hint">Fișiere</span>
+            </button>
+          </>
         )}
         <div className="composer-actions">
           {onCancel && (
