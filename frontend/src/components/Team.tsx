@@ -9,7 +9,8 @@ import type { TaskItem } from '../api/tasks'
 import { teamApi, type Team as TeamData, type TeamMember } from '../api/team'
 import { countLabel, tasksLabel } from '../lib/text'
 import Icon, { type IconName } from './Icon'
-import ReadOnlyTask from './ReadOnlyTask'
+import TaskDetail from './TaskDetail'
+import TaskRow from './TaskRow'
 import TeamCalendar from './TeamCalendar'
 
 interface Props {
@@ -257,6 +258,9 @@ export default function Team({ user, today, onSessionExpired }: Props) {
 }
 
 function MemberTaskList({ state, today, name, memberId }: { state: MemberTasks; today: string; name: string; memberId: string }) {
+  // The task opened from the list, read only.
+  const [openTask, setOpenTask] = useState<TaskItem | null>(null)
+
   if (state.status === 'loading') {
     return (
       <div className="member-task-lists">
@@ -287,37 +291,25 @@ function MemberTaskList({ state, today, name, memberId }: { state: MemberTasks; 
     )
   }
 
+  const row = (task: TaskItem) => <TaskRow key={task.id} task={task} today={today} onOpen={() => setOpenTask(task)} showHolder />
+
   return (
     <div className="member-task-lists">
       <h3>Deschise ({open.length})</h3>
-      {open.length === 0 ? (
-        <p className="muted">Niciun task deschis.</p>
-      ) : (
-        <ul className="task-list">
-          {open.map((task) => (
-            <ReadOnlyTask
-              key={task.id}
-              task={task}
-              today={today}
-              attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(memberId, task.id, file.id)}
-            />
-          ))}
-        </ul>
-      )}
+      {open.length === 0 ? <p className="muted">Niciun task deschis.</p> : <ul className="task-list">{open.map(row)}</ul>}
       {completed.length > 0 && (
         <>
-              <h3>Ultimele finalizate</h3>
-              <ul className="task-list">
-                {completed.map((task) => (
-                  <ReadOnlyTask
-              key={task.id}
-              task={task}
-              today={today}
-              attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(memberId, task.id, file.id)}
-            />
-                ))}
-              </ul>
+          <h3>Ultimele finalizate</h3>
+          <ul className="task-list">{completed.map(row)}</ul>
         </>
+      )}
+      {openTask && (
+        <TaskDetail
+          task={openTask}
+          today={today}
+          attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(memberId, openTask.id, file.id)}
+          onClose={() => setOpenTask(null)}
+        />
       )}
     </div>
   )

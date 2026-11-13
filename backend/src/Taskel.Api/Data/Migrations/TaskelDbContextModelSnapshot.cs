@@ -267,6 +267,13 @@ namespace Taskel.Api.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("WaitingReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime?>("WaitingSince")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssigneeId");

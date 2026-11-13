@@ -101,7 +101,12 @@ public static class DemoData
         Add(ion, "Revizuiește planul de vânzări", due: 1, tags: ["proiect-alfa"]);
         Add(ion, "Planifică obiectivele pe trimestru", due: 5, start: 3, priority: TaskPriority.Low, tags: ["proiect-alfa"]);
         Add(ion, "Actualizează lista de prețuri", tags: ["contabilitate"]);
-        Add(ion, "Rezervă sala de conferințe", doneDaysAgo: 0);
+        var onHold = Add(ion, "Semnează contractul de mentenanță", due: 2, tags: ["juridic"],
+            notes: "Contractul a fost trimis de furnizor. De verificat clauza de penalități înainte de semnare.");
+        onHold.WaitingReason = "Aștept avizul departamentului juridic pentru clauza de penalități.";
+        onHold.WaitingSince = now.AddDays(-1);
+        var room = Add(ion, "Rezervă sala de conferințe", doneDaysAgo: 0, notes: "Pentru ședința de luni, 10 persoane, cu proiector.");
+        room.CompletionResponse = "Rezervată sala Mare de la 10:00 la 12:00. Proiectorul e verificat.";
         Add(ion, "Trimite raportul lunar", doneDaysAgo: 1);
         Add(ion, "Comandă consumabile", doneDaysAgo: 2);
         Add(ion, "Întâlnire cu echipa", doneDaysAgo: 4);
@@ -134,7 +139,10 @@ public static class DemoData
         // The team's own work, so the manager's workload and calendar screens have something to show.
         Add(maria, "Ofertă pentru clientul Beta", due: -4, start: -6, priority: TaskPriority.High,
             notes: "Clientul vrea discount de volum.\nDe verificat cu Ion marja minimă.");
-        Add(maria, "Răspunde la reclamația #482", due: -1);
+        var complaint = Add(maria, "Răspunde la reclamația #482", due: -1,
+            notes: "Clientul spune că livrarea a sosit incompletă: lipsesc două cutii din comanda 7731.");
+        complaint.WaitingReason = "Aștept confirmarea depozitului despre ce s-a încărcat în camion.";
+        complaint.WaitingSince = now.AddDays(-2);
         Add(maria, "Actualizează CRM-ul după târg", due: 0);
         Add(maria, "Demo pentru clientul Gamma", due: 4, start: 2, priority: TaskPriority.High, tags: ["demo"]);
         Add(maria, "Pregătește standul pentru târg", due: 4, start: 1);

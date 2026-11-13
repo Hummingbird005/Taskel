@@ -23,13 +23,10 @@ import {
   type SortBy,
   type View,
 } from '../lib/taskViews'
-import CompleteWithReply from './CompleteWithReply'
 import Dashboard from './Dashboard'
 import EmailNotifications from './EmailNotifications'
-import ForwardTask from './ForwardTask'
 import NewTaskDialog from './NewTaskDialog'
 import Groups from './Groups'
-import ReadOnlyTask from './ReadOnlyTask'
 import DueAlert from './DueAlert'
 import Icon from './Icon'
 import Banner from './ui/Banner'
@@ -38,7 +35,7 @@ import EmptyState from './ui/EmptyState'
 import { CardsSkeleton, TaskListSkeleton } from './ui/Skeleton'
 import Integrations from './Integrations'
 import Sidebar from './Sidebar'
-import TaskForm from './TaskForm'
+import TaskDetail, { type TaskActions } from './TaskDetail'
 import Team from './Team'
 import AdminUsers from './AdminUsers'
 import TaskRow from './TaskRow'
@@ -76,9 +73,8 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   const [view, setView] = useState<View>({ kind: 'dashboard' })
   const [sortBy, setSortBy] = useState<SortBy>('dueDate')
   const [search, setSearch] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [completingId, setCompletingId] = useState<string | null>(null)
-  const [forwardingId, setForwardingId] = useState<string | null>(null)
+  // The task opened in its dialog. Looked up in `tasks` on each render, so the dialog shows every change.
+  const [openId, setOpenId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [groups, setGroups] = useState<GroupListItem[]>([])
   const [attachmentLimits, setAttachmentLimits] = useState<AttachmentLimits>(DEFAULT_ATTACHMENT_LIMITS)
@@ -203,9 +199,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   function selectView(next: View) {
     setView(next)
     setSearch('')
-    setEditingId(null)
-    setCompletingId(null)
-    setForwardingId(null)
+    setOpenId(null)
     setSidebarOpen(false)
     setCustomizing(false)
     setAlertOpen(false)
@@ -266,120 +260,132 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
     }
   }
 
+  function replace(updated: TaskItem) {
+    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+  }
+
   /**
-   * Saves changes to a task. Who it goes to is applied separately and only when it differs,
-   * since reassigning is its own request that only the creator may make.
+   * Runs a change to a task and keeps the list up to date with the server's answer. Resolves to an
+   * error message for the dialog to show, or null when it worked. `explain` turns a refusal into
+   * Romanian; the server's own messages are in English.
    */
-  async function save(task: TaskItem, changes: Partial<TaskItem> & Partial<TaskTarget>): Promise<boolean> {
+  async function attempt(
+    change: () => Promise<TaskItem | void>,
+    fallback: string,
+    explain?: (err: ApiError) => string | null,
+  ): Promise<string | null> {
     try {
-      let updated = await tasksApi.update({ ...task, ...changes })
-      if (changes.assigneeId !== undefined) {
-        const next: TaskTarget = { assigneeId: changes.assigneeId, groupId: changes.groupId ?? null }
-        // A group task someone took shows that person in the form; leaving them there changes nothing.
-        const current: TaskTarget = { assigneeId: task.assignee?.id ?? null, groupId: task.assignee ? null : (task.group?.id ?? null) }
-        if (next.assigneeId !== current.assigneeId || next.groupId !== current.groupId) {
-          updated = await tasksApi.assign(task.id, next)
+      const updated = await change()
+      if (updated) replace(updated)
+      setError(null)
+      return null
+    } catch (err) {
+      if (!(err instanceof ApiError)) return 'Nu am putut contacta serverul Taskel. Încearcă din nou.'
+      if (err.status === 401) {
+        onSessionExpired()
+        return null
+      }
+      const explained = explain?.(err)
+      if (explained) return explained
+      if (err.status === 404) return 'Task-ul nu mai există sau nu mai ai acces la el.'
+      if (err.status === 403) return 'Nu mai poți schimba acest task: nu mai este la tine.'
+      return fallback
+    }
+  }
+
+  /** Everything the task's dialog can do with it. */
+  function actionsFor(task: TaskItem): TaskActions {
+    return {
+      // Who the task goes to is applied separately, and only when it differs: reassigning is its own
+      // request, which only the creator may make.
+      save: (draft) =>
+        attempt(async () => {
+          let updated = await tasksApi.update({ ...task, ...draft })
+          if (draft.assigneeId !== undefined) {
+            const next: TaskTarget = { assigneeId: draft.assigneeId, groupId: draft.groupId ?? null }
+            // A group task someone took shows that person in the form; leaving them there changes nothing.
+            const current: TaskTarget = { assigneeId: task.assignee?.id ?? null, groupId: task.assignee ? null : (task.group?.id ?? null) }
+            if (next.assigneeId !== current.assigneeId || next.groupId !== current.groupId) {
+              updated = await tasksApi.assign(task.id, next)
+            }
+          }
+          return updated
+        }, 'Nu am putut salva task-ul.'),
+      complete: async (response) => {
+        try {
+          replace(await tasksApi.complete(task.id, response))
+          setError(null)
+          return null
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 401) {
+            onSessionExpired()
+            return null
+          }
+          return replyErrorText(err)
         }
-      }
-      const saved = updated
-      setTasks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)))
-      setError(null)
-      return true
-    } catch (err) {
-      handleFailure(err, 'Nu am putut salva task-ul.')
-      return false
-    }
-  }
-
-  async function claim(task: TaskItem) {
-    try {
-      const taken = await tasksApi.claim(task.id)
-      setTasks((prev) => prev.map((t) => (t.id === taken.id ? taken : t)))
-      setError(null)
-      setNotice(`Ai preluat „${taken.title}”. Îl găsești la „Toate task-urile”.`)
-    } catch (err) {
-      if (err instanceof ApiError && (err.status === 404 || err.status === 409)) {
-        setError('Task-ul a fost preluat între timp de altcineva.')
+      },
+      wait: (reason) =>
+        attempt(() => tasksApi.wait(task.id, reason), 'Nu am putut pune task-ul în așteptare.', (err) =>
+          err.status === 400
+            ? 'Motivul este obligatoriu și poate avea cel mult 1000 de caractere.'
+            : err.status === 409
+              ? 'Task-ul este finalizat. Redeschide-l mai întâi.'
+              : null,
+        ),
+      resume: () => attempt(() => tasksApi.resume(task.id), 'Nu am putut relua task-ul.'),
+      reopen: () => attempt(() => tasksApi.update({ ...task, isCompleted: false }), 'Nu am putut redeschide task-ul.'),
+      forward: async (target, note) => {
+        const failure = await attempt(
+          () => tasksApi.forward(task.id, target, note),
+          'Nu am putut direcționa task-ul. Încearcă din nou.',
+          (err) =>
+            err.status === 400
+              ? 'Persoana sau grupul ales nu mai există. Alege altceva.'
+              : err.status === 403 || err.status === 404
+                ? 'Task-ul nu mai este la tine, deci nu îl mai poți direcționa.'
+                : null,
+        )
+        if (!failure) setNotice('Task direcționat. Îl poți urmări la „Direcționate”.')
+        return failure
+      },
+      claim: () => claim(task),
+      release: async () => {
+        const failure = await attempt(() => tasksApi.release(task.id), 'Nu am putut da task-ul înapoi grupului.')
+        if (failure) return failure
+        setOpenId(null)
+        setNotice(`„${task.title}” s-a întors la grupul ${task.group?.name ?? ''}.`.replace(' .', '.'))
+        // Whether the task is still visible depends on the user still being in the group.
         await refresh()
-      } else {
-        handleFailure(err, 'Nu am putut prelua task-ul.')
-      }
+        return null
+      },
+      remove: async () => {
+        const failure = await attempt(
+          async () => {
+            await tasksApi.remove(task.id)
+            setTasks((prev) => prev.filter((t) => t.id !== task.id))
+          },
+          'Nu am putut șterge task-ul.',
+          (err) => (err.status === 403 ? 'Doar persoana care a creat task-ul îl poate șterge.' : null),
+        )
+        if (!failure) setNotice(`Task șters: „${task.title}”.`)
+        return failure
+      },
+      attachmentsChanged: (attachments) =>
+        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, attachments } : t))),
     }
   }
 
-  async function release(task: TaskItem) {
-    try {
-      await tasksApi.release(task.id)
-      setNotice(`„${task.title}” s-a întors la grupul ${task.group?.name ?? ''}.`.replace(' .', '.'))
-      setError(null)
-      // Whether the task is still visible depends on the user still being in the group.
+  /** Takes a task waiting on one of the user's groups, from its row or from its dialog. */
+  async function claim(task: TaskItem): Promise<string | null> {
+    const failure = await attempt(() => tasksApi.claim(task.id), 'Nu am putut prelua task-ul.', (err) =>
+      err.status === 404 || err.status === 409 ? 'Task-ul a fost preluat între timp de altcineva.' : null,
+    )
+    if (failure) {
       await refresh()
-    } catch (err) {
-      handleFailure(err, 'Nu am putut da task-ul înapoi grupului.')
+      return failure
     }
-  }
-
-  async function forward(task: TaskItem, target: TaskTarget, note: string | null): Promise<string | null> {
-    try {
-      const updated = await tasksApi.forward(task.id, target, note)
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-      setForwardingId(null)
-      setError(null)
-      const to = updated.assignee?.displayName ?? (updated.group ? `grupul ${updated.group.name}` : updated.createdBy.displayName)
-      setNotice(`Task direcționat către ${to}. Îl poți urmări la „Direcționate”.`)
-      return null
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        onSessionExpired()
-        return null
-      }
-      if (err instanceof ApiError && err.status === 400) return 'Persoana sau grupul ales nu mai există. Alege altceva.'
-      if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
-        return 'Task-ul nu mai este la tine, deci nu îl mai poți direcționa.'
-      }
-      return 'Nu am putut direcționa task-ul. Încearcă din nou.'
-    }
-  }
-
-  /** Email tasks are completed through a reply; everything else toggles directly. */
-  function toggle(task: TaskItem) {
-    if (!task.isCompleted && task.sourceEmailAddress) {
-      setEditingId(null)
-      setForwardingId(null)
-      setCompletingId(task.id)
-    } else {
-      void save(task, { isCompleted: !task.isCompleted })
-    }
-  }
-
-  async function completeWithReply(task: TaskItem, response: string): Promise<string | null> {
-    try {
-      const updated = await tasksApi.complete(task.id, response)
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-      setCompletingId(null)
-      setError(null)
-      return null
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        onSessionExpired()
-        return null
-      }
-      return replyErrorText(err)
-    }
-  }
-
-  async function remove(id: string) {
-    try {
-      await tasksApi.remove(id)
-      setTasks((prev) => prev.filter((t) => t.id !== id))
-    } catch (err) {
-      handleFailure(
-        err,
-        err instanceof ApiError && err.status === 403
-          ? 'Doar persoana care a creat task-ul îl poate șterge.'
-          : 'Nu am putut șterge task-ul.',
-      )
-    }
+    setNotice(`Ai preluat „${task.title}”. Îl găsești la „Toate task-urile”.`)
+    return null
   }
 
   // New tasks start in the view they are added from: tagged in a tag view, due today in Today.
@@ -404,82 +410,23 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   const hint = viewHint(view)
 
   function renderTask(task: TaskItem) {
-    if (task.access === 'viewer') return <ReadOnlyTask key={task.id} task={task} today={today} showHolder />
-    if (forwardingId === task.id) {
-      return (
-        <li key={task.id} className="task-editor">
-          <ForwardTask
-            task={task}
-            people={people}
-            groups={groups}
-            onCancel={() => setForwardingId(null)}
-            onSubmit={(target, note) => forward(task, target, note)}
-          />
-        </li>
-      )
-    }
-    if (editingId === task.id) {
-      return (
-        <li key={task.id} className="task-editor">
-          <TaskForm
-            initial={{ ...task, assigneeId: task.assignee?.id ?? null, groupId: task.assignee ? null : (task.group?.id ?? null) }}
-            // Only the creator can reassign, so only they are offered the choice.
-            people={task.access === 'creator' ? people : []}
-            groups={groups}
-            currentUser={user}
-            taskId={task.id}
-            submitLabel="Salvează"
-            placeholder="Titlul task-ului"
-            onCancel={() => setEditingId(null)}
-            onSubmit={async (draft) => {
-              const saved = await save(task, draft)
-              if (saved) setEditingId(null)
-              return saved
-            }}
-          />
-        </li>
-      )
-    }
-    if (completingId === task.id && task.sourceEmailAddress) {
-      return (
-        <li key={task.id} className="task-editor">
-          <CompleteWithReply
-            title={task.title}
-            recipient={task.sourceEmailAddress}
-            onCancel={() => setCompletingId(null)}
-            onSubmit={(response) => completeWithReply(task, response)}
-          />
-        </li>
-      )
-    }
     return (
       <TaskRow
         key={task.id}
         task={task}
         today={today}
-        onToggle={() => toggle(task)}
-        onEdit={() => {
-          setCompletingId(null)
-          setForwardingId(null)
-          setEditingId(task.id)
-        }}
-        onClaim={() => void claim(task)}
-        onRelease={() => void release(task)}
-        onForward={() => {
-          setCompletingId(null)
-          setEditingId(null)
-          setForwardingId(task.id)
-        }}
-        onDelete={() => remove(task.id)}
-        onTagClick={(tag) => selectView({ kind: 'tag', tag })}
-        attachmentLimits={attachmentLimits}
-        onAttachmentsChange={(attachments) =>
-          setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, attachments } : t)))
+        onOpen={() => setOpenId(task.id)}
+        onClaim={() =>
+          void claim(task).then((failure) => {
+            if (failure) setError(failure)
+          })
         }
-        onSessionExpired={onSessionExpired}
+        showHolder={task.access === 'viewer'}
       />
     )
   }
+
+  const openTask = openId ? tasks.find((t) => t.id === openId) : undefined
 
   return (
     <div className={`workspace${sidebarOpen ? ' sidebar-open' : ''}`}>
@@ -631,6 +578,23 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
         </div>
 
       </main>
+
+      {openTask && (
+        <TaskDetail
+          // A new dialog for another task, so nothing typed for one is left in the other.
+          key={openTask.id}
+          task={openTask}
+          today={today}
+          actions={openTask.access === 'viewer' ? undefined : actionsFor(openTask)}
+          people={people}
+          groups={groups}
+          currentUser={user}
+          attachmentLimits={attachmentLimits}
+          onTagClick={(tag) => selectView({ kind: 'tag', tag })}
+          onSessionExpired={onSessionExpired}
+          onClose={() => setOpenId(null)}
+        />
+      )}
 
       {adding && (
         <NewTaskDialog
