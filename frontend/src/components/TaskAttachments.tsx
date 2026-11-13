@@ -16,6 +16,8 @@ interface Props {
    * shows nothing here.
    */
   showWhenEmpty?: boolean
+  /** Start with the list unfolded, as in the task's detail. */
+  defaultOpen?: boolean
   /** Called with the task's new list of files after one was added or removed. */
   onChange?: (attachments: Attachment[]) => void
   onSessionExpired?: () => void
@@ -29,6 +31,7 @@ export default function TaskAttachments({
   limits,
   canEdit = false,
   showWhenEmpty = false,
+  defaultOpen = false,
   onChange,
   onSessionExpired,
   downloadUrl,
@@ -36,7 +39,7 @@ export default function TaskAttachments({
   const input = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState<{ name: string; fraction: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState(showWhenEmpty)
+  const [open, setOpen] = useState(showWhenEmpty || defaultOpen)
   const files = task.attachments
 
   if (files.length === 0 && !(canEdit && showWhenEmpty)) return null

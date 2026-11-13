@@ -381,7 +381,7 @@ export default function TaskForm({
             </button>
           )}
           <Button type="submit" variant="primary" loading={submitting}>
-            <Icon name="plus" />
+            {!isEditing && <Icon name="plus" />}
             {submitLabel}
           </Button>
         </div>

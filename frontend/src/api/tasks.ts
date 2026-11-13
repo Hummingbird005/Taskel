@@ -11,6 +11,9 @@ export type TaskPriority = 'low' | 'medium' | 'high'
  */
 export type TaskAccess = 'creator' | 'assignee' | 'group' | 'viewer'
 
+/** Where a task stands. A task on hold (`waiting`) is still open work, with a reason. */
+export type TaskState = 'open' | 'waiting' | 'completed'
+
 /** One time a task was passed on. */
 export interface TaskForward {
   from: UserSummary
@@ -49,6 +52,10 @@ export interface TaskItem {
   /** The response written when the task was completed. */
   completionResponse: string | null
   completedAt: string | null
+  state: TaskState
+  /** What the task waits for, while it is on hold. */
+  waitingReason: string | null
+  waitingSince: string | null
   /** Who created the task. Only they can delete or reassign it. */
   createdBy: UserSummary
   /** Who the task is assigned to, when that is someone other than its creator. */
@@ -93,6 +100,11 @@ export const tasksApi = {
   /** Passes a received task on to a user or a group. The sender can still read it afterwards. */
   forward: (id: string, target: TaskTarget, note: string | null) =>
     request<TaskItem>(`/tasks/${id}/forward`, { method: 'POST', body: JSON.stringify({ ...target, note }) }),
+  /** Puts a task on hold. The reason is required. */
+  wait: (id: string, reason: string) =>
+    request<TaskItem>(`/tasks/${id}/wait`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  /** Takes a task off hold. */
+  resume: (id: string) => request<TaskItem>(`/tasks/${id}/resume`, { method: 'POST' }),
   /** Takes a task that waits on one of the user's groups. */
   claim: (id: string) => request<TaskItem>(`/tasks/${id}/claim`, { method: 'POST' }),
   /** Hands a task taken from a group back to it. */

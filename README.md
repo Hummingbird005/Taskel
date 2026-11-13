@@ -17,10 +17,11 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Forwarding** a received task to someone else, with a message<br>![Forward form with the recipient, a message and a workload warning](docs/screenshots/forward.png) | **Forwarded tasks** stay readable, with the path they took<br>![Direcționate view showing a completed task, who has it now and its path](docs/screenshots/forwarded.png) |
 | **Groups**, managed by administrators and managers<br>![Groups screen listing Active Directory groups and a form for a new group with members](docs/screenshots/groups.png) | **Sign in** with a domain or a local account<br>![Sign-in screen with tabs for domain account and local account](docs/screenshots/signin.png) |
 | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) |
-| **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
+| **Task list**: titles grouped by due date, with a state mark and the key facts; a row opens the task<br>![Task list grouped under Overdue, Today, Tomorrow, Later and No due date, one task on hold with a clock](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
 | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
-| **Files on a task**: download, add and remove<br>![A task with two attached files listed under it and an Adaugă fișier button](docs/screenshots/attachments.png) | **New task on a phone**, full screen<br><img src="docs/screenshots/mobile-new-task.png" alt="New task dialog on a phone, with the assignee search open" width="48%"> |
+| **Opening a task**: its message, details and files, and the buttons that change its state<br>![Task dialog with the title, the message, due date and priority, files, a resolution field and the Deschis, În așteptare and Finalizat buttons](docs/screenshots/task-detail.png) | **On hold**, with the reason it waits<br>![Task dialog showing an amber note: on hold since a date, waiting for the legal department](docs/screenshots/task-waiting.png) |
+| **Completed**, with the resolution written when it was done<br>![Task dialog with a green note: completed on a date, with the resolution](docs/screenshots/task-done.png) | **New task on a phone**, full screen<br><img src="docs/screenshots/mobile-new-task.png" alt="New task dialog on a phone, with the assignee search open" width="48%"> <img src="docs/screenshots/mobile-task.png" alt="A task opened on a phone, on hold" width="48%"> |
 | **Arctic Frost** theme: frosted glass over soft pastel shapes<br>![Dashboard in the Arctic Frost theme, with translucent cards over a pale blue and lavender background](docs/screenshots/frost-dashboard.png) | **Arctic Frost**, task list<br>![Task list in the Arctic Frost theme](docs/screenshots/frost-tasks.png) |
 | **Amber Glass** theme: smoked glass in a warm, lamp-lit room<br>![Dashboard in the Amber Glass theme, dark translucent cards over amber and orange light](docs/screenshots/amber-dashboard.png) | **Amber Glass**, task list<br>![Task list in the Amber Glass theme](docs/screenshots/amber-tasks.png) |
 | **Loading**: skeletons in the shape of the content<br>![Dashboard with grey placeholder cards while it loads](docs/screenshots/loading.png) | **Empty state**: what is missing and why<br>![Empty Direcționate view with an icon, a title and an explanation](docs/screenshots/empty.png) |
@@ -178,6 +179,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | POST   | `/api/tasks/{id}/claim` | ✓ | Take a task that waits on one of your groups   |
 | POST   | `/api/tasks/{id}/release` | ✓ | Hand a task taken from a group back to it    |
 | POST   | `/api/tasks/{id}/complete` | ✓ | Complete a task, with a response (required for email tasks) |
+| POST   | `/api/tasks/{id}/wait` | ✓ | Put a task on hold, with a required reason |
+| POST   | `/api/tasks/{id}/resume` | ✓ | Take a task off hold |
 | DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
 
 ✓ = browser session or API token. "session" = browser session only.
@@ -269,6 +272,31 @@ A task belongs to the user who created it and can be assigned to one other user.
 
 `GET /api/users` shows every account's name and email to every signed-in user, which suits a team
 installation. The search runs in the browser over that list, which is fine for hundreds of accounts.
+
+### Working on a task: open, on hold, completed
+
+Lists show each task's **title** with a mark for its state and a line of facts (due date, high priority, who has
+it, files). Clicking anywhere on the row opens the task: its title and **message**, the details, the files and
+the path it took.
+
+At the bottom, the people working on the task (its creator and its assignee) write a message and press one of
+the state buttons:
+
+| Button | Colour | What it does |
+|---|---|---|
+| **Deschis** / **Reia lucrul** / **Redeschide** | blue | Back to open: takes a task off hold, or reopens a completed one |
+| **În așteptare** | amber | Puts the task on hold. **The message is required**: it is the reason, shown to everyone who can see the task. Pressed again, it updates the reason |
+| **Finalizat** | green | Completes the task. The message is kept as its resolution; for a task from an email it is required and is emailed as the reply |
+
+In the lists, an open task has an empty ring, a task on hold a clock and an **În așteptare** label, and a
+completed task a **green tick**. Completed titles are not struck through.
+
+A task on hold still counts as open work: in the views, the dashboard, the reminder, the team's workload and
+calendar. Completing or reopening a task takes it off hold. In the API, each task has `state` (`open`,
+`waiting`, `completed`), `waitingReason` and `waitingSince`.
+
+Members of the group a task waits on see it read-only with a **Preia task-ul** button; someone who forwarded a
+task and a manager reading their people's tasks see it read-only.
 
 ### Delegate vs Direcționate
 
@@ -455,8 +483,8 @@ completed.
 A task created from an email remembers who sent that email. Such a task can only be completed by writing a
 response:
 
-- `POST /api/tasks/{id}/complete` with `{ "response": "…" }` (up to 4000 characters). In the app, ticking the
-  task opens the response form.
+- `POST /api/tasks/{id}/complete` with `{ "response": "…" }` (up to 4000 characters). In the app, open the task,
+  write the response at the bottom and press **Trimite și finalizează**.
 - Taskel emails the response to the sender as a reply to the original email (`Re:` subject, `In-Reply-To` and
   `References` headers), so it shows up in the same conversation.
 - The task is marked as completed only after the SMTP server has accepted the reply. If sending fails
@@ -500,7 +528,7 @@ Things to know:
 Tasks can carry files, whether they were made in Taskel or from an email.
 
 - **In the interface:** pick files in the new-task dialog (**Atașează fișiere**), or, on an existing task, open
-  **Fișiere** or use the paperclip button in its row. Uploads show their progress.
+  **Fișiere** in its dialog. Uploads show their progress.
 - **From Outlook:** the macro sends the files attached to each email along with it. Pictures shown inside the
   message, such as signature logos, are left out.
 - **Who can do what:** everyone who can see a task can download its files, including the members of a group it

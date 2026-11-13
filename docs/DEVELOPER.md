@@ -98,7 +98,8 @@ returns them as `Viewer`. Their own tasks follow the table above like anyone els
 
 - `users`: local and directory accounts. Local accounts have a password hash; directory accounts have a
   `DirectoryId` (the objectGUID) and no password.
-- `tasks`: `UserId` is the creator and never changes. `AssigneeId` and `GroupId` say who has it: neither (the
+- `tasks`: `UserId` is the creator and never changes. `IsCompleted`, and `WaitingReason` / `WaitingSince`
+  while on hold, give the task's state (`TaskItem.State`). `AssigneeId` and `GroupId` say who has it: neither (the
   creator), a user, a group (waiting to be taken), or both (taken from a group, and can be handed back).
 - `groups`, `group_members`: application groups, and Active Directory groups recorded at sign-in.
 - `task_forwards`: each time a task was passed on.
@@ -169,6 +170,21 @@ Which list a task appears in follows its `access`:
 - **Delegate**: `creator`, given to someone else or to a group.
 - **De preluat**: `group`.
 - **Direcționate**: `viewer`.
+
+### Lists and the task dialog
+
+A list renders each task as a `TaskRow`: a state mark (`StateMark`), the title and a line of facts. The title is
+a button whose `::after` covers the row, so the whole row opens the task while staying one keyboard stop.
+
+Opening a task sets `openId` in `Workspace`, which renders `TaskDetail` for the task with that id, looked up in
+`tasks` on every render so the dialog always shows the latest version. `TaskDetail` gets a `TaskActions` object
+from `Workspace.actionsFor(task)`: each action calls the API, replaces the task in `tasks` with the answer and
+resolves to a Romanian error message or null. Without `actions` the dialog is read only, which is how forwarded
+tasks and a manager's view of their people's tasks are shown.
+
+The state buttons at the bottom of the dialog share one message field: it is the reason for **În așteptare**
+(required), and the resolution for **Finalizat** (required, and emailed, for tasks from an email). The server's
+rule for states is in `TaskItem.State` and the `wait`, `resume` and `complete` actions of `TasksController`.
 
 ### Adding a task, in the interface
 
