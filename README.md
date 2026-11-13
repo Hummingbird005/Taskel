@@ -29,7 +29,8 @@ The interface is in Romanian; code, API and documentation are in English.
 
 Screenshots use the [demo accounts and tasks](docs/DEMO-ACCOUNTS.md).
 
-**For developers:** how the code is organised and how to extend it is in [docs/DEVELOPER.md](docs/DEVELOPER.md).
+**For developers:** how the code is organised and how to extend it is in [docs/DEVELOPER.md](docs/DEVELOPER.md). The last security scan (SonarQube, Semgrep, dependency audits), its findings and how to run it again are in
+[docs/SECURITY-SCAN.md](docs/SECURITY-SCAN.md).
 
 ## Interface design
 

@@ -47,9 +47,9 @@ public class NotificationWorker(NotificationQueue queue, IEmailSender sender, IL
             {
                 await sender.SendAsync(message, stoppingToken);
             }
-            catch (EmailNotConfiguredException)
+            catch (EmailNotConfiguredException ex)
             {
-                logger.LogDebug("A task notification was not sent: no SMTP server is configured");
+                logger.LogDebug(ex, "A task notification was not sent: no SMTP server is configured");
             }
             catch (EmailSendException)
             {

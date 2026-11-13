@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 using Taskel.Api.Validation;
 
@@ -69,8 +70,11 @@ public record UserResponse(
 public record AdminUserResponse(
     Guid Id, string Email, string DisplayName, UserRole Role, string? Department, bool IsDirectoryAccount, bool RoleIsFixed);
 
+/// <remarks>
+/// The role must be sent: left out, it would read as <see cref="UserRole.User"/> and demote the account.
+/// </remarks>
 public record UpdateUserRequest(
-    [EnumDataType(typeof(UserRole))] UserRole Role,
+    [property: JsonRequired][EnumDataType(typeof(UserRole))] UserRole Role,
     [StringLength(User.MaxDepartmentLength), SafeText] string? Department);
 
 /// <summary>What the sign-in screen should offer.</summary>
@@ -81,4 +85,4 @@ public record AuthOptionsResponse(bool LocalRegistration, bool ActiveDirectory, 
 /// <param name="Available">Whether the server can send them at all (SMTP configured, notifications not switched off).</param>
 public record NotificationSettingsResponse(bool EmailOnNewTask, string Address, bool Available);
 
-public record UpdateNotificationSettingsRequest(bool EmailOnNewTask);
+public record UpdateNotificationSettingsRequest([property: JsonRequired] bool EmailOnNewTask);

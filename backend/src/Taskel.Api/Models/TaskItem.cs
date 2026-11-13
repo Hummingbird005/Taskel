@@ -107,7 +107,8 @@ public record CreateTaskRequest(
 public record UpdateTaskRequest(
     [Required, StringLength(200, MinimumLength = 1), SafeText] string Title,
     [StringLength(2000), SafeText(Multiline = true)] string? Description,
-    bool IsCompleted,
+    // Required: left out, it would read as false and reopen a completed task.
+    [property: JsonRequired] bool IsCompleted,
     [DueDateRange] DateOnly? DueDate = null,
     [EnumDataType(typeof(TaskPriority))] TaskPriority Priority = TaskPriority.Medium,
     [TagList] List<string>? Tags = null,

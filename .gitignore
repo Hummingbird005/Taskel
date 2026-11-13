@@ -11,3 +11,7 @@ dist/
 
 # Uploaded attachments (default Attachments:Path)
 backend/src/Taskel.Api/data/
+
+# SonarScanner working folders
+.sonarqube/
+.scannerwork/

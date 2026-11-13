@@ -52,10 +52,10 @@ public class LdapDirectoryAuthenticator(IOptions<DirectoryOptions> options, ILog
             logger.LogError(ex, "Active Directory request to {Host}:{Port} failed", directory.Host, directory.Port);
             throw new DirectoryUnavailableException("Active Directory could not be reached.", ex);
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogError("Active Directory request to {Host}:{Port} timed out", directory.Host, directory.Port);
-            throw new DirectoryUnavailableException("Active Directory did not answer in time.");
+            logger.LogError(ex, "Active Directory request to {Host}:{Port} timed out", directory.Host, directory.Port);
+            throw new DirectoryUnavailableException("Active Directory did not answer in time.", ex);
         }
         catch (Exception ex) when (ex is System.Net.Sockets.SocketException or IOException
                                        or System.Security.Authentication.AuthenticationException)

@@ -129,6 +129,25 @@ public class DemoDataTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_Production_Server_Never_Gets_The_Demo_Accounts_Even_When_Asked()
+    {
+        await using var production = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Production");
+            builder.UseSetting("ConnectionStrings:Taskel", ConnectionString);
+            builder.UseSetting("Database:MigrateOnStartup", "false");
+            builder.UseSetting("Seed:DemoData", "true");
+        });
+
+        // Starting the server is what would seed.
+        var response = await production.CreateClient().GetAsync("/api/health");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var scope = production.Services.CreateScope();
+        Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<TaskelDbContext>().Users.CountAsync());
+    }
+
+    [Fact]
     public async Task Demo_Passwords_Are_Stored_Hashed()
     {
         Assert.True(await SeedAsync());

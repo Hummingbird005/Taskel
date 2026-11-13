@@ -97,12 +97,10 @@ public class AttachmentStore(TaskelDbContext db, IOptions<AttachmentOptions> opt
         {
             if (PathOf(storedName) is { } path) File.Delete(path);
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Left on disk; the database no longer points to it.
-        }
-        catch (UnauthorizedAccessException)
-        {
+            // Left on disk, unreadable to anyone: the database no longer points to it, and stored
+            // names are never reused. Not worth failing the request that removed the attachment.
         }
     }
 

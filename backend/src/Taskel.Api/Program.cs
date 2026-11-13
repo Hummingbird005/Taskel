@@ -123,7 +123,12 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDe
 
 // Sample accounts and tasks, for trying Taskel out. Off unless asked for (on in Development):
 // the passwords of these accounts are published in docs/DEMO-ACCOUNTS.md.
-if (app.Configuration.GetValue("Seed:DemoData", false))
+if (app.Configuration.GetValue("Seed:DemoData", false) && app.Environment.IsProduction())
+{
+    // The demo passwords are public. A production server never gets these accounts, whatever the setting says.
+    app.Logger.LogError("Seed:DemoData is set on a Production server. The demo accounts were NOT added: their passwords are public.");
+}
+else if (app.Configuration.GetValue("Seed:DemoData", false))
 {
     using var scope = app.Services.CreateScope();
     var seeded = await DemoData.SeedAsync(
