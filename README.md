@@ -22,6 +22,7 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
 | **Files on a task**: download, add and remove<br>![A task with two attached files listed under it and an Adaugă fișier button](docs/screenshots/attachments.png) | **Attaching files to a new task**, from the composer<br>![Task composer with two files picked, shown as chips](docs/screenshots/attach-composer.png) |
 | **Arctic Frost** theme: frosted glass over soft pastel shapes<br>![Dashboard in the Arctic Frost theme, with translucent cards over a pale blue and lavender background](docs/screenshots/frost-dashboard.png) | **Arctic Frost**, task list<br>![Task list in the Arctic Frost theme](docs/screenshots/frost-tasks.png) |
+| **Amber Glass** theme: smoked glass in a warm, lamp-lit room<br>![Dashboard in the Amber Glass theme, dark translucent cards over amber and orange light](docs/screenshots/amber-dashboard.png) | **Amber Glass**, task list<br>![Task list in the Amber Glass theme](docs/screenshots/amber-tasks.png) |
 | **Loading**: skeletons in the shape of the content<br>![Dashboard with grey placeholder cards while it loads](docs/screenshots/loading.png) | **Empty state**: what is missing and why<br>![Empty Direcționate view with an icon, a title and an explanation](docs/screenshots/empty.png) |
 | **Tablet**: the sidebar becomes a rail that opens on hover<br><img src="docs/screenshots/tablet.png" alt="Dashboard at tablet width with an icon-only sidebar" width="70%"> | **Tables on a phone** become cards<br><img src="docs/screenshots/mobile-team.png" alt="Team workload on a phone, one card per person" width="48%"> |
 
@@ -48,11 +49,16 @@ sign-in screen, and is separate on each device):
   faint shadow. Text stays dark slate and primary buttons stay solid dark, so legibility never depends on what
   is behind the glass. Drawers and input fields are nearly opaque for the same reason.
 
+- **Amber Glass** is its dark counterpart: a near-black, warm background with out-of-focus amber and orange
+  light, surfaces of smoked glass with a faint light edge, warm white text, and amber for everything that acts
+  or measures — primary buttons, ticks, progress bars and the busiest days in the calendar.
+
 Where the browser cannot blur what is behind an element, and for people who ask their system for less
-transparency or more contrast, Arctic Frost falls back to solid white surfaces without the shapes.
+transparency or more contrast, the glass themes fall back to solid surfaces without the shapes.
 
 A theme is a set of tokens under `:root[data-theme='…']` in `frontend/src/index.css`; the list offered in the
-picker is in `frontend/src/lib/theme.ts`.
+picker is in `frontend/src/lib/theme.ts`. The glass themes share their structure (the `[data-glass]` rules), so
+another one needs only its tokens and whatever it wants to colour differently.
 
 ### States and layout
 

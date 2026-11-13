@@ -9,7 +9,8 @@
       // The saved theme is applied before the first paint, so the page does not flash in another one.
       try {
         var theme = localStorage.getItem('taskel.theme')
-        if (theme === 'light' || theme === 'dark' || theme === 'frost') document.documentElement.dataset.theme = theme
+        if (['light', 'dark', 'frost', 'amber'].indexOf(theme) >= 0) document.documentElement.dataset.theme = theme
+        if (theme === 'frost' || theme === 'amber') document.documentElement.dataset.glass = ''
       } catch (e) {}
     </script>
   </head>
