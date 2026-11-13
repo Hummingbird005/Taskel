@@ -12,21 +12,23 @@ The interface is in Romanian; code, API and documentation are in English.
 |---|---|
 | **Team workload** for managers: each person in the department<br>![Team screen with totals and a table of people with open, overdue and completed counts](docs/screenshots/team.png) | **A team member's tasks**, in full, read only<br>![A team member's open and recently completed tasks, with notes](docs/screenshots/team-member.png) |
 | **Team calendar**: open tasks per person and day, four weeks at a time<br>![Heat map of tasks per person and day, with the tasks of the selected day listed below](docs/screenshots/team-calendar.png) | **One person's calendar**, with their tasks on each day<br>![Four-week calendar of one person's tasks](docs/screenshots/team-calendar-person.png) |
-| **Workload warning** when giving someone a task in a busy period<br>![Task composer warning that the assignee already has five tasks in the period](docs/screenshots/assign-warning.png) | **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) |
-| **Tasks for a group**: every member sees them until one takes them<br>![De preluat view with two group tasks and a Preia button on each](docs/screenshots/claimable.png) | **Giving a task to a group**, from Active Directory or made in Taskel<br>![Task composer with the assignee picker set to an Active Directory group](docs/screenshots/assign-group.png) |
+| **New task**, in a dialog opened from **Task nou**: title, message, dates, priority, tags, who it is for, files<br>![New task dialog with a title, a message, an interval, priority, tags, an assignee chosen by search and an attached file](docs/screenshots/new-task.png) | **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) |
+| **Tasks for a group**: every member sees them until one takes them<br>![De preluat view with two group tasks and a Preia button on each](docs/screenshots/claimable.png) | **Choosing who a task is for**, by searching names, emails and groups<br>![The assignee field with two people matching the letters typed](docs/screenshots/assign-search.png) |
 | **Forwarding** a received task to someone else, with a message<br>![Forward form with the recipient, a message and a workload warning](docs/screenshots/forward.png) | **Forwarded tasks** stay readable, with the path they took<br>![Direcționate view showing a completed task, who has it now and its path](docs/screenshots/forwarded.png) |
 | **Groups**, managed by administrators and managers<br>![Groups screen listing Active Directory groups and a form for a new group with members](docs/screenshots/groups.png) | **Sign in** with a domain or a local account<br>![Sign-in screen with tabs for domain account and local account](docs/screenshots/signin.png) |
 | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) |
 | **Task list**, grouped by due date, with tags as channels<br>![Task list grouped under Today, Tomorrow, Later and No due date](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
 | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
-| **Files on a task**: download, add and remove<br>![A task with two attached files listed under it and an Adaugă fișier button](docs/screenshots/attachments.png) | **Attaching files to a new task**, from the composer<br>![Task composer with two files picked, shown as chips](docs/screenshots/attach-composer.png) |
+| **Files on a task**: download, add and remove<br>![A task with two attached files listed under it and an Adaugă fișier button](docs/screenshots/attachments.png) | **New task on a phone**, full screen<br><img src="docs/screenshots/mobile-new-task.png" alt="New task dialog on a phone, with the assignee search open" width="48%"> |
 | **Arctic Frost** theme: frosted glass over soft pastel shapes<br>![Dashboard in the Arctic Frost theme, with translucent cards over a pale blue and lavender background](docs/screenshots/frost-dashboard.png) | **Arctic Frost**, task list<br>![Task list in the Arctic Frost theme](docs/screenshots/frost-tasks.png) |
 | **Amber Glass** theme: smoked glass in a warm, lamp-lit room<br>![Dashboard in the Amber Glass theme, dark translucent cards over amber and orange light](docs/screenshots/amber-dashboard.png) | **Amber Glass**, task list<br>![Task list in the Amber Glass theme](docs/screenshots/amber-tasks.png) |
 | **Loading**: skeletons in the shape of the content<br>![Dashboard with grey placeholder cards while it loads](docs/screenshots/loading.png) | **Empty state**: what is missing and why<br>![Empty Direcționate view with an icon, a title and an explanation](docs/screenshots/empty.png) |
 | **Tablet**: the sidebar becomes a rail that opens on hover<br><img src="docs/screenshots/tablet.png" alt="Dashboard at tablet width with an icon-only sidebar" width="70%"> | **Tables on a phone** become cards<br><img src="docs/screenshots/mobile-team.png" alt="Team workload on a phone, one card per person" width="48%"> |
 
-Screenshots use sample data: made-up people and tasks in a test domain.
+Screenshots use the [demo accounts and tasks](docs/DEMO-ACCOUNTS.md).
+
+**For developers:** how the code is organised and how to extend it is in [docs/DEVELOPER.md](docs/DEVELOPER.md).
 
 ## Interface design
 
@@ -67,7 +69,7 @@ another one needs only its tokens and whatever it wants to colour differently.
 - **Hover and focus**: rows, buttons and fields respond to the pointer, and everything interactive has a
   visible keyboard focus ring. Row actions appear on hover or focus, and are always visible on touch screens.
 - **Responsive**: above 1024 px the sidebar is fixed; from 641 to 1024 px it is a rail of icons that opens on
-  hover or keyboard focus (a drawer on touch tablets); up to 640 px it is a drawer, the composer stacks, tables
+  hover or keyboard focus (a drawer on touch tablets); up to 640 px it is a drawer, the new-task dialog fills the screen, tables
   become cards and touch targets are at least 44 px. The team calendar's heat map still scrolls sideways on a
   phone.
 - Animations are switched off for people who ask their system to reduce motion.
@@ -85,6 +87,7 @@ Taskel/
 │   └── tests/Taskel.Api.Tests/  # xUnit integration tests
 ├── frontend/                    # React + Vite + TypeScript
 ├── integrations/outlook/        # Outlook macro: turn emails into tasks
+├── docs/                        # Developer guide, demo accounts, screenshots
 └── .github/workflows/ci.yml     # Build + test both projects
 ```
 
@@ -120,6 +123,11 @@ npm run dev
 ```
 
 The Vite dev server proxies `/api/*` to the backend, so no CORS setup is needed in development.
+
+**Try it**: on an empty database, the API in Development adds sample accounts for every role (including an
+initial administrator) and sample tasks. The emails and passwords are in
+[docs/DEMO-ACCOUNTS.md](docs/DEMO-ACCOUNTS.md). They are public: the sample data is added only when
+`Seed:DemoData` is true, which it is only in `appsettings.Development.json`.
 For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `backend/src/Taskel.Api/appsettings.json`.
 
 ## API
@@ -255,11 +263,26 @@ A task belongs to the user who created it and can be assigned to one other user.
   tasks from emails). Only the creator can delete or reassign it; the assignee gets `403`.
 - Other users cannot see the task at all (`404`).
 - A task can also go to a group, and an assignee can pass it on: see [Groups and forwarding](#groups-and-forwarding).
-- In the interface, your own work (assigned to you, or yours and unassigned) fills the usual views, the
-  dashboard and the reminder; what you handed to others is under **Delegate**.
+- In the interface, new tasks are written in a dialog opened with **Task nou**, at the top of the dashboard
+  and of every task list. The person or group is chosen by **searching**: type part of a name, an email or a
+  group name (case and diacritics do not matter) and pick from the matches. Nothing is listed before typing.
 
 `GET /api/users` shows every account's name and email to every signed-in user, which suits a team
-installation. The assignee picker is a plain list, so it is meant for tens of users rather than thousands.
+installation. The search runs in the browser over that list, which is fine for hundreds of accounts.
+
+### Delegate vs Direcționate
+
+Both lists hold tasks that are with someone else now. The difference is whose they are:
+
+| | **Delegate** (delegated) | **Direcționate** (forwarded) |
+|---|---|---|
+| Which tasks | Tasks **you created** and gave to someone else or to a group | Tasks **you received** from someone and passed on |
+| Whose they are | Still yours: you are their creator | Not yours any more: the creator is someone else |
+| What you can do | Everything: edit, reassign, take back, delete, complete | Only read them, to follow what happens |
+| How they got there | Choosing a person or group when adding or editing your task | **Direcționează** on a task assigned to you |
+
+Your own work (tasks assigned to you, and yours that nobody else has) fills the other views, the dashboard and
+the reminder. Tasks waiting on one of your groups are under **De preluat** until someone takes them.
 
 ## Groups and forwarding
 
@@ -476,8 +499,8 @@ Things to know:
 
 Tasks can carry files, whether they were made in Taskel or from an email.
 
-- **In the interface:** pick files in the composer when adding a task (**Fișiere**), or open **Fișiere** /
-  **Atașează fișiere** on an existing task. Uploads show their progress.
+- **In the interface:** pick files in the new-task dialog (**Atașează fișiere**), or, on an existing task, open
+  **Fișiere** or use the paperclip button in its row. Uploads show their progress.
 - **From Outlook:** the macro sends the files attached to each email along with it. Pictures shown inside the
   message, such as signature logos, are left out.
 - **Who can do what:** everyone who can see a task can download its files, including the members of a group it

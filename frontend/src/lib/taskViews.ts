@@ -201,6 +201,23 @@ export function emptyTitle(view: View, searching: boolean): { title: string; ico
   }
 }
 
+/**
+ * One sentence under the title of the views whose names do not explain themselves: which tasks
+ * are listed, and what the user can still do with them.
+ */
+export function viewHint(view: View): string | null {
+  switch (view.kind) {
+    case 'delegated':
+      return 'Task-uri create de tine și date altcuiva sau unui grup. Rămân ale tale: le poți modifica, realoca și șterge.'
+    case 'forwarded':
+      return 'Task-uri primite de tine de la altcineva și date mai departe. Nu mai sunt la tine: le poți doar citi, ca să vezi ce s-a întâmplat cu ele.'
+    case 'claimable':
+      return 'Task-uri date unui grup din care faci parte. Le vede tot grupul, până când unul dintre voi apasă „Preia”.'
+    default:
+      return null
+  }
+}
+
 export function emptyMessage(view: View, searching: boolean): string {
   if (searching) return 'Niciun task nu se potrivește căutării.'
   switch (view.kind) {
@@ -213,11 +230,11 @@ export function emptyMessage(view: View, searching: boolean): string {
     case 'completed':
       return 'Niciun task finalizat încă.'
     case 'delegated':
-      return 'Nu ai alocat niciun task altcuiva.'
+      return 'Nu ai dat niciun task creat de tine altcuiva.'
     case 'claimable':
       return 'Niciun task nu așteaptă să fie preluat în grupurile tale.'
     case 'forwarded':
-      return 'Nu ai direcționat niciun task. Task-urile pe care le dai mai departe rămân aici, doar pentru citire.'
+      return 'Nu ai dat mai departe niciun task primit de la altcineva.'
     case 'tag':
       return `Niciun task cu eticheta #${view.tag}.`
     default:

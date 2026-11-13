@@ -18,6 +18,7 @@ import {
   matchesSearch,
   tagCounts,
   tasksInView,
+  viewHint,
   viewTitle,
   type SortBy,
   type View,
@@ -26,6 +27,7 @@ import CompleteWithReply from './CompleteWithReply'
 import Dashboard from './Dashboard'
 import EmailNotifications from './EmailNotifications'
 import ForwardTask from './ForwardTask'
+import NewTaskDialog from './NewTaskDialog'
 import Groups from './Groups'
 import ReadOnlyTask from './ReadOnlyTask'
 import DueAlert from './DueAlert'
@@ -77,6 +79,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   const [editingId, setEditingId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [forwardingId, setForwardingId] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const [groups, setGroups] = useState<GroupListItem[]>([])
   const [attachmentLimits, setAttachmentLimits] = useState<AttachmentLimits>(DEFAULT_ATTACHMENT_LIMITS)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -253,7 +256,8 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           ? `Task alocat către ${created.assignee.displayName}. Îl găsești la „Delegate”.`
           : created.group
             ? `Task dat grupului ${created.group.name}. Îl găsești la „Delegate” până îl preia cineva.`
-            : null,
+            : // The dialog closes on success, so say that it worked even when the view does not show the task.
+              `Task adăugat: „${created.title}”.`,
       )
       return true
     } catch (err) {
@@ -386,13 +390,18 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
     dueDate: view.kind === 'today' ? today : null,
     tags: view.kind === 'tag' ? [view.tag] : [],
   }
-  const composerKey = view.kind === 'tag' ? `tag:${view.tag}` : view.kind
   const isDashboard = view.kind === 'dashboard'
   const showsTasks =
     !isDashboard && view.kind !== 'integrations' && view.kind !== 'team' && view.kind !== 'groups' && view.kind !== 'admin'
-  const canAdd =
-    (showsTasks && !['completed', 'overdue', 'delegated', 'claimable', 'forwarded'].includes(view.kind)) ||
-    (isDashboard && !customizing)
+  // New tasks are written in a dialog, opened from the header of the dashboard and of every task list.
+  const canAdd = !loading && (isDashboard || showsTasks)
+  const newTaskButton = canAdd && (
+    <Button variant="primary" onClick={() => setAdding(true)}>
+      <Icon name="plus" />
+      Task nou
+    </Button>
+  )
+  const hint = viewHint(view)
 
   function renderTask(task: TaskItem) {
     if (task.access === 'viewer') return <ReadOnlyTask key={task.id} task={task} today={today} showHolder />
@@ -507,6 +516,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           </div>
           {isDashboard && !loading && (
             <div className="main-tools">
+              {newTaskButton}
               <button
                 type="button"
                 className="button ghost"
@@ -538,6 +548,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
                   <option value="created">După data creării</option>
                 </select>
               </label>
+              {newTaskButton}
             </div>
           )}
         </header>
@@ -549,6 +560,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
             </Banner>
           )}
           {error && <Banner onClose={() => setError(null)}>{error}</Banner>}
+          {hint && !loading && <p className="view-hint muted">{hint}</p>}
 
           {view.kind === 'integrations' ? (
             <>
@@ -592,7 +604,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
                 ) : canAdd ? (
                   <Button
                     variant="primary"
-                    onClick={() => document.querySelector<HTMLInputElement>('.main-composer .composer-title')?.focus()}
+                    onClick={() => setAdding(true)}
                   >
                     <Icon name="plus" />
                     Adaugă un task
@@ -618,22 +630,19 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           )}
         </div>
 
-        {canAdd && (
-          <footer className="main-composer">
-            <TaskForm
-              key={composerKey}
-              initial={composerDefaults}
-              people={people}
-              groups={groups}
-              currentUser={user}
-              attachmentLimits={attachmentLimits}
-              submitLabel="Adaugă"
-              placeholder={view.kind === 'tag' ? `Adaugă un task în #${view.tag}` : 'Adaugă un task'}
-              onSubmit={add}
-            />
-          </footer>
-        )}
       </main>
+
+      {adding && (
+        <NewTaskDialog
+          initial={composerDefaults}
+          people={people}
+          groups={groups}
+          currentUser={user}
+          attachmentLimits={attachmentLimits}
+          onSubmit={add}
+          onClose={() => setAdding(false)}
+        />
+      )}
 
       {alertOpen && (
         <DueAlert

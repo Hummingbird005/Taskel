@@ -10,6 +10,12 @@ interface Props {
   limits: AttachmentLimits
   /** Whether the person looking may add and remove files. Without it the list is read-only. */
   canEdit?: boolean
+  /**
+   * Show the section even though the task has no files yet, opened and ready to add one. The
+   * row asks for this when its paperclip button is pressed; otherwise a task without files
+   * shows nothing here.
+   */
+  showWhenEmpty?: boolean
   /** Called with the task's new list of files after one was added or removed. */
   onChange?: (attachments: Attachment[]) => void
   onSessionExpired?: () => void
@@ -18,14 +24,22 @@ interface Props {
 }
 
 /** The files of a task: a list to download from and, for those who work on it, a way to add and remove. */
-export default function TaskAttachments({ task, limits, canEdit = false, onChange, onSessionExpired, downloadUrl }: Props) {
+export default function TaskAttachments({
+  task,
+  limits,
+  canEdit = false,
+  showWhenEmpty = false,
+  onChange,
+  onSessionExpired,
+  downloadUrl,
+}: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState<{ name: string; fraction: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(showWhenEmpty)
   const files = task.attachments
 
-  if (files.length === 0 && !canEdit) return null
+  if (files.length === 0 && !(canEdit && showWhenEmpty)) return null
 
   async function add(picked: File[]) {
     if (picked.length === 0) return

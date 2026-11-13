@@ -8,7 +8,7 @@ import { tasksLabel } from '../lib/text'
 import { LIMITS, validateNotes } from '../lib/validation'
 import Icon from './Icon'
 import Button from './ui/Button'
-import TargetOptions from './TargetOptions'
+import TargetPicker from './TargetPicker'
 
 interface Props {
   task: TaskItem
@@ -82,21 +82,21 @@ export default function ForwardTask({ task, people, groups, onSubmit, onCancel }
         Task-ul trece la persoana sau grupul ales. Tu îl vei vedea în continuare la „Direcționate”, doar pentru
         citire, ca să urmărești ce se întâmplă cu el.
       </p>
-      <label className="forward-target">
+      <div className="forward-target">
         <span>Către</span>
-        <select
+        <TargetPicker
+          people={people}
+          groups={groups}
           value={target}
-          onChange={(e) => {
+          onChange={(next) => {
             setError(null)
-            setTarget(e.target.value)
+            setTarget(next)
           }}
-          aria-label="Direcționează către"
+          label="Direcționează către"
+          placeholder="Caută o persoană sau un grup"
           autoFocus
-        >
-          <option value="">Alege o persoană sau un grup</option>
-          <TargetOptions people={people} groups={groups} />
-        </select>
-      </label>
+        />
+      </div>
       <textarea
         value={note}
         onChange={(e) => {

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { TaskItem } from '../api/tasks'
 import { formatDueDate, formatRange } from '../lib/dates'
 import { isOverdue } from '../lib/taskViews'
@@ -48,6 +49,8 @@ export default function TaskRow({
   const isCreator = task.access === 'creator'
   const waitsOnGroup = task.access === 'group'
   const lastForward = task.forwards.at(-1)
+  // A task without files shows no file section until its paperclip button asks for one.
+  const [attaching, setAttaching] = useState(false)
   const hasInterval = task.startDate !== null && task.dueDate !== null && task.startDate !== task.dueDate
   const dueLabel = !task.dueDate
     ? null
@@ -162,6 +165,8 @@ export default function TaskRow({
           task={task}
           limits={attachmentLimits}
           canEdit={!waitsOnGroup}
+          showWhenEmpty={attaching}
+          key={attaching ? 'attaching' : 'idle'}
           onChange={onAttachmentsChange}
           onSessionExpired={onSessionExpired}
         />
@@ -177,6 +182,11 @@ export default function TaskRow({
         {!waitsOnGroup && (
           <button type="button" onClick={onEdit} aria-label={`Editează: ${task.title}`} title="Editează">
             <Icon name="edit" />
+          </button>
+        )}
+        {!waitsOnGroup && task.attachments.length === 0 && !attaching && (
+          <button type="button" onClick={() => setAttaching(true)} aria-label={`Atașează fișiere: ${task.title}`} title="Atașează fișiere">
+            <Icon name="paperclip" />
           </button>
         )}
         {task.access === 'assignee' && !task.isCompleted && (

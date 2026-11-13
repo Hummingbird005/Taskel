@@ -25,6 +25,9 @@
   --danger-soft: #fef3f2;
   --go: #0f6b4f;
   --warn: #8a5300;
+  /* Solid surface of pop-ups: menus, native drop-down lists, autofilled fields. */
+  --menu-bg: #ffffff;
+  --menu-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 12px 32px rgb(0 0 0 / 0.14);
 
   /* Type scale: 13 / 15 / 17 / 22 / 28 */
   --fs-xs: 0.8667rem;
@@ -59,6 +62,8 @@
   --danger-soft: #2a1412;
   --go: #5fd3a6;
   --warn: #f2b84b;
+  --menu-bg: #1c1c1f;
+  --menu-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.5);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
@@ -77,6 +82,8 @@
     --danger-soft: #2a1412;
     --go: #5fd3a6;
     --warn: #f2b84b;
+    --menu-bg: #1c1c1f;
+    --menu-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.5);
   }
 }
 :root[data-theme='light'], :root[data-theme='frost'] { color-scheme: light; }
@@ -924,6 +931,8 @@ button.composer-attach { background: transparent; cursor: pointer; }
   --glass-solid: rgb(248 250 252 / 0.92);
   --dialog-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 24px 64px rgb(15 23 42 / 0.18);
   --dialog-backdrop: rgb(15 23 42 / 0.25);
+  --menu-bg: #f8fafc;
+  --menu-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(15 23 42 / 0.06), 0 16px 40px rgb(15 23 42 / 0.14);
   --blob-1: rgb(191 219 254 / 0.75);
   --blob-2: rgb(221 214 254 / 0.7);
   --blob-3: rgb(186 230 253 / 0.5);
@@ -1063,6 +1072,8 @@ button.composer-attach { background: transparent; cursor: pointer; }
   --glass-solid: rgb(24 17 12 / 0.95);
   --dialog-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 24px 64px rgb(0 0 0 / 0.6);
   --dialog-backdrop: rgb(0 0 0 / 0.55);
+  --menu-bg: #211811;
+  --menu-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px rgb(0 0 0 / 0.55);
   --blob-1: rgb(245 158 11 / 0.4);
   --blob-2: rgb(194 65 12 / 0.36);
   --blob-3: rgb(253 230 138 / 0.16);
@@ -1108,4 +1119,129 @@ button.composer-attach { background: transparent; cursor: pointer; }
     --glass: #1f1711; --glass-strong: #1f1711; --glass-border: #5a4838; --glass-blur: none; --surface: #1f1711;
     --glass-header: #120d09; --glass-field: #120d09; --glass-solid: #1a130e;
   }
+}
+
+/* ---------- Native controls follow the theme ----------
+   Drop-down lists, date pickers, scrollbars and autofill are drawn by the browser. `color-scheme`
+   picks their light or dark set; these rules give them the theme's own colours where the browser
+   allows it. */
+select { color: var(--text); }
+select option, select optgroup { background-color: var(--menu-bg); color: var(--text); }
+select option:disabled { color: var(--muted); }
+select:disabled { color: var(--muted); cursor: default; }
+::placeholder { color: var(--muted); opacity: 0.85; }
+input[type='date'], input[type='number'] { color: var(--text); }
+progress { accent-color: var(--accent); }
+* { scrollbar-color: color-mix(in srgb, var(--text) 28%, transparent) transparent; }
+/* Autofill paints fields pale yellow or blue whatever the theme; this keeps the theme's surface. */
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, textarea:-webkit-autofill, select:-webkit-autofill {
+  -webkit-text-fill-color: var(--text); caret-color: var(--text);
+  box-shadow: 0 0 0 1000px var(--menu-bg) inset; transition: background-color 9999s ease-out;
+}
+input:-webkit-autofill:focus { box-shadow: 0 0 0 1000px var(--menu-bg) inset, 0 0 0 1px var(--border-strong); }
+dialog { color: var(--text); }
+dialog::backdrop { background: rgb(11 11 12 / 0.6); }
+[data-glass] dialog::backdrop { background: var(--dialog-backdrop); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+[data-theme='amber'] progress { accent-color: #f59e0b; }
+
+/* ---------- View hint ---------- */
+.view-hint { max-width: 720px; margin-bottom: var(--s4); font-size: var(--fs-sm); }
+
+/* ---------- Searching for a person or a group ---------- */
+.target-picker {
+  position: relative; display: flex; align-items: center; gap: var(--s2); min-height: var(--control); padding: 0 var(--s3);
+  border: 1px solid var(--field-border); border-radius: var(--radius); background: var(--bg); color: var(--muted);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.target-picker:hover { border-color: var(--border-strong); }
+.target-picker:focus-within { border-color: var(--border-strong); box-shadow: 0 0 0 1px var(--border-strong); color: var(--text); }
+.target-picker input {
+  flex: 1; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text); outline: none;
+  box-shadow: none; font-size: inherit; text-overflow: ellipsis;
+}
+.target-picker input:focus { box-shadow: none; }
+.target-clear {
+  display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: var(--muted);
+}
+.target-clear:hover { background: var(--hover); color: var(--text); }
+.target-menu {
+  position: absolute; z-index: 30; top: calc(100% + 6px); left: -1px; right: -1px; min-width: 260px; padding: var(--s1);
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--menu-bg); color: var(--text);
+  box-shadow: var(--menu-shadow);
+}
+.target-menu ul { list-style: none; margin: 0; padding: 0; max-height: 264px; overflow-y: auto; }
+.target-menu li {
+  display: flex; align-items: baseline; gap: var(--s2); padding: var(--s2) var(--s3); border-radius: calc(var(--radius) - 2px);
+  cursor: pointer; color: var(--muted);
+}
+.target-menu li .icon-svg { align-self: center; }
+.target-menu li.active { background: var(--hover); }
+.target-menu li[aria-selected='true'] .target-name { font-weight: 600; }
+.target-name { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
+.target-detail { margin-left: auto; padding-left: var(--s3); font-size: var(--fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.target-hint { margin: 0; padding: var(--s2) var(--s3); font-size: var(--fs-xs); color: var(--muted); }
+[data-glass] .target-picker { background: var(--glass-field); }
+[data-glass] .target-menu { border-color: var(--glass-border); }
+[data-theme='amber'] .target-menu li.active { background: var(--accent-soft); }
+/* In the compact editor the picker is one more field in the bar, and its list opens upwards. */
+.composer-target { flex: 0 1 220px; min-width: 150px; }
+.composer-target .target-picker { min-height: 32px; padding: 0 var(--s2); border-color: transparent; background: transparent; font-size: var(--fs-sm); }
+.composer-target .target-picker:hover, .composer-target .target-picker:focus-within { border-color: var(--field-border); box-shadow: none; }
+.composer-target .target-menu { top: auto; bottom: calc(100% + 6px); }
+.forward-target .target-picker { flex: 1; min-width: 0; max-width: 420px; }
+
+/* ---------- New task dialog ---------- */
+.task-dialog {
+  width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; overflow-y: auto;
+  border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.28);
+}
+.task-dialog-head {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
+  padding: var(--s4) var(--s6); border-bottom: 1px solid var(--border); background: var(--bg);
+}
+.task-dialog-head h2 { font-size: var(--fs-xl); }
+.dialog-close {
+  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius); background: transparent; color: var(--muted);
+}
+.dialog-close:hover { background: var(--hover); color: var(--text); }
+.task-form { display: flex; flex-direction: column; gap: var(--s4); padding: var(--s6); }
+.task-form .field > span { color: var(--text); }
+.task-form .field input:not([type='checkbox']), .task-form .field select, .task-form .field textarea { width: 100%; }
+.task-form .composer-title { padding: var(--s2) var(--s3); font-size: var(--fs-lg); font-weight: 500; }
+.task-form .composer-notes { padding: var(--s3); resize: vertical; font-size: var(--fs-md); line-height: 1.5; }
+.task-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+.task-form .composer-files { padding: 0; }
+.task-form-attach { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.task-form .composer-error, .task-form .composer-warning { padding: 0; }
+.task-form-actions {
+  position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: var(--s2);
+  margin: 0 calc(var(--s6) * -1) calc(var(--s6) * -1); padding: var(--s4) var(--s6);
+  border-top: 1px solid var(--border); background: var(--bg);
+}
+/* The picker's list is part of the dialog's flow, so it is never cut off by the dialog's edge. */
+.task-form .target-menu { position: static; margin-top: var(--s2); min-width: 0; box-shadow: none; }
+.task-form .target-picker { flex-wrap: wrap; }
+.task-form .target-picker input { min-height: calc(var(--control) - 2px); }
+.task-form .target-menu { scroll-margin-bottom: 96px; }
+.task-form .target-picker .target-menu { flex-basis: 100%; margin-bottom: var(--s2); }
+[data-glass] .task-dialog {
+  background: var(--glass-strong); border-color: var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--dialog-shadow);
+}
+[data-glass] .task-dialog-head, [data-glass] .task-form-actions { background: var(--menu-bg); border-color: var(--border); }
+[data-glass] .task-form .field input:not([type='checkbox']), [data-glass] .task-form .field select, [data-glass] .task-form .field textarea { background: var(--glass-field); }
+@media (max-width: 640px) {
+  .task-dialog { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; }
+  .task-dialog-head { padding: var(--s3) var(--s4); }
+  .task-form { padding: var(--s4); min-height: calc(100dvh - 62px); }
+  .task-form-grid { grid-template-columns: 1fr; }
+  .task-form-actions { margin: auto calc(var(--s4) * -1) calc(var(--s4) * -1); padding: var(--s3) var(--s4); }
+  .task-form-actions .button { flex: 1; }
+  .composer-target { flex-basis: 100%; grid-column: 1 / -1; }
+  .target-menu li { min-height: 44px; align-items: center; }
+  .target-menu li { flex-wrap: wrap; row-gap: 0; }
+  .target-detail { flex-basis: 100%; margin-left: 23px; padding-left: 0; }
+  .main-tools .button.primary { flex-shrink: 0; }
 }
