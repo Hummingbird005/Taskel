@@ -13,7 +13,8 @@ Browser ──► React app (frontend/)
 Outlook ──► ASP.NET Core API (backend/src/Taskel.Api) ──► PostgreSQL (EF Core)
  macro        │  Bearer tsk_… (API token)                ├─► disk: attachment files
               │                                          ├─► SMTP: replies, notifications
-              │                                          └─► Active Directory (LDAP sign-in)
+              │                                          ├─► Active Directory (LDAP sign-in)
+              │                                          └─► Keycloak (OpenID Connect sign-in, user import)
 ```
 
 - **Backend**: one ASP.NET Core 10 project with controllers, EF Core 10 on PostgreSQL. No separate service
@@ -48,6 +49,8 @@ database and adds the [demo data](DEMO-ACCOUNTS.md) on an empty database.
 | `Services/` | `ITaskRepository` / `EfTaskRepository` (which tasks a user can reach), `EmailTaskFactory` (email → task) |
 | `Auth/` | The API token authentication handler |
 | `Directory/` | Active Directory sign-in over LDAP and the mapping of directory accounts, roles and groups |
+| `Keycloak/` | Keycloak sign-in: the OpenID Connect handler's setup and events, reading the tokens, linking accounts, the admin API client for the test and the import, the sign-out address |
+| `Integrations/` | The integration settings an administrator saves (`IntegrationSettings`), what Active Directory and Keycloak accounts share (`ExternalAccounts`: roles and groups), and the public address of the interface |
 | `Email/` | SMTP sending, the notification queue and its background worker |
 | `Attachments/` | Storing files on disk, the size limit, and download headers |
 | `Validation/` | Attributes shared by request records (`SafeText`, `StrictEmail`, `DueDateRange`) |
@@ -105,7 +108,49 @@ returns them as `Viewer`. Their own tasks follow the table above like anyone els
 - `task_forwards`: each time a task was passed on.
 - `task_attachments`: file metadata; the content is on disk under a generated name.
 - `api_tokens`: hashed personal tokens for the Outlook macro and other clients.
-- `app_settings`: values an administrator changes from the interface (so far, the attachment size limit).
+- `app_settings`: single values an administrator changes from the interface (the attachment size limit).
+- `integration_settings`: one row per integration (`email`, `directory`, `keycloak`) saved in **Setări sistem**:
+  the settings as JSON, and the secret apart, encrypted with Data Protection.
+- `data_protection_keys`: the Data Protection key ring (session cookies, those secrets).
+- `users.KeycloakSubject`: Keycloak's id for the account (`sub`). An account is local, directory
+  (`DirectoryId`) or Keycloak, never two at once; `User.IsExternal` tells the last two from a local one.
+
+### Integration settings
+
+The mail server, Active Directory and Keycloak are configured in `appsettings` / environment variables, and an
+administrator can replace that configuration from the interface. `Integrations/IntegrationSettings` holds the
+result in memory, because the sign-in handlers read it synchronously:
+
+- `IntegrationDefaults` wraps the configured options; `IntegrationSettings.Smtp`, `.Notifications`,
+  `.Directory` and `.Keycloak` are what is in effect (saved row, else configuration).
+- Saving goes through `SaveEmailAsync` / `SaveDirectoryAsync` / `SaveKeycloakAsync`, which reload at once.
+  `IntegrationSettingsRefresher` reloads every minute for the other servers. Whoever needs a value reads it
+  from `IntegrationSettings` at the moment of use, never from `IOptions<…>`.
+- A secret in a request means: null keeps the one in effect, empty drops the saved one, anything else replaces
+  it (`ResolveSecret`). Responses never contain secrets, only whether one is saved or configured.
+- The Keycloak OpenID Connect handler caches its options. `KeycloakOidcSetup` builds them from the current
+  settings, and `ReloadAsync` drops the cache when the Keycloak settings change.
+
+The admin endpoints are three small controllers (`EmailSettingsController`, `DirectorySettingsController`,
+`KeycloakSettingsController`) on `IntegrationSettingsControllerBase`, which carries the route prefix, the
+`[AdminOnly]` filter and the status every response includes.
+
+### Keycloak sign-in, step by step
+
+1. The button links to `GET /api/auth/keycloak/login`, which challenges the `Keycloak` scheme.
+2. `KeycloakOidcEvents.RedirectToIdentityProvider` sets the callback from the public address and sends the
+   browser to Keycloak (code flow, PKCE, `response_mode=query`).
+3. Back on `/api/auth/keycloak/callback`, the handler redeems the code and validates the ID token.
+   `TokenValidated` reads the account (`KeycloakClaims.Read`: ID token claims, roles from the access token),
+   lets `KeycloakAccounts.SignInAsync` create or link it, then replaces the principal with Taskel's own (user id,
+   email, `taskel:provider=Keycloak`) and keeps the ID token in the cookie's properties.
+4. The cookie handler signs in; the browser goes to the interface. A refusal redirects to
+   `/?loginError=<code>`, which `AuthForm` turns into a Romanian sentence.
+5. `POST /api/auth/logout` on such a session answers with Keycloak's end-session address (`KeycloakLogout`),
+   and the frontend goes there.
+
+Tests drive this whole flow against `FakeKeycloak`, an `HttpMessageHandler` that serves discovery, signing keys,
+the token endpoint and the admin user list (`IntegrationSettingsTests`, on a database of their own).
 
 ### Adding a migration
 
@@ -152,6 +197,10 @@ have rows. The API applies migrations at startup in Development; elsewhere, set
 | `components/Workspace.tsx` | The signed-in app: loads tasks, people, groups and settings, holds the current view, and owns every change to the task list |
 | `components/` | Screens and pieces: `TaskRow`, `TaskForm`, `NewTaskDialog`, `TargetPicker`, `Team`, `Groups`, … |
 | `components/ui/` | Shared building blocks: `Button`, `Banner`, `Panel`, `DataTable`, `EmptyState`, skeletons |
+| `components/PageView.tsx` | The views that are pages rather than task lists: Integrări, Echipă, Grupuri, Utilizatori, Setări sistem |
+| `components/settings/` | **Setări sistem**: one panel per integration, the shared fields (`SettingsFields`) and the form hook (`useSettingsForm`) |
+| `lib/taskActions.ts` | Every change to a task from the workspace: the API call, the list update and the Romanian refusal |
+| `lib/settingsValidation.ts` | Checks for the settings forms (server names, addresses, identifiers) |
 | `lib/taskViews.ts` | Which tasks each view lists, their grouping, titles and empty messages |
 | `lib/validation.ts` | Form checks that mirror the API's rules, with Romanian messages |
 | `lib/theme.ts` | The theme list and how a theme is applied and remembered |
@@ -159,9 +208,9 @@ have rows. The API applies migrations at startup in Development; elsewhere, set
 
 ### State and data flow
 
-`Workspace` loads everything once, then keeps `tasks` in state. Every change goes through a handler there
-(`add`, `save`, `claim`, `forward`, …) that calls the API and replaces the changed task with the server's
-answer. Views are computed from `tasks` with `lib/taskViews.ts`; nothing else caches tasks. The list reloads
+`Workspace` loads everything once, then keeps `tasks` in state. Every change goes through a function in
+`lib/taskActions.ts` (`addTask`, `claimTask`, and the `taskActions(context, task)` given to the dialog) that calls
+the API and replaces the changed task with the server's answer; the `context` carries the workspace's setters. Views are computed from `tasks` with `lib/taskViews.ts`; nothing else caches tasks. The list reloads
 when the window regains focus, to pick up tasks added from Outlook.
 
 Which list a task appears in follows its `access`:
@@ -178,7 +227,7 @@ a button whose `::after` covers the row, so the whole row opens the task while s
 
 Opening a task sets `openId` in `Workspace`, which renders `TaskDetail` for the task with that id, looked up in
 `tasks` on every render so the dialog always shows the latest version. `TaskDetail` gets a `TaskActions` object
-from `Workspace.actionsFor(task)`: each action calls the API, replaces the task in `tasks` with the answer and
+from `taskActions(context, task)`: each action calls the API, replaces the task in `tasks` with the answer and
 resolves to a Romanian error message or null. Without `actions` the dialog is read only, which is how forwarded
 tasks and a manager's view of their people's tasks are shown.
 
@@ -188,9 +237,9 @@ rule for states is in `TaskItem.State` and the `wait`, `resume` and `complete` a
 
 ### Adding a task, in the interface
 
-The **Task nou** button in the header opens `NewTaskDialog`, a native `<dialog>` around `TaskForm` with
-`variant="dialog"`. On submit, `Workspace.add` creates the task, then uploads the picked files one by one. The
-same `TaskForm`, with the default `variant="inline"`, edits a task in place in the list.
+The **Task nou** button in the header opens `NewTaskDialog`, a native `<dialog>` around `TaskForm`. On submit,
+`addTask` creates the task, then uploads the picked files one by one. The same `TaskForm` edits a task from its
+dialog (the pencil button).
 
 Who a task goes to is chosen with `TargetPicker`: a search box (an ARIA combobox) over the people from
 `GET /api/users` and the groups from `GET /api/groups`, matched without regard to case or diacritics. It lists
@@ -219,8 +268,11 @@ screen.
 ### Conventions
 
 - Text in the interface is Romanian; code, comments, API messages and documentation are English.
-- Forms use `noValidate` and check with `lib/validation.ts`, so the messages are in Romanian; the API checks
-  again.
+- Forms use `noValidate` and check with `lib/validation.ts` (or `lib/settingsValidation.ts`), so the messages are
+  in Romanian; the API checks again.
+- Status messages use `<output>`, errors `role="alert"`; groups of buttons a `<fieldset>` with a hidden legend.
+- Keep functions small enough for SonarQube's cognitive complexity limit (15): pull pure helpers out of
+  components, prefer `if`/`switch` in a helper to nested ternaries, and split long JSX into components.
 - Anything clickable is a `<button>` or a link, with a visible label or an `aria-label`. Keyboard focus is
   always visible.
 - No new runtime dependency without a reason that outweighs its weight; the app has three (React, React DOM,

@@ -78,19 +78,11 @@ public class KeycloakAccounts(TaskelDbContext db, ExternalAccounts external)
         var created = false;
         if (user is null)
         {
-            if (sameEmail is not null)
-            {
-                if (sameEmail.IsExternal) return new KeycloakLink(null, KeycloakRefusal.EmailTaken);
-                if (!account.EmailVerified) return new KeycloakLink(null, KeycloakRefusal.EmailUnverified);
-                user = sameEmail;
-                user.PasswordHash = string.Empty;
-            }
-            else
-            {
-                user = new User { Email = account.Email };
-                db.Users.Add(user);
-                created = true;
-            }
+            var refusal = Takeover(sameEmail, account);
+            if (refusal is not null) return new KeycloakLink(null, refusal);
+            created = sameEmail is null;
+            user = sameEmail ?? db.Users.Add(new User { Email = account.Email }).Entity;
+            user.PasswordHash = string.Empty;
             user.KeycloakSubject = account.Subject;
         }
         else if (sameEmail is null && account.EmailVerified)
@@ -110,6 +102,14 @@ public class KeycloakAccounts(TaskelDbContext db, ExternalAccounts external)
             return new KeycloakLink(null, KeycloakRefusal.EmailTaken);
         }
         return new KeycloakLink(user, null, created);
+    }
+
+    /// <summary>Why an existing account with the same address may not become this Keycloak account; null when it may (or there is none).</summary>
+    private static KeycloakRefusal? Takeover(User? sameEmail, KeycloakUser account)
+    {
+        if (sameEmail is null) return null;
+        if (sameEmail.IsExternal) return KeycloakRefusal.EmailTaken;
+        return account.EmailVerified ? null : KeycloakRefusal.EmailUnverified;
     }
 
     /// <summary>Keycloak decides the name, and the department when it has one.</summary>

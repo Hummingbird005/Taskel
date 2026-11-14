@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -22,12 +21,8 @@ namespace Taskel.Api.Controllers;
 public class AuthController(
     TaskelDbContext db,
     IPasswordHasher<User> passwordHasher,
-    IDirectoryAuthenticator directory,
-    DirectoryAccounts directoryAccounts,
     IntegrationSettings settings,
-    IOptionsMonitor<OpenIdConnectOptions> oidcOptions,
-    IOptions<AuthOptions> authOptions,
-    ILogger<AuthController> logger) : ControllerBase
+    IOptions<AuthOptions> authOptions) : ControllerBase
 {
     public const string LoginRateLimit = "login";
 
@@ -54,7 +49,7 @@ public class AuthController(
     public IActionResult LoginWithKeycloak()
     {
         if (!settings.Keycloak.IsUsable) return NotFound();
-        return Challenge(new AuthenticationProperties { RedirectUri = PublicAddress.Of(Request, settings) + "/" }, KeycloakOptions.Scheme);
+        return Challenge(new AuthenticationProperties { RedirectUri = PublicAddress.HomeOf(Request, settings) }, KeycloakOptions.Scheme);
     }
 
     [HttpPost("register")]
@@ -112,7 +107,11 @@ public class AuthController(
     /// <summary>Signs in with an Active Directory account. The Taskel account is created on first use.</summary>
     [HttpPost("login/directory")]
     [EnableRateLimiting(LoginRateLimit)]
-    public async Task<ActionResult<UserResponse>> LoginWithDirectory(DirectoryLoginRequest request, CancellationToken ct)
+    public async Task<ActionResult<UserResponse>> LoginWithDirectory(
+        DirectoryLoginRequest request,
+        [FromServices] IDirectoryAuthenticator directory,
+        [FromServices] DirectoryAccounts directoryAccounts,
+        CancellationToken ct)
     {
         if (!settings.Directory.IsUsable) return NotFound();
 
@@ -144,38 +143,16 @@ public class AuthController(
     /// the Keycloak session, for the browser to go to; otherwise signing in again would be silent.
     /// </summary>
     [HttpPost("logout")]
-    public async Task<ActionResult<LogoutResponse>> Logout(CancellationToken ct)
+    public async Task<ActionResult<LogoutResponse>> Logout([FromServices] KeycloakLogout keycloakLogout, CancellationToken ct)
     {
         string? logoutUrl = null;
         if (User.FindFirst(KeycloakOidcEvents.ProviderClaim)?.Value == KeycloakOptions.Scheme && settings.Keycloak.IsUsable)
         {
             var idToken = await HttpContext.GetTokenAsync(CookieAuthenticationDefaults.AuthenticationScheme, KeycloakOidcEvents.IdTokenName);
-            logoutUrl = await KeycloakLogoutUrlAsync(idToken, ct);
+            logoutUrl = await keycloakLogout.AddressAsync(Request, idToken, ct);
         }
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return logoutUrl is null ? NoContent() : Ok(new LogoutResponse(logoutUrl));
-    }
-
-    private async Task<string?> KeycloakLogoutUrlAsync(string? idToken, CancellationToken ct)
-    {
-        try
-        {
-            var configuration = await oidcOptions.Get(KeycloakOptions.Scheme).ConfigurationManager!.GetConfigurationAsync(ct);
-            if (string.IsNullOrEmpty(configuration.EndSessionEndpoint)) return null;
-            var query = new Dictionary<string, string?>
-            {
-                ["client_id"] = settings.Keycloak.ClientId,
-                ["post_logout_redirect_uri"] = PublicAddress.Of(Request, settings) + "/"
-            };
-            if (!string.IsNullOrEmpty(idToken)) query["id_token_hint"] = idToken;
-            return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(configuration.EndSessionEndpoint, query);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // The Taskel session still ends; only the Keycloak one stays open.
-            logger.LogWarning(ex, "Keycloak's sign-out address could not be read");
-            return null;
-        }
     }
 
     [Authorize]

@@ -28,10 +28,7 @@ public class SmtpEmailSender(IntegrationSettings settings, ILogger<SmtpEmailSend
             // Built inside the try: an address the mail library refuses is a failed send, not a crash.
             var message = build(smtp);
             using var client = new SmtpClient { Timeout = TimeoutMilliseconds };
-            var security = smtp.RequireTls
-                ? (smtp.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls)
-                : SecureSocketOptions.None;
-            await client.ConnectAsync(smtp.Host!, smtp.Port, security, ct);
+            await client.ConnectAsync(smtp.Host!, smtp.Port, SecurityFor(smtp), ct);
             if (!string.IsNullOrEmpty(smtp.Username))
                 await client.AuthenticateAsync(smtp.Username, smtp.Password ?? string.Empty, ct);
             await client.SendAsync(new SendRequest(message), ct);
@@ -42,6 +39,13 @@ public class SmtpEmailSender(IntegrationSettings settings, ILogger<SmtpEmailSend
             logger.LogError(ex, "Sending a {Kind} through {Host}:{Port} failed", kind, smtp.Host, smtp.Port);
             throw new EmailSendException("The SMTP server did not accept the message.", ex);
         }
+    }
+
+    /// <summary>TLS from the start on port 465, STARTTLS on any other port; none only when TLS is not required.</summary>
+    private static SecureSocketOptions SecurityFor(SmtpOptions smtp)
+    {
+        if (!smtp.RequireTls) return SecureSocketOptions.None;
+        return smtp.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
     }
 
     /// <summary>Builds the reply so mail clients show it in the original email's thread.</summary>

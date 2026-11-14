@@ -34,7 +34,8 @@ All are local accounts: sign in on the **Cont local** tab with the email and pas
 What each role can do:
 
 - **Administrator**: everything a manager can, for every department; manages roles, departments and every
-  application group (**Utilizatori**, **Grupuri**); sets the attachment size limit.
+  application group (**Utilizatori**, **Grupuri**); sets up the mail server, Active Directory, Keycloak and the
+  attachment size limit (**Setări sistem**).
 - **Manager**: sees the workload, calendar and tasks of the people in their own department (**Echipă**), read
   only; creates groups with people from their department.
 - **User**: works on their own tasks and on the tasks given to them.
@@ -56,3 +57,20 @@ Dates are relative to the day the data is added, so "overdue" and "today" stay m
 | Andrei (user) | **Toate task-urile** | The same report, now his, with its path under **Traseu** |
 | Radu (manager) | **Echipă** | The Suport department only: himself and Dan |
 | Cristina (admin) | **Utilizatori**, **Grupuri**, **Echipă** | Every account, every group, any department |
+| Cristina (admin) | **Setări sistem** | The mail server, Active Directory and Keycloak panels, with their test buttons |
+
+## Keycloak accounts (development realm)
+
+`docker compose --profile keycloak up -d` starts a Keycloak with the realm `taskel` from
+`deploy/keycloak/taskel-realm.json`. Connect Taskel to it as described in [KEYCLOAK.md](KEYCLOAK.md), then use
+**Conectează-te cu …** on the sign-in screen. These passwords are public too.
+
+| Keycloak user | Password | Realm roles | Group | Department | In Taskel |
+|---|---|---|---|---|---|
+| `ana.admin` | `Keycloak-Demo-2026` | `taskel-user`, `taskel-admin` | – | IT | Administrator |
+| `mihai.manager` | `Keycloak-Demo-2026` | `taskel-user`, `taskel-manager` | `/Vanzari` | Vânzări | Manager |
+| `irina.user` | `Keycloak-Demo-2026` | `taskel-user` | `/Vanzari/Ofertare` | Vânzări | User |
+| `fara.rol` | `Keycloak-Demo-2026` | – | – | – | Refused when `taskel-user` is the required role |
+
+The Keycloak administration console is at http://localhost:8080 (`admin` / `admin`). The client `taskel` has the
+secret `taskel-dev-secret`.

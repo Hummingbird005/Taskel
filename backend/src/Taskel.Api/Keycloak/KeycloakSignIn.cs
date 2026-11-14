@@ -114,7 +114,7 @@ public sealed class KeycloakOidcEvents(
         if (!string.IsNullOrEmpty(idToken))
             context.Properties!.StoreTokens([new AuthenticationToken { Name = IdTokenName, Value = idToken }]);
         context.Properties!.IsPersistent = true;
-        context.Properties.RedirectUri = PublicAddress.Of(context.Request, settings) + "/";
+        context.Properties.RedirectUri = PublicAddress.HomeOf(context.Request, settings);
     }
 
     public override Task RemoteFailure(RemoteFailureContext context)

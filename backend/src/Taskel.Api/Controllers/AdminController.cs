@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Taskel.Api.Attachments;
 using Taskel.Api.Data;
 using Taskel.Api.Directory;
 using Taskel.Api.Models;
@@ -14,34 +13,11 @@ namespace Taskel.Api.Controllers;
 [Authorize]
 [AdminOnly("Only administrators can manage users.")]
 [Route("api/admin")]
-public class AdminController(
-    TaskelDbContext db, IOptions<AuthOptions> authOptions,
-    AttachmentStore attachments, IOptions<AttachmentOptions> attachmentOptions) : ControllerBase
+public class AdminController(TaskelDbContext db, IOptions<AuthOptions> authOptions) : ControllerBase
 {
-    /// <summary>The attachment size limit, with the server default it replaces.</summary>
-    [HttpGet("settings/attachments")]
-    public async Task<ActionResult<AttachmentSettingsResponse>> GetAttachmentSettings(CancellationToken ct)
-    {
-        return Ok(await AttachmentSettingsAsync(ct));
-    }
-
-    [HttpPut("settings/attachments")]
-    public async Task<ActionResult<AttachmentSettingsResponse>> UpdateAttachmentSettings(
-        UpdateAttachmentSettingsRequest request, CancellationToken ct)
-    {
-        await attachments.SetMaxFileSizeMbAsync(request.MaxFileSizeMb, ct);
-        return Ok(await AttachmentSettingsAsync(ct));
-    }
-
-    private async Task<AttachmentSettingsResponse> AttachmentSettingsAsync(CancellationToken ct) => new(
-        await attachments.GetMaxFileSizeMbAsync(ct),
-        Math.Clamp(attachmentOptions.Value.MaxFileSizeMb, 1, AttachmentOptions.MaxConfigurableMb),
-        AttachmentOptions.MaxConfigurableMb);
-
     [HttpGet("users")]
     public async Task<ActionResult<IEnumerable<AdminUserResponse>>> GetUsers(CancellationToken ct)
     {
-
         var users = await db.Users.AsNoTracking().ToListAsync(ct);
         return Ok(users.Select(ToResponse)
             .OrderBy(u => u.DisplayName, StringComparer.CurrentCultureIgnoreCase)

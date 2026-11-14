@@ -92,29 +92,8 @@ public class TaskNotifier(
             if (!settings.Notifications.Enabled || !settings.Smtp.IsConfigured) return;
             if (task.IsCompleted) return;
 
-            List<User> recipients;
-            Group? group = null;
-            if (task.AssigneeId is { } assigneeId)
-            {
-                recipients = await db.Users.AsNoTracking().Where(u => u.Id == assigneeId).ToListAsync(ct);
-            }
-            else if (task.GroupId is { } groupId)
-            {
-                group = await db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId, ct);
-                if (group is null) return;
-                recipients = await db.Users.AsNoTracking()
-                    .Where(u => db.GroupMembers.Any(m => m.GroupId == groupId && m.UserId == u.Id))
-                    .ToListAsync(ct);
-            }
-            else if (reason == TaskNotificationReason.Forwarded)
-            {
-                // Forwarded back to the person who created it.
-                recipients = await db.Users.AsNoTracking().Where(u => u.Id == task.UserId).ToListAsync(ct);
-            }
-            else
-            {
-                return;
-            }
+            var (recipients, group) = await RecipientsAsync(task, reason, ct);
+            if (recipients.Count == 0) return;
 
             var actor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == actorId, ct);
             if (actor is null) return;
@@ -135,6 +114,31 @@ public class TaskNotifier(
         }
     }
 
+    /// <summary>
+    /// Who the task now waits on: its assignee; every member of its group while nobody has taken it;
+    /// or its creator when it was forwarded back to them. Nobody otherwise.
+    /// </summary>
+    private async Task<(List<User> Recipients, Group? Group)> RecipientsAsync(
+        TaskItem task, TaskNotificationReason reason, CancellationToken ct)
+    {
+        if (task.AssigneeId is { } assigneeId)
+            return (await db.Users.AsNoTracking().Where(u => u.Id == assigneeId).ToListAsync(ct), null);
+
+        if (task.GroupId is { } groupId)
+        {
+            var group = await db.Groups.AsNoTracking().FirstOrDefaultAsync(g => g.Id == groupId, ct);
+            if (group is null) return ([], null);
+            var members = await db.Users.AsNoTracking()
+                .Where(u => db.GroupMembers.Any(m => m.GroupId == groupId && m.UserId == u.Id))
+                .ToListAsync(ct);
+            return (members, group);
+        }
+
+        return reason == TaskNotificationReason.Forwarded
+            ? (await db.Users.AsNoTracking().Where(u => u.Id == task.UserId).ToListAsync(ct), null)
+            : ([], null);
+    }
+
     /// <summary>The email one person gets. Written in Romanian, like the interface.</summary>
     public static EmailMessage Compose(TaskItem task, User recipient, User actor, Group? group,
         TaskNotificationReason reason, string? note, string? publicUrl)
@@ -142,28 +146,8 @@ public class TaskNotifier(
         var actorName = NameOf(actor);
         var body = new StringBuilder();
         body.Append("Bună, ").Append(NameOf(recipient)).Append(",\n\n");
-        body.Append(actorName).Append(' ');
-        if (group is not null)
-        {
-            body.Append(reason == TaskNotificationReason.Forwarded ? "a direcționat un task către grupul " : "a dat un task grupului ")
-                .Append(group.Name)
-                .Append(", din care faci parte. Îl vede tot grupul, până când unul dintre voi îl preia.");
-        }
-        else
-        {
-            body.Append(reason == TaskNotificationReason.Forwarded ? "ți-a direcționat un task în Taskel." : "ți-a alocat un task în Taskel.");
-        }
-        body.Append("\n\n");
-
-        body.Append("Task: ").Append(task.Title).Append('\n');
-        if (task.DueDate is { } due)
-        {
-            body.Append(task.StartDate is { } start && start != due
-                ? $"Interval: {Date(start)} – {Date(due)}"
-                : $"Termen: {Date(due)}").Append('\n');
-        }
-        if (task.Priority != TaskPriority.Medium)
-            body.Append("Prioritate: ").Append(task.Priority == TaskPriority.High ? "ridicată" : "scăzută").Append('\n');
+        body.Append(actorName).Append(' ').Append(WhatHappened(group, reason)).Append("\n\n");
+        AppendFacts(body, task);
         if (!string.IsNullOrWhiteSpace(note))
             body.Append("Mesaj de la ").Append(actorName).Append(": ").Append(note.Trim()).Append('\n');
 
@@ -175,6 +159,28 @@ public class TaskNotifier(
 
         var subject = group is not null ? $"Task pentru grupul {group.Name}: {task.Title}" : $"Task nou: {task.Title}";
         return new EmailMessage(recipient.Email, subject, body.ToString());
+    }
+
+    private static string WhatHappened(Group? group, TaskNotificationReason reason)
+    {
+        var forwarded = reason == TaskNotificationReason.Forwarded;
+        if (group is null) return forwarded ? "ți-a direcționat un task în Taskel." : "ți-a alocat un task în Taskel.";
+        return (forwarded ? "a direcționat un task către grupul " : "a dat un task grupului ") + group.Name
+               + ", din care faci parte. Îl vede tot grupul, până când unul dintre voi îl preia.";
+    }
+
+    /// <summary>The task's title, dates and priority, one per line.</summary>
+    private static void AppendFacts(StringBuilder body, TaskItem task)
+    {
+        body.Append("Task: ").Append(task.Title).Append('\n');
+        if (task.DueDate is { } due)
+        {
+            body.Append(task.StartDate is { } start && start != due
+                ? $"Interval: {Date(start)} – {Date(due)}"
+                : $"Termen: {Date(due)}").Append('\n');
+        }
+        if (task.Priority != TaskPriority.Medium)
+            body.Append("Prioritate: ").Append(task.Priority == TaskPriority.High ? "ridicată" : "scăzută").Append('\n');
     }
 
     private static string NameOf(User user) => string.IsNullOrWhiteSpace(user.DisplayName) ? user.Email : user.DisplayName;

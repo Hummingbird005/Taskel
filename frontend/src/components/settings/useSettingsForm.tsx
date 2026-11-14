@@ -79,18 +79,17 @@ export function useSettingsForm<S extends { status: IntegrationStatus }, F>(
   }
 
   /** Runs one action at a time; `name` tells which button shows the spinner. */
-  async function run(name: string, action: () => Promise<Outcome | null>, failureLead: string) {
+  function run(name: string, action: () => Promise<Outcome | null>, failureLead: string) {
     if (busy) return
     setBusy(name)
     setOutcome(null)
-    try {
-      setOutcome(await action())
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) onSessionExpired()
-      else setOutcome(failure(err, failureLead))
-    } finally {
-      setBusy(null)
-    }
+    action()
+      .then(setOutcome)
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 401) onSessionExpired()
+        else setOutcome(failure(err, failureLead))
+      })
+      .finally(() => setBusy(null))
   }
 
   return { settings, form, loadError, busy, outcome, errors, setErrors, update, run, accept }

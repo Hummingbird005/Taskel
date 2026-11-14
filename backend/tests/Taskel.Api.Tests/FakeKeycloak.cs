@@ -18,6 +18,10 @@ public class FakeKeycloak : HttpMessageHandler
     public const string ClientId = "taskel";
     public const string ClientSecret = "fake-client-secret";
 
+    private static readonly string[] ResponseTypes = ["code"];
+    private static readonly string[] SubjectTypes = ["public"];
+    private static readonly string[] SigningAlgorithms = ["RS256"];
+
     private readonly RsaSecurityKey _key = new(RSA.Create(2048)) { KeyId = "test-key" };
     private readonly ConcurrentDictionary<string, (string Nonce, Dictionary<string, object> Claims, Dictionary<string, object> AccessClaims)> _codes = new();
 
@@ -60,9 +64,9 @@ public class FakeKeycloak : HttpMessageHandler
                 ["token_endpoint"] = $"{Authority}/protocol/openid-connect/token",
                 ["jwks_uri"] = $"{Authority}/protocol/openid-connect/certs",
                 ["end_session_endpoint"] = $"{Authority}/protocol/openid-connect/logout",
-                ["response_types_supported"] = new[] { "code" },
-                ["subject_types_supported"] = new[] { "public" },
-                ["id_token_signing_alg_values_supported"] = new[] { "RS256" }
+                ["response_types_supported"] = ResponseTypes,
+                ["subject_types_supported"] = SubjectTypes,
+                ["id_token_signing_alg_values_supported"] = SigningAlgorithms
             }),
             "/realms/taskel/protocol/openid-connect/certs" => Json(new { keys = new[] { Jwk() } }),
             "/realms/taskel/protocol/openid-connect/token" => await TokenAsync(request, cancellationToken),

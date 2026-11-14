@@ -145,6 +145,23 @@ export function tagCounts(tasks: TaskItem[]): TagCount[] {
     .sort((a, b) => a.tag.localeCompare(b.tag))
 }
 
+/** The tasks a view draws from: the user's own, or one of the lists of other people's tasks. */
+export function sourceOf(
+  view: View,
+  lists: { mine: TaskItem[]; delegated: TaskItem[]; claimable: TaskItem[]; forwarded: TaskItem[] },
+): TaskItem[] {
+  switch (view.kind) {
+    case 'delegated':
+      return lists.delegated
+    case 'claimable':
+      return lists.claimable
+    case 'forwarded':
+      return lists.forwarded
+    default:
+      return lists.mine
+  }
+}
+
 /** Views that show a page of their own rather than a list of tasks. */
 export const PAGE_VIEWS: ReadonlySet<View['kind']> = new Set(['integrations', 'team', 'groups', 'admin', 'settings'])
 

@@ -62,7 +62,7 @@ export default function App() {
           <span className="brand-mark" aria-hidden="true">
             ✓
           </span>
-          Taskel
+          <span>Taskel</span>
         </div>
         <p className="welcome-tagline">Task-urile tale, organizate ca o conversație.</p>
         <ul className="welcome-points">
@@ -73,13 +73,13 @@ export default function App() {
       </aside>
       <main className="welcome-main">
         {session.status === 'loading' && (
-          <div className="auth-form" role="status">
+          <output className="auth-form">
             <span className="visually-hidden">Se încarcă…</span>
             <Skeleton width={180} height={26} />
             <Skeleton height={40} />
             <Skeleton height={40} />
             <Skeleton height={42} />
-          </div>
+          </output>
         )}
         {session.status === 'unreachable' && (
           <p className="error" role="alert">

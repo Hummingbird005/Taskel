@@ -57,7 +57,7 @@ public static class KeycloakClaims
         {
             var claim = options.GroupsClaim.Trim();
             groups = idToken.FindAll(claim).Select(c => c.Value).ToList();
-            if (groups.Count == 0) groups = Strings(access, claim).ToList();
+            if (groups.Count == 0) groups = Strings(access, claim);
         }
 
         return Create(subject, email, verified, name, department, roles, groups);
@@ -133,7 +133,7 @@ public static class KeycloakClaims
         _ => null
     };
 
-    private static IEnumerable<string> Strings(JsonElement? root, params string[] path) => Walk(root, path) switch
+    private static List<string> Strings(JsonElement? root, params string[] path) => Walk(root, path) switch
     {
         { ValueKind: JsonValueKind.Array } array => array.EnumerateArray()
             .Where(item => item.ValueKind == JsonValueKind.String)

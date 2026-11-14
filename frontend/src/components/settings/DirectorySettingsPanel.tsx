@@ -55,6 +55,12 @@ function payload(form: DirectorySettingsForm): DirectorySettingsForm {
   }
 }
 
+/** The Taskel role the directory groups give, if any. */
+function roleName(result: DirectoryTestResult): string | null {
+  if (result.isAdmin) return 'administrator'
+  return result.isManager ? 'manager' : null
+}
+
 /** What a test sign-in found, in words. */
 function testOutcome(result: DirectoryTestResult): Outcome {
   if (!result.signedIn) {
@@ -65,7 +71,7 @@ function testOutcome(result: DirectoryTestResult): Outcome {
         'cerut, ori nu are adresă de email. Detaliile sunt în jurnalul serverului.',
     }
   }
-  const role = result.isAdmin ? 'administrator' : result.isManager ? 'manager' : null
+  const role = roleName(result)
   return {
     tone: 'ok',
     text: (
@@ -102,7 +108,7 @@ export default function DirectorySettingsPanel({ onSessionExpired }: { onSession
     e.preventDefault()
     const valid = checked(false)
     if (!valid) return
-    void run(
+    run(
       'save',
       async () => {
         accept(await integrationsApi.saveDirectory(valid))
@@ -117,7 +123,7 @@ export default function DirectorySettingsPanel({ onSessionExpired }: { onSession
     const invalidUser = validateDirectoryUsername(testUser) ?? (testPassword ? null : 'Introdu parola contului de test.')
     setTestError(invalidUser)
     if (!valid || invalidUser) return
-    void run(
+    run(
       'test',
       async () => {
         const result = await integrationsApi.testDirectory(valid, testUser.trim(), testPassword)
@@ -130,7 +136,7 @@ export default function DirectorySettingsPanel({ onSessionExpired }: { onSession
 
   function reset() {
     if (!window.confirm('Renunți la setările salvate aici și revii la cele din configurația serverului?')) return
-    void run(
+    run(
       'reset',
       async () => {
         accept(await integrationsApi.resetDirectory())

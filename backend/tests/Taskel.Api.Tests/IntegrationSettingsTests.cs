@@ -398,7 +398,7 @@ public class IntegrationSettingsTests(IntegrationsApiFactory factory) : IAsyncLi
         var response = await admin.PutApiAsync("/api/admin/integrations/keycloak",
             KeycloakForm with { Authority = "http://localhost:8080/realms/taskel", RequireHttpsMetadata = false });
 
-        response.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -465,6 +465,8 @@ public class IntegrationSettingsTests(IntegrationsApiFactory factory) : IAsyncLi
         ["groups"] = groups
     };
 
+    private static readonly string[] AdminRoleOnly = ["taskel-admin"];
+
     private static Dictionary<string, object> Roles(params string[] roles) => new()
     {
         ["realm_access"] = new Dictionary<string, object> { ["roles"] = roles }
@@ -516,7 +518,7 @@ public class IntegrationSettingsTests(IntegrationsApiFactory factory) : IAsyncLi
         {
             ["resource_access"] = new Dictionary<string, object>
             {
-                [FakeKeycloak.ClientId] = new Dictionary<string, object> { ["roles"] = new[] { "taskel-admin" } }
+                [FakeKeycloak.ClientId] = new Dictionary<string, object> { ["roles"] = AdminRoleOnly }
             }
         });
 

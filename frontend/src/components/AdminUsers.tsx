@@ -7,6 +7,12 @@ import type { User, UserRole } from '../api/auth'
 import { ApiError } from '../api/client'
 import { validateDepartment } from '../lib/validation'
 
+/** Why the role cannot be changed here, or undefined when it can. */
+function roleLockReason(account: AdminUser, isSelf: boolean): string | undefined {
+  if (account.roleIsFixed) return 'Rol stabilit în configurarea serverului'
+  return isSelf ? 'Nu îți poți schimba propriul rol' : undefined
+}
+
 function accountKind(account: AdminUser): string {
   if (account.isKeycloakAccount) return 'Keycloak'
   return account.isDirectoryAccount ? 'Domeniu' : 'Local'
@@ -124,13 +130,7 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
                     <select
                       value={account.role}
                       disabled={isSelf || account.roleIsFixed}
-                      title={
-                        account.roleIsFixed
-                          ? 'Rol stabilit în configurarea serverului'
-                          : isSelf
-                            ? 'Nu îți poți schimba propriul rol'
-                            : undefined
-                      }
+                      title={roleLockReason(account, isSelf)}
                       onChange={(e) => save(account, e.target.value as UserRole, department)}
                       aria-label={`Rol: ${account.displayName}`}
                     >
@@ -151,7 +151,7 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
                           setDrafts((prev) => ({ ...prev, [account.id]: e.target.value }))
                         }}
                         onBlur={() => {
-                          if (department.trim() !== (account.department ?? '')) void save(account, account.role, department)
+                          if (department.trim() !== (account.department ?? '')) save(account, account.role, department)
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') e.currentTarget.blur()
@@ -159,9 +159,9 @@ export default function AdminUsers({ user, onSessionExpired, onOwnAccountChanged
                         aria-label={`Departament: ${account.displayName}`}
                       />
                       {savedId === account.id && (
-                        <span className="saved" role="status">
+                        <output className="saved">
                           Salvat
-                        </span>
+                        </output>
                       )}
                     </span>
                   </td>

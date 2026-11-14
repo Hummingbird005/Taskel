@@ -104,13 +104,10 @@ public class LdapDirectoryAuthenticator(IntegrationSettings settings, ILogger<Ld
             ? null
             : groups.Any(group => string.Equals(group, groupDn.Trim(), StringComparison.OrdinalIgnoreCase));
 
-        if (!string.IsNullOrWhiteSpace(directory.RequiredGroupDn))
+        if (!string.IsNullOrWhiteSpace(directory.RequiredGroupDn) && MemberOf(directory.RequiredGroupDn) != true)
         {
-            if (MemberOf(directory.RequiredGroupDn) != true)
-            {
-                logger.LogWarning("{User} signed in to the directory but is not in the required group", login.UserPrincipalName);
-                return null;
-            }
+            logger.LogWarning("{User} signed in to the directory but is not in the required group", login.UserPrincipalName);
+            return null;
         }
 
         var guidBytes = entry.GetOrDefault("objectGUID", null)?.ByteValue;

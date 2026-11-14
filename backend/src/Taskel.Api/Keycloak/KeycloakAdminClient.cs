@@ -184,7 +184,7 @@ public class KeycloakAdminClient(HttpClient http, ILogger<KeycloakAdminClient> l
             while ((read = await stream.ReadAsync(buffer, ct)) > 0)
             {
                 if (limited.Length + read > MaxResponseBytes) throw new KeycloakUnavailableException("Keycloak's answer is too large.");
-                limited.Write(buffer, 0, read);
+                await limited.WriteAsync(buffer.AsMemory(0, read), ct);
             }
             limited.Position = 0;
             return await JsonSerializer.DeserializeAsync<T>(limited, cancellationToken: ct);

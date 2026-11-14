@@ -137,7 +137,7 @@ public class GroupsController(TaskelDbContext db, CurrentUser currentUser) : Con
         var department = me.User.Department;
         return department is null
             ? db.Users.Where(u => u.Id == me.User.Id)
-            : db.Users.Where(u => u.Department != null && u.Department.ToLower() == department.ToLower());
+            : db.Users.Where(u => u.Department != null && EF.Functions.ILike(u.Department, Like.Exactly(department)));
     }
 
     /// <summary>
@@ -148,7 +148,7 @@ public class GroupsController(TaskelDbContext db, CurrentUser currentUser) : Con
         Guid? exceptGroupId, CancellationToken ct, IEnumerable<Guid>? keep = null)
     {
         var ids = memberIds.ToHashSet();
-        if (await db.Groups.AnyAsync(g => g.Kind == GroupKind.App && g.Id != exceptGroupId && g.Name.ToLower() == name.ToLower(), ct))
+        if (await db.Groups.AnyAsync(g => g.Kind == GroupKind.App && g.Id != exceptGroupId && EF.Functions.ILike(g.Name, Like.Exactly(name)), ct))
             ModelState.AddModelError(nameof(SaveGroupRequest.Name), "There is already a group with this name.");
 
         var kept = keep?.ToHashSet() ?? [];

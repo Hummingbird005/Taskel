@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Attachment, AttachmentLimits } from '../api/attachments'
 import { DEFAULT_ATTACHMENT_LIMITS } from '../api/attachments'
 import type { GroupListItem } from '../api/groups'
 import type { TaskDraft, TaskItem, TaskState, TaskTarget } from '../api/tasks'
 import type { UserSummary } from '../api/users'
-import { formatDueDate, formatRange, formatTimestamp } from '../lib/dates'
-import { isOverdue } from '../lib/taskViews'
 import { LIMITS, validateNotes } from '../lib/validation'
 import ForwardTask from './ForwardTask'
 import Icon from './Icon'
 import TaskAttachments from './TaskAttachments'
 import TaskForm from './TaskForm'
+import { STATE_ICON, STATE_LABEL, stateChangeProblem } from '../lib/taskStates'
+import { DetailFacts, StateCallout, WorkFooter } from './TaskDetailParts'
 import TaskTrail from './TaskTrail'
 
 /**
@@ -47,7 +47,16 @@ interface Props {
   onClose: () => void
 }
 
-const STATE_LABEL: Record<TaskState, string> = { open: 'Deschis', waiting: 'În așteptare', completed: 'Finalizat' }
+/** The request that moves a task to `next`. */
+function stateAction(actions: TaskActions, task: TaskItem, next: TaskState, text: string): Promise<string | null> {
+  if (next === 'waiting') return actions.wait(text)
+  if (next === 'completed') return actions.complete(text || null)
+  return task.state === 'waiting' ? actions.resume() : actions.reopen()
+}
+
+/** Who has the task now, as the edit form shows it: a group task someone took shows that person. */
+const formTarget = (task: TaskItem) =>
+  task.assignee ? { assigneeId: task.assignee.id, groupId: null } : { assigneeId: null, groupId: task.group?.id ?? null }
 
 /**
  * A task opened from a list: its title and message, the details, the files and the path it took,
@@ -77,12 +86,7 @@ export default function TaskDetail({
     if (element && !element.open) element.showModal()
   }, [])
 
-  const canWork = Boolean(actions) && (task.access === 'creator' || task.access === 'assignee')
-  const isCreator = Boolean(actions) && task.access === 'creator'
-  const waitsOnGroup = Boolean(actions) && task.access === 'group'
-  const needsReply = Boolean(task.sourceEmailAddress)
-  const overdue = isOverdue(task, today)
-  const hasInterval = task.startDate !== null && task.dueDate !== null && task.startDate !== task.dueDate
+  const close = () => dialog.current?.close()
 
   /** Runs an action, shows its error if it had one, and returns whether it worked. */
   async function run(name: string, action: () => Promise<string | null>): Promise<boolean> {
@@ -96,99 +100,49 @@ export default function TaskDetail({
   }
 
   async function changeState(next: TaskState) {
-    if (!actions || next === task.state) {
-      // Pressing "În așteptare" again on a task on hold updates the reason.
-      if (!(actions && next === 'waiting' && task.state === 'waiting')) return
-    }
+    // Pressing "În așteptare" again on a task on hold updates the reason; other repeats do nothing.
+    if (!actions || (next === task.state && next !== 'waiting')) return
     const text = message.trim()
-    const invalid = validateNotes(text, next === 'waiting' ? 1000 : LIMITS.response)
-    if (invalid) {
-      setError(invalid)
+    const problem = validateNotes(text, next === 'waiting' ? 1000 : LIMITS.response) ?? stateChangeProblem(task, next, text)
+    if (problem) {
+      setError(problem)
       return
     }
-    let worked = false
-    if (next === 'waiting') {
-      if (!text) {
-        setError('Scrie în câmpul de mai jos motivul pentru care task-ul este în așteptare.')
-        return
-      }
-      worked = await run('waiting', () => actions!.wait(text))
-    } else if (next === 'completed') {
-      if (needsReply && !text) {
-        setError(`Scrie răspunsul: se trimite pe email către ${task.sourceEmailAddress}, apoi task-ul se finalizează.`)
-        return
-      }
-      worked = await run('completed', () => actions!.complete(text || null))
-    } else {
-      worked = await run('open', () => (task.state === 'waiting' ? actions!.resume() : actions!.reopen()))
-    }
-    if (worked) setMessage('')
+    if (await run(next, () => stateAction(actions, task, next, text))) setMessage('')
   }
 
   async function remove() {
     if (!actions || !window.confirm(`Ștergi task-ul „${task.title}”? Nu poate fi recuperat.`)) return
-    if (await run('remove', actions.remove)) dialog.current?.close()
+    if (await run('remove', actions.remove)) close()
   }
-
-  const stateButton = (state: TaskState, icon: 'clock' | 'check' | 'inbox', label: string) => (
-    <button
-      type="button"
-      className={`state-button ${state}`}
-      aria-pressed={task.state === state}
-      disabled={busy !== null || (state === 'open' && task.state === 'open')}
-      onClick={() => void changeState(state)}
-    >
-      {busy === state ? <span className="spinner" aria-hidden="true" /> : <Icon name={icon} />}
-      {label}
-    </button>
-  )
 
   return (
     <dialog ref={dialog} className="task-dialog task-detail" aria-labelledby="task-detail-title" onClose={onClose}>
       <header className="task-dialog-head">
         <span className={`state-pill ${task.state}`}>
-          <Icon name={task.state === 'completed' ? 'check' : task.state === 'waiting' ? 'clock' : 'inbox'} size={14} />
-          {waitsOnGroup ? 'De preluat' : STATE_LABEL[task.state]}
+          <Icon name={STATE_ICON[task.state]} size={14} />
+          {actions && task.access === 'group' ? 'De preluat' : STATE_LABEL[task.state]}
         </span>
-        <div className="detail-tools">
-          {canWork && mode === 'view' && (
-            <button type="button" className="icon-button" onClick={() => setMode('edit')} title="Editează" aria-label="Editează">
-              <Icon name="edit" />
-            </button>
-          )}
-          {actions && task.access === 'assignee' && task.state !== 'completed' && mode === 'view' && (
-            <button type="button" className="icon-button" onClick={() => setMode('forward')} title="Direcționează" aria-label="Direcționează">
-              <Icon name="forward" />
-            </button>
-          )}
-          {actions && task.access === 'assignee' && task.group && task.state !== 'completed' && mode === 'view' && (
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => void run('release', actions.release)}
-              title={`Dă înapoi grupului ${task.group.name}`}
-              aria-label={`Dă înapoi grupului ${task.group.name}`}
-            >
-              <Icon name="users" />
-            </button>
-          )}
-          {isCreator && mode === 'view' && (
-            <button type="button" className="icon-button danger" onClick={() => void remove()} title="Șterge" aria-label="Șterge task-ul">
-              <Icon name="trash" />
-            </button>
-          )}
-          <button type="button" className="icon-button" onClick={() => dialog.current?.close()} aria-label="Închide">
-            <Icon name="close" />
-          </button>
-        </div>
+        <DetailTools
+          task={task}
+          actions={mode === 'view' ? actions : undefined}
+          onEdit={() => setMode('edit')}
+          onForward={() => setMode('forward')}
+          onRelease={(release) => {
+            run('release', release)
+          }}
+          onRemove={() => {
+            remove()
+          }}
+          onClose={close}
+        />
       </header>
 
-      {mode === 'edit' && actions ? (
+      {mode === 'edit' && actions && (
         <TaskForm
-          variant="dialog"
-          initial={{ ...task, assigneeId: task.assignee?.id ?? null, groupId: task.assignee ? null : (task.group?.id ?? null) }}
+          initial={{ ...task, ...formTarget(task) }}
           // Only the creator can reassign, so only they are offered the choice.
-          people={isCreator ? people : []}
+          people={task.access === 'creator' ? people : []}
           groups={groups}
           currentUser={currentUser}
           taskId={task.id}
@@ -197,15 +151,13 @@ export default function TaskDetail({
           onCancel={() => setMode('view')}
           onSubmit={async (draft) => {
             const failure = await actions.save(draft)
-            if (failure) {
-              setError(failure)
-              return false
-            }
-            setMode('view')
-            return true
+            if (failure) setError(failure)
+            else setMode('view')
+            return !failure
           }}
         />
-      ) : mode === 'forward' && actions ? (
+      )}
+      {mode === 'forward' && actions && (
         <div className="detail-body">
           <ForwardTask
             task={task}
@@ -214,168 +166,174 @@ export default function TaskDetail({
             onCancel={() => setMode('view')}
             onSubmit={async (target, note) => {
               const failure = await actions.forward(target, note)
-              if (!failure) dialog.current?.close()
+              if (!failure) close()
               return failure
             }}
           />
         </div>
-      ) : (
-        <>
-          <div className="detail-body">
-            <h2 id="task-detail-title" className="detail-title">
-              {task.title}
-            </h2>
-
-            <dl className="detail-facts">
-              {task.dueDate && (
-                <div>
-                  <dt>{hasInterval ? 'Interval' : 'Termen'}</dt>
-                  <dd className={overdue ? 'overdue' : undefined}>
-                    {hasInterval ? formatRange(task.startDate!, task.dueDate) : task.dueDate === today ? 'azi' : formatDueDate(task.dueDate)}
-                    {overdue && ' · întârziat'}
-                  </dd>
-                </div>
-              )}
-              <div>
-                <dt>Prioritate</dt>
-                <dd className={task.priority === 'high' ? 'overdue' : undefined}>
-                  {task.priority === 'high' ? 'Ridicată' : task.priority === 'low' ? 'Scăzută' : 'Medie'}
-                </dd>
-              </div>
-              <div>
-                <dt>Creat de</dt>
-                <dd>{task.createdBy.displayName}</dd>
-              </div>
-              {(task.assignee || task.group) && (
-                <div>
-                  <dt>{task.assignee ? 'Alocat către' : 'Grup'}</dt>
-                  <dd>
-                    {task.assignee?.displayName ?? task.group?.name}
-                    {task.assignee && task.group && <span className="muted"> · din grupul {task.group.name}</span>}
-                  </dd>
-                </div>
-              )}
-              {task.sourceEmailAddress && (
-                <div>
-                  <dt>Din emailul lui</dt>
-                  <dd>{task.sourceEmailAddress}</dd>
-                </div>
-              )}
-              {task.tags.length > 0 && (
-                <div>
-                  <dt>Etichete</dt>
-                  <dd className="detail-tags">
-                    {task.tags.map((tag) =>
-                      onTagClick ? (
-                        <button key={tag} type="button" className="chip tag" onClick={() => onTagClick(tag)} title={`Arată doar #${tag}`}>
-                          #{tag}
-                        </button>
-                      ) : (
-                        <span key={tag} className="chip tag-static">
-                          #{tag}
-                        </span>
-                      ),
-                    )}
-                  </dd>
-                </div>
-              )}
-            </dl>
-
-            <section className="detail-section">
-              <h3>Mesaj</h3>
-              {task.description ? <p className="detail-message">{task.description}</p> : <p className="muted">Fără mesaj.</p>}
-            </section>
-
-            {task.state === 'waiting' && (
-              <section className="detail-callout waiting" role="note">
-                <h3>
-                  <Icon name="clock" size={15} />
-                  În așteptare{task.waitingSince && ` din ${formatTimestamp(task.waitingSince)}`}
-                </h3>
-                <p>{task.waitingReason}</p>
-              </section>
-            )}
-            {task.state === 'completed' && (
-              <section className="detail-callout done" role="note">
-                <h3>
-                  <Icon name="check" size={15} />
-                  Finalizat{task.completedAt && ` pe ${formatTimestamp(task.completedAt)}`}
-                </h3>
-                {task.completionResponse ? (
-                  <>
-                    {needsReply && <p className="muted">Răspuns trimis către {task.sourceEmailAddress}:</p>}
-                    <p>{task.completionResponse}</p>
-                  </>
-                ) : (
-                  <p className="muted">Fără mesaj de rezolvare.</p>
-                )}
-              </section>
-            )}
-
-            {(canWork || task.attachments.length > 0) && (
-              <section className="detail-section">
-                <TaskAttachments
-                  task={task}
-                  limits={attachmentLimits}
-                  canEdit={canWork}
-                  showWhenEmpty={canWork}
-                  defaultOpen
-                  downloadUrl={attachmentUrl}
-                  onChange={actions?.attachmentsChanged}
-                  onSessionExpired={onSessionExpired}
-                />
-              </section>
-            )}
-            <TaskTrail task={task} />
-            {error && (
-              <p className="error detail-error" role="alert">
-                {error}
-              </p>
-            )}
-          </div>
-
-          {canWork && (
-            <form className="detail-footer" onSubmit={(e: FormEvent) => e.preventDefault()} noValidate>
-              {task.state !== 'completed' && (
-                <label className="field">
-                  <span>{needsReply ? `Răspuns către ${task.sourceEmailAddress}` : 'Mesaj de rezolvare'}</span>
-                  <textarea
-                    value={message}
-                    onChange={(e) => {
-                      setError(null)
-                      setMessage(e.target.value)
-                    }}
-                    rows={3}
-                    maxLength={LIMITS.response}
-                    placeholder={
-                      needsReply
-                        ? 'Obligatoriu la finalizare: se trimite pe email ca răspuns.'
-                        : 'Ce s-a rezolvat, sau ce aștepți (obligatoriu pentru „În așteptare”).'
-                    }
-                  />
-                </label>
-              )}
-              <div className="state-bar" role="group" aria-label="Starea task-ului">
-                {stateButton('open', 'inbox', task.state === 'completed' ? 'Redeschide' : task.state === 'waiting' ? 'Reia lucrul' : 'Deschis')}
-                {task.state !== 'completed' &&
-                  stateButton('waiting', 'clock', task.state === 'waiting' ? 'Schimbă motivul' : 'În așteptare')}
-                {task.state !== 'completed' && stateButton('completed', 'check', needsReply ? 'Trimite și finalizează' : 'Finalizat')}
-              </div>
-            </form>
-          )}
-          {waitsOnGroup && actions && (
-            <div className="detail-footer">
-              <p className="muted">Task-ul așteaptă ca cineva din grupul {task.group?.name} să îl preia.</p>
-              <div className="state-bar">
-                <button type="button" className="state-button completed" onClick={() => void run('claim', actions.claim)} disabled={busy !== null}>
-                  <Icon name="hand" />
-                  Preia task-ul
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+      )}
+      {(mode === 'view' || !actions) && (
+        <DetailView
+          task={task}
+          today={today}
+          actions={actions}
+          message={message}
+          error={error}
+          busy={busy}
+          attachmentLimits={attachmentLimits}
+          attachmentUrl={attachmentUrl}
+          onTagClick={onTagClick}
+          onSessionExpired={onSessionExpired}
+          onMessage={(text) => {
+            setError(null)
+            setMessage(text)
+          }}
+          onState={(state) => {
+            changeState(state)
+          }}
+          onClaim={(claim) => {
+            run('claim', claim)
+          }}
+        />
       )}
     </dialog>
+  )
+}
+
+/** The icon buttons in the dialog's header: edit, forward, hand back to the group, delete, close. */
+function DetailTools({
+  task,
+  actions,
+  onEdit,
+  onForward,
+  onRelease,
+  onRemove,
+  onClose,
+}: {
+  task: TaskItem
+  /** Left out while editing or forwarding, and for readers: only the close button shows. */
+  actions?: TaskActions
+  onEdit: () => void
+  onForward: () => void
+  onRelease: (release: () => Promise<string | null>) => void
+  onRemove: () => void
+  onClose: () => void
+}) {
+  const canWork = task.access === 'creator' || task.access === 'assignee'
+  const holds = task.access === 'assignee' && task.state !== 'completed'
+  const releaseLabel = task.group ? `Dă înapoi grupului ${task.group.name}` : ''
+  return (
+    <div className="detail-tools">
+      {actions && canWork && (
+        <button type="button" className="icon-button" onClick={onEdit} title="Editează" aria-label="Editează">
+          <Icon name="edit" />
+        </button>
+      )}
+      {actions && holds && (
+        <button type="button" className="icon-button" onClick={onForward} title="Direcționează" aria-label="Direcționează">
+          <Icon name="forward" />
+        </button>
+      )}
+      {actions && holds && task.group && (
+        <button
+          type="button"
+          className="icon-button"
+          onClick={() => onRelease(actions.release)}
+          title={releaseLabel}
+          aria-label={releaseLabel}
+        >
+          <Icon name="users" />
+        </button>
+      )}
+      {actions && task.access === 'creator' && (
+        <button type="button" className="icon-button danger" onClick={onRemove} title="Șterge" aria-label="Șterge task-ul">
+          <Icon name="trash" />
+        </button>
+      )}
+      <button type="button" className="icon-button" onClick={onClose} aria-label="Închide">
+        <Icon name="close" />
+      </button>
+    </div>
+  )
+}
+
+/** The task as read: title, facts, message, state, files, path, and the footer for whoever works on it. */
+function DetailView({
+  task,
+  today,
+  actions,
+  message,
+  error,
+  busy,
+  attachmentLimits,
+  attachmentUrl,
+  onTagClick,
+  onSessionExpired,
+  onMessage,
+  onState,
+  onClaim,
+}: {
+  task: TaskItem
+  today: string
+  actions?: TaskActions
+  message: string
+  error: string | null
+  busy: string | null
+  attachmentLimits: AttachmentLimits
+  attachmentUrl?: (attachment: Attachment) => string
+  onTagClick?: (tag: string) => void
+  onSessionExpired?: () => void
+  onMessage: (message: string) => void
+  onState: (state: TaskState) => void
+  onClaim: (claim: () => Promise<string | null>) => void
+}) {
+  const canWork = Boolean(actions) && (task.access === 'creator' || task.access === 'assignee')
+  return (
+    <>
+      <div className="detail-body">
+        <h2 id="task-detail-title" className="detail-title">
+          {task.title}
+        </h2>
+        <DetailFacts task={task} today={today} onTagClick={onTagClick} />
+        <section className="detail-section">
+          <h3>Mesaj</h3>
+          {task.description ? <p className="detail-message">{task.description}</p> : <p className="muted">Fără mesaj.</p>}
+        </section>
+        <StateCallout task={task} />
+        {(canWork || task.attachments.length > 0) && (
+          <section className="detail-section">
+            <TaskAttachments
+              task={task}
+              limits={attachmentLimits}
+              canEdit={canWork}
+              showWhenEmpty={canWork}
+              defaultOpen
+              downloadUrl={attachmentUrl}
+              onChange={actions?.attachmentsChanged}
+              onSessionExpired={onSessionExpired}
+            />
+          </section>
+        )}
+        <TaskTrail task={task} />
+        {error && (
+          <p className="error detail-error" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+
+      {canWork && <WorkFooter task={task} message={message} busy={busy} onMessage={onMessage} onState={onState} />}
+      {actions && task.access === 'group' && (
+        <div className="detail-footer">
+          <p className="muted">Task-ul așteaptă ca cineva din grupul {task.group?.name} să îl preia.</p>
+          <div className="state-bar">
+            <button type="button" className="state-button completed" onClick={() => onClaim(actions.claim)} disabled={busy !== null}>
+              <Icon name="hand" />
+              Preia task-ul
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

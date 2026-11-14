@@ -60,7 +60,7 @@ export default function EmailSettingsPanel({ onSessionExpired }: { onSessionExpi
     e.preventDefault()
     const valid = checked()
     if (!valid) return
-    void run(
+    run(
       'save',
       async () => {
         accept(await integrationsApi.saveEmail(valid))
@@ -77,7 +77,7 @@ export default function EmailSettingsPanel({ onSessionExpired }: { onSessionExpi
       setErrors({ host: valid.host ? undefined : 'Completează serverul ca să poți trimite un test.' })
       return
     }
-    void run(
+    run(
       'test',
       async () => {
         const { sentTo } = await integrationsApi.testEmail(valid)
@@ -89,7 +89,7 @@ export default function EmailSettingsPanel({ onSessionExpired }: { onSessionExpi
 
   function reset() {
     if (!window.confirm('Renunți la setările salvate aici și revii la cele din configurația serverului?')) return
-    void run(
+    run(
       'reset',
       async () => {
         accept(await integrationsApi.resetEmail())

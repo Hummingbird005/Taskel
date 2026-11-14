@@ -15,7 +15,8 @@ The interface is in Romanian; code, API and documentation are in English.
 | **New task**, in a dialog opened from **Task nou**: title, message, dates, priority, tags, who it is for, files<br>![New task dialog with a title, a message, an interval, priority, tags, an assignee chosen by search and an attached file](docs/screenshots/new-task.png) | **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) |
 | **Tasks for a group**: every member sees them until one takes them<br>![De preluat view with two group tasks and a Preia button on each](docs/screenshots/claimable.png) | **Choosing who a task is for**, by searching names, emails and groups<br>![The assignee field with two people matching the letters typed](docs/screenshots/assign-search.png) |
 | **Forwarding** a received task to someone else, with a message<br>![Forward form with the recipient, a message and a workload warning](docs/screenshots/forward.png) | **Forwarded tasks** stay readable, with the path they took<br>![Direcționate view showing a completed task, who has it now and its path](docs/screenshots/forwarded.png) |
-| **Groups**, managed by administrators and managers<br>![Groups screen listing Active Directory groups and a form for a new group with members](docs/screenshots/groups.png) | **Sign in** with a domain or a local account<br>![Sign-in screen with tabs for domain account and local account](docs/screenshots/signin.png) |
+| **Groups**, managed by administrators and managers<br>![Groups screen listing Active Directory groups and a form for a new group with members](docs/screenshots/groups.png) | **Sign in** with Keycloak, a domain or a local account<br>![Sign-in screen with a Keycloak button above the tabs for domain account and local account](docs/screenshots/signin.png) |
+| **System settings**, for administrators: mail server, Active Directory and Keycloak, each with a test<br>![The mail server panel with its fields, the status line and the result of a test message](docs/screenshots/settings-email.png) | **Active Directory test**: what Taskel reads for an account, before saving<br>![The Active Directory panel with a successful test sign-in showing the name, department and groups](docs/screenshots/settings-directory.png) |
 | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) |
 | **Task list**: titles grouped by due date, with a state mark and the key facts; a row opens the task<br>![Task list grouped under Overdue, Today, Tomorrow, Later and No due date, one task on hold with a clock](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
@@ -89,7 +90,8 @@ Taskel/
 │   └── tests/Taskel.Api.Tests/  # xUnit integration tests
 ├── frontend/                    # React + Vite + TypeScript
 ├── integrations/outlook/        # Outlook macro: turn emails into tasks
-├── docs/                        # Developer guide, demo accounts, screenshots
+├── deploy/keycloak/             # Development Keycloak realm (docker compose profile "keycloak")
+├── docs/                        # Developer guide, demo accounts, Keycloak setup, screenshots
 └── .github/workflows/ci.yml     # Build + test both projects
 ```
 
@@ -105,7 +107,10 @@ Taskel/
 
 ```bash
 docker compose up -d          # PostgreSQL on localhost:5432 (user/password/db: taskel)
+docker compose --profile keycloak up -d   # also a Keycloak on localhost:8080, to try single sign-on
 ```
+
+The development Keycloak, its accounts and how to connect Taskel to it are in [docs/KEYCLOAK.md](docs/KEYCLOAK.md).
 
 **Backend** (http://localhost:5000):
 
@@ -141,7 +146,7 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/auth/options`  | –    | What the sign-in screen should offer          |
 | POST   | `/api/auth/login`    | –    | Sign in with a local account                  |
 | POST   | `/api/auth/login/directory` | – | Sign in with an Active Directory account   |
-| POST   | `/api/auth/logout`   | –    | Sign out                                      |
+| POST   | `/api/auth/logout`   | –    | Sign out. For a Keycloak session, answers with the address that ends it there too |
 | GET    | `/api/auth/me`       | ✓    | Current user                                  |
 | GET    | `/api/auth/tokens`   | session | List your API tokens                       |
 | POST   | `/api/auth/tokens`   | session | Create an API token (shown once)           |
@@ -164,6 +169,15 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/team/members/{id}/tasks/{taskId}/attachments/{fileId}` | manager | Download a file of a team member's task |
 | GET    | `/api/admin/settings/attachments` | admin | The attachment size limit              |
 | PUT    | `/api/admin/settings/attachments` | admin | Change the attachment size limit       |
+| GET/PUT/DELETE | `/api/admin/integrations/email` | admin | Mail server and notifications: read, save, back to the server configuration |
+| POST   | `/api/admin/integrations/email/test` | admin | Send a test message, with the settings in the form, to yourself |
+| GET/PUT/DELETE | `/api/admin/integrations/directory` | admin | Active Directory (LDAP) settings     |
+| POST   | `/api/admin/integrations/directory/test` | admin | Sign in with a domain account using the settings in the form; creates nothing |
+| GET/PUT/DELETE | `/api/admin/integrations/keycloak` | admin | Keycloak settings                     |
+| POST   | `/api/admin/integrations/keycloak/test` | admin | Check the realm and the client secret |
+| POST   | `/api/admin/integrations/keycloak/import` | admin | Create or update accounts for the realm's users |
+| GET    | `/api/auth/keycloak/login` | – | Start a Keycloak sign-in (the browser goes there and comes back) |
+| GET    | `/api/auth/keycloak/callback` | – | Where Keycloak sends the browser back             |
 | GET    | `/api/groups`        | ✓    | Groups a task can be given to                 |
 | GET    | `/api/groups/{id}`   | manager | A group with its members                   |
 | GET    | `/api/groups/candidates` | manager | People you may put in a group          |
@@ -217,9 +231,12 @@ The OpenAPI document is available at `/openapi/v1.json` in Development.
 - Deployment notes:
   - Serve the frontend and the API from the same site (as the Vite dev proxy does). A frontend on a different site
     needs `SameSite=None` on the cookie plus its origin in `Cors:AllowedOrigins`.
-  - The cookie is encrypted with ASP.NET Core Data Protection keys. Persist them (e.g. a mounted volume) when running
-    in containers or on several instances, otherwise users are signed out on every restart.
-  - There is no rate limiting on login/register yet.
+  - The cookie, and the secrets saved in **Setări sistem**, are encrypted with ASP.NET Core Data Protection keys.
+    They are kept in the database (table `data_protection_keys`), so they survive restarts and are shared by every
+    server. Set `DataProtection__KeysPath` to keep them in a folder instead, for example a volume that is not part
+    of the database backups. Losing the keys signs everyone out and makes the saved secrets unreadable: the
+    settings page then asks for them again.
+  - Sign-in attempts are limited per client address (`Auth__LoginAttemptsPerMinute`, default 10).
 
 ### API tokens
 
@@ -408,6 +425,34 @@ Where roles and departments come from:
   administrators. A configured group also takes the role away from people who are not in it. What the directory
   does not speak for is left as set in Taskel.
 
+## System settings (administrators)
+
+Administrators set up the integrations in the interface, under **Organizare → Setări sistem**, without editing
+configuration files or restarting the server:
+
+| Panel | What it sets | Test button |
+|---|---|---|
+| **Server de email (SMTP)** | Server, port, user, password, sender, TLS; whether notifications are sent; the address of the interface | Sends a test message to your own address |
+| **Active Directory (LDAP)** | Everything in [Active Directory sign-in](#active-directory-sign-in) | Signs in with a domain account you type and shows what Taskel would read (email, name, department, role, groups); creates nothing |
+| **Keycloak** | Everything in [Keycloak sign-in](#keycloak-sign-in) | Reads the realm's discovery document and tries the client secret and the user list; a separate button imports the users |
+| **Fișiere atașate** | The largest file accepted | – |
+
+![Setări sistem: the Keycloak panel with the realm address, client, roles, the addresses to register in Keycloak and the result of an import](docs/screenshots/system-settings.png)
+
+How the settings work:
+
+- **Starting values** come from the server configuration (appsettings, environment variables), as documented in
+  each section. Saving a panel replaces that integration's configuration as a whole, at once and for everyone.
+  **Revino la configurația serverului** forgets what was saved.
+- **Secrets** (the SMTP password, the Keycloak client secret) are never sent back to the browser. Left empty they
+  keep the current one; **Șterge** drops the saved one, so the configured one (e.g. from an environment variable)
+  applies again. They are stored encrypted with Data Protection, apart from the other values
+  (table `integration_settings`).
+- **Tests use the form**, not what is saved, so a change can be checked before it is saved.
+- **Several servers** sharing a database pick up a change within a minute; the one that saved it, at once.
+- Only administrators can read or change these settings (`403` otherwise). The tests reach the servers the form
+  names, so they are rate limited like sign-ins.
+
 ## Active Directory sign-in
 
 Users can sign in with their domain account. Taskel checks the password by binding to Active Directory over
@@ -428,6 +473,9 @@ LDAP as that user, so no service account is needed. Local (email + password) acc
 | `SyncGroups`      | `ActiveDirectory__SyncGroups`        | Default `true`. Users' groups become groups in Taskel    |
 | `GroupsBaseDn`    | `ActiveDirectory__GroupsBaseDn`      | Optional. Only groups under this container are brought in, e.g. `OU=Teams,DC=corp,DC=example,DC=com` |
 | `TimeoutSeconds`  | `ActiveDirectory__TimeoutSeconds`    | Default 10                                               |
+
+All of these can also be set by an administrator in **Setări sistem → Active Directory**, which replaces the
+configuration (see [System settings](#system-settings-administrators)).
 
 Related settings in the `Auth` section: `Auth__AllowLocalRegistration` (`false` stops new local accounts) and
 `Auth__LoginAttemptsPerMinute` (default 10 per client address; further attempts get `429`).
@@ -458,6 +506,60 @@ Things to know:
   user belongs to is brought in, so set it to keep the list to the groups that make sense for tasks.
 - **Leaving.** An account removed from the directory can no longer sign in, but an open session lasts until
   its cookie expires, and its Taskel account and tasks remain.
+
+## Keycloak sign-in
+
+Taskel can sign people in through [Keycloak](https://www.keycloak.org/) with OpenID Connect: the sign-in screen
+shows a **Conectează-te cu …** button, Keycloak asks for the password (and any second factor it is set up for),
+and the browser comes back signed in to Taskel. Local and domain accounts keep working alongside.
+
+The step-by-step setup of the Keycloak client, and a ready-made development realm, are in
+[docs/KEYCLOAK.md](docs/KEYCLOAK.md).
+
+| Setting           | Environment variable              | Notes                                                       |
+|-------------------|-----------------------------------|-------------------------------------------------------------|
+| `Enabled`         | `Keycloak__Enabled`               | `true` to show the button                                   |
+| `Authority`       | `Keycloak__Authority`             | The realm, e.g. `https://sso.example.com/realms/company`    |
+| `ClientId`        | `Keycloak__ClientId`              | e.g. `taskel`                                               |
+| `ClientSecret`    | `Keycloak__ClientSecret`          | For a confidential client (needed for the user import). Never in appsettings.json |
+| `DisplayName`     | `Keycloak__DisplayName`           | Text on the button. Default `Keycloak`                      |
+| `RequireHttpsMetadata` | `Keycloak__RequireHttpsMetadata` | Default `true`. `false` only for a test Keycloak on http:// |
+| `RequiredRole`    | `Keycloak__RequiredRole`          | Optional. Only users with this realm or client role may sign in |
+| `AdminRole`       | `Keycloak__AdminRole`             | Optional. Users with this role are administrators in Taskel, others are not |
+| `ManagerRole`     | `Keycloak__ManagerRole`           | Optional. Users with this role are managers in Taskel, others are not |
+| `DepartmentClaim` | `Keycloak__DepartmentClaim`       | Default `department`. The token claim (and, for the import, the user attribute) with the department |
+| `SyncGroups`      | `Keycloak__SyncGroups`            | Default `false`. The user's Keycloak groups become groups in Taskel |
+| `GroupsClaim`     | `Keycloak__GroupsClaim`           | Default `groups`                                            |
+
+The same values can be set in **Setări sistem → Keycloak**, which also shows the two addresses to register on
+the Keycloak client: `…/api/auth/keycloak/callback` (valid redirect URI) and the interface's home page (valid post
+logout redirect URI). They are built from the interface's address set in the email panel
+(`Email__Notifications__PublicUrl`), or from the address the request came to.
+
+How it behaves:
+
+- **Code flow with PKCE**, the code returned in the query string. Taskel keeps its own session cookie afterwards;
+  Keycloak's tokens are not kept, except the ID token, to end the Keycloak session at sign-out.
+- **First sign-in** creates the Taskel account (linked by Keycloak's user id, `sub`), with the email, the name and
+  the department. Later sign-ins follow changes, including a changed email when Keycloak has verified it.
+- **An existing local account** with the same email is taken over (it keeps its tasks; its password stops
+  working) only when Keycloak says the address is **verified**. Otherwise anyone able to set their own email in
+  Keycloak could take over any local account; the sign-in is refused with a message instead. Accounts of Active
+  Directory or of another Keycloak user are never taken over, and a Keycloak account is never taken over by an
+  Active Directory sign-in.
+- **Roles** are read from the realm roles and from the client's roles in the access token. A configured role both
+  grants and withdraws its Taskel role at every sign-in; without one, roles are set in Taskel as usual.
+- **Groups**, when switched on, come from the groups claim (Keycloak's *Group Membership* mapper); `/Sales/Offers`
+  becomes a Taskel group named *Offers*. As with Active Directory, members appear as they sign in.
+- **Signing out** of Taskel also ends the Keycloak session (the browser passes through Keycloak and comes back),
+  so the next sign-in asks for the password again.
+- **Import.** **Importă utilizatorii** in the settings creates or updates an account for every enabled user of
+  the realm, so tasks can be given to people before their first sign-in. It uses the client's service account,
+  which needs the `view-users` role of the `realm-management` client. Roles and groups are applied at each
+  person's first sign-in. Users without an email, and local accounts whose address is not verified in Keycloak,
+  are skipped and listed.
+- A refused sign-in comes back to the sign-in screen with the reason in Romanian (no email, address in use,
+  address not verified, missing role, cancelled).
 
 `RealDirectoryTests` run the LDAP code against a real directory when `TASKEL_TEST_AD_HOST` is set (see the
 class comment for the accounts it expects); they were developed against a Samba AD domain controller and are
@@ -496,7 +598,9 @@ response:
 
 ### Email (SMTP) configuration
 
-Replies and notifications are sent from one mailbox, configured on the server in the `Email:Smtp` section:
+Replies and notifications are sent from one mailbox, configured on the server in the `Email:Smtp` section, or by
+an administrator in **Setări sistem → Server de email**, which replaces it (see
+[System settings](#system-settings-administrators)):
 
 | Setting       | Environment variable         | Notes                                                    |
 |---------------|------------------------------|----------------------------------------------------------|
@@ -506,6 +610,7 @@ Replies and notifications are sent from one mailbox, configured on the server in
 | `Password`    | `Email__Smtp__Password`      | For Gmail, an [app password](https://support.google.com/accounts/answer/185833), not the account password |
 | `FromAddress` | `Email__Smtp__FromAddress`   | Optional; defaults to `Username`                         |
 | `FromName`    | `Email__Smtp__FromName`      | Optional display name                                    |
+| `RequireTls`  | `Email__Smtp__RequireTls`    | Default `true`. `false` only for a local test server without TLS |
 
 Keep the password out of `appsettings.json`. For local development use user secrets:
 

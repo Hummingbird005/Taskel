@@ -38,7 +38,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
         >
           <Icon name={icon} />
           <span className="nav-label">{label}</span>
-          {count > 0 && <span className={`nav-count${tone ? ` ${tone}` : ''}`}>{count}</span>}
+          {count > 0 && <span className={tone ? `nav-count ${tone}` : 'nav-count'}>{count}</span>}
         </button>
       </li>
     )
@@ -50,7 +50,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
         <span className="brand-mark" aria-hidden="true">
           ✓
         </span>
-        Taskel
+        <span>Taskel</span>
       </div>
 
       <div className="sidebar-scroll">

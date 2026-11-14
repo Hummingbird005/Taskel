@@ -55,8 +55,15 @@ function clearLoginError() {
   const params = new URLSearchParams(window.location.search)
   if (!params.has('loginError')) return
   params.delete('loginError')
-  const query = params.toString()
-  window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`)
+  const url = new URL(window.location.href)
+  url.search = params.toString()
+  window.history.replaceState(null, '', url)
+}
+
+/** Signs in, or creates the local account, as the chosen mode says. */
+function signIn(mode: Mode, name: string, password: string): Promise<User> {
+  if (mode === 'directory') return authApi.loginDirectory(name, password)
+  return mode === 'register' ? authApi.register(name, password) : authApi.login(name, password)
 }
 
 export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
@@ -113,12 +120,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
     setError(null)
     try {
       const name = identifier.trim()
-      const user = isDirectory
-        ? await authApi.loginDirectory(name, password)
-        : isRegister
-          ? await authApi.register(name, password)
-          : await authApi.login(name, password)
-      onAuthenticated(user)
+      onAuthenticated(await signIn(mode, name, password))
     } catch (err) {
       setError(errorText(err, mode))
     } finally {
@@ -159,7 +161,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
 
       {isDirectory ? (
         <label>
-          Utilizator
+          <span>Utilizator</span>
           <input
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
@@ -170,12 +172,12 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
             placeholder="ion.popescu"
           />
           <small className="muted">
-            Contul tău de Windows{options.activeDirectoryDomain ? ` din domeniul ${options.activeDirectoryDomain}` : ''}.
+            Contul tău de Windows{options.activeDirectoryDomain && <> din domeniul {options.activeDirectoryDomain}</>}.
           </small>
         </label>
       ) : (
         <label>
-          Email
+          <span>Email</span>
           <input
             type="email"
             value={identifier}
@@ -187,7 +189,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
       )}
 
       <label>
-        Parolă
+        <span>Parolă</span>
         <input
           type="password"
           value={password}

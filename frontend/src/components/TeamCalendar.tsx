@@ -1,3 +1,4 @@
+import { classes } from '../lib/classes'
 import { TableSkeleton } from './ui/Skeleton'
 import { useEffect, useState } from 'react'
 import { ApiError } from '../api/client'
@@ -123,7 +124,7 @@ export default function TeamCalendar({ department, today, onSessionExpired }: Pr
           <strong className="calendar-period">{formatRange(start, end)}</strong>
         </div>
         <label className="team-department">
-          Arată
+          <span>Arată</span>
           <select
             value={person ? personId : ''}
             onChange={(e) => {
@@ -142,9 +143,8 @@ export default function TeamCalendar({ department, today, onSessionExpired }: Pr
         </label>
       </div>
 
-      {calendar.members.length === 0 ? (
-        <p className="muted">Nu există persoane în acest departament.</p>
-      ) : person ? (
+      {calendar.members.length === 0 && <p className="muted">Nu există persoane în acest departament.</p>}
+      {calendar.members.length > 0 && person && (
         <PersonCalendar
           member={person}
           days={days}
@@ -152,7 +152,8 @@ export default function TeamCalendar({ department, today, onSessionExpired }: Pr
           selectedDay={selected?.day ?? null}
           onSelect={(day) => setSelected({ userId: person.user.id, day })}
         />
-      ) : (
+      )}
+      {calendar.members.length > 0 && !person && (
         <div className="team-table-wrap">
           <table className="heatmap">
             <caption className="visually-hidden">
@@ -277,9 +278,10 @@ function PersonCalendar({
 }) {
   return (
     <>
-      <div className="month" role="grid" aria-label={`Calendarul task-urilor: ${member.user.displayName}`}>
+      <h3 className="visually-hidden">Calendarul task-urilor: {member.user.displayName}</h3>
+      <div className="month">
         {days.slice(0, 7).map((day) => (
-          <div key={day} className="month-head" role="columnheader">
+          <div key={day} className="month-head" aria-hidden="true">
             {formatWeekday(day)}
           </div>
         ))}
@@ -290,8 +292,7 @@ function PersonCalendar({
             <button
               key={day}
               type="button"
-              role="gridcell"
-              className={`month-day level-${loadLevel(tasks.length)}${isWeekend(day) ? ' weekend' : ''}${day === today ? ' today' : ''}${day === selectedDay ? ' selected' : ''}`}
+              className={classes('month-day', `level-${loadLevel(tasks.length)}`, isWeekend(day) && 'weekend', day === today && 'today', day === selectedDay && 'selected')}
               onClick={() => onSelect(day)}
               title={`${formatLongDate(day)}: ${tasksLabel(tasks.length)}`}
             >

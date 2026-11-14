@@ -57,10 +57,12 @@ builder.Services.AddScoped<ExternalAccounts>();
 // Settings an administrator can change in the interface (mail server, Active Directory, Keycloak).
 // The configuration above gives their starting values.
 builder.Services.Configure<KeycloakOptions>(builder.Configuration.GetSection(KeycloakOptions.Section));
+builder.Services.AddSingleton<IntegrationDefaults>();
 builder.Services.AddSingleton<IntegrationSettings>();
 builder.Services.AddHostedService<IntegrationSettingsRefresher>();
 builder.Services.AddScoped<KeycloakAccounts>();
 builder.Services.AddScoped<KeycloakOidcEvents>();
+builder.Services.AddScoped<KeycloakLogout>();
 builder.Services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, KeycloakOidcSetup>();
 builder.Services.AddHttpClient<KeycloakAdminClient>(KeycloakAdminClient.HttpClientName, client =>
     client.Timeout = TimeSpan.FromSeconds(15));
@@ -183,5 +185,3 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 await app.RunAsync();
 
-// Exposed for integration tests (WebApplicationFactory).
-public partial class Program;

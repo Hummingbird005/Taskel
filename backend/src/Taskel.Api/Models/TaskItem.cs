@@ -79,7 +79,14 @@ public class TaskItem
 
     /// <summary>Where the task stands, as people see it.</summary>
     [JsonIgnore]
-    public TaskState State => IsCompleted ? TaskState.Completed : WaitingSince is not null ? TaskState.Waiting : TaskState.Open;
+    public TaskState State
+    {
+        get
+        {
+            if (IsCompleted) return TaskState.Completed;
+            return WaitingSince is not null ? TaskState.Waiting : TaskState.Open;
+        }
+    }
 
     /// <summary>True when completing this task must go through a response that is emailed back.</summary>
     [JsonIgnore]

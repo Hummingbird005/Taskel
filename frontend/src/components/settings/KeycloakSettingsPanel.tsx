@@ -122,7 +122,7 @@ export default function KeycloakSettingsPanel({ onSessionExpired }: { onSessionE
     e.preventDefault()
     const valid = checked(false)
     if (!valid) return
-    void run(
+    run(
       'save',
       async () => {
         accept(await integrationsApi.saveKeycloak(valid))
@@ -135,17 +135,17 @@ export default function KeycloakSettingsPanel({ onSessionExpired }: { onSessionE
   function test() {
     const valid = checked(true)
     if (!valid) return
-    void run('test', async () => checkOutcome(await integrationsApi.testKeycloak(valid)), 'Keycloak nu a putut fi verificat.')
+    run('test', async () => checkOutcome(await integrationsApi.testKeycloak(valid)), 'Keycloak nu a putut fi verificat.')
   }
 
   function importUsers() {
     setConfirmImport(false)
-    void run('import', async () => importOutcome(await integrationsApi.importKeycloakUsers()), 'Importul nu a reușit.')
+    run('import', async () => importOutcome(await integrationsApi.importKeycloakUsers()), 'Importul nu a reușit.')
   }
 
   function reset() {
     if (!window.confirm('Renunți la setările salvate aici și revii la cele din configurația serverului?')) return
-    void run(
+    run(
       'reset',
       async () => {
         accept(await integrationsApi.resetKeycloak())
@@ -297,7 +297,8 @@ export default function KeycloakSettingsPanel({ onSessionExpired }: { onSessionE
           </div>
 
           {confirmImport && (
-            <div className="confirm-box" role="group" aria-label="Confirmă importul">
+            <fieldset className="confirm-box">
+              <legend className="visually-hidden">Confirmă importul</legend>
               <p>
                 Se creează un cont Taskel pentru fiecare utilizator activ din Keycloak, ca să le poți da task-uri înainte să se
                 conecteze. Un cont local cu aceeași adresă, verificată în Keycloak, trece pe Keycloak: își păstrează
@@ -309,7 +310,7 @@ export default function KeycloakSettingsPanel({ onSessionExpired }: { onSessionE
                 </Button>
                 <Button onClick={() => setConfirmImport(false)}>Renunță</Button>
               </div>
-            </div>
+            </fieldset>
           )}
           <OutcomeNote outcome={outcome} />
         </form>

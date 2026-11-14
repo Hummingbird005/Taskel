@@ -40,7 +40,6 @@ export default function NewTaskDialog({ initial, people, groups, currentUser, at
         </button>
       </header>
       <TaskForm
-        variant="dialog"
         initial={initial}
         people={people}
         groups={groups}

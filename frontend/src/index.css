@@ -88,7 +88,10 @@
 }
 :root[data-theme='light'], :root[data-theme='frost'] { color-scheme: light; }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; scrollbar-color: color-mix(in srgb, var(--text) 28%, transparent) transparent; }
+/* Status messages use <output>, which is inline by default; most of them are blocks. */
+output { display: block; }
+output.saved { display: inline; }
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); }
 h1, h2, h3, p { margin: 0; }
@@ -327,13 +330,15 @@ button.chip.tag:hover { background: var(--text); color: var(--bg); }
 .composer {
   display: flex; flex-direction: column; border: 1px solid var(--field-border); border-radius: var(--radius);
   background: var(--bg); overflow: hidden; transition: border-color 0.12s, box-shadow 0.12s;
+  /* The buttons sit beside the title, so the options below keep to one line. */
+  position: relative;
 }
 .composer:hover { border-color: var(--border-strong); }
 .composer:focus-within { border-color: var(--border-strong); box-shadow: 0 0 0 1px var(--border-strong); }
 .composer-title, .composer-notes {
   width: 100%; padding: var(--s3) var(--s4) var(--s2); border: 0; background: transparent; outline: none; font-size: var(--fs-md);
 }
-.composer-title { font-weight: 500; }
+.composer-title { font-weight: 500; padding-right: 132px; }
 .composer-title::placeholder { font-weight: 400; }
 .composer-notes { padding-top: 0; resize: vertical; font-size: var(--fs-sm); line-height: 1.5; }
 .composer-error { margin: 0; padding: 0 var(--s4) var(--s2); color: var(--danger); font-size: var(--fs-sm); }
@@ -357,9 +362,6 @@ button.chip.tag:hover { background: var(--text); color: var(--bg); }
 .field-hint { font-size: var(--fs-xs); white-space: nowrap; }
 .composer-tags { flex: 1; min-width: 120px; }
 .composer-tags input { flex: 1; }
-/* The buttons sit beside the title, so the options below keep to one line. */
-.composer { position: relative; }
-.composer-title { padding-right: 132px; }
 .composer-edit .composer-title { padding-right: 232px; }
 .composer-actions { position: absolute; top: 7px; right: 7px; display: flex; gap: var(--s2); }
 .composer-actions .button { min-height: 32px; }
@@ -1132,7 +1134,6 @@ select:disabled { color: var(--muted); cursor: default; }
 ::placeholder { color: var(--muted); opacity: 0.85; }
 input[type='date'], input[type='number'] { color: var(--text); }
 progress { accent-color: var(--accent); }
-* { scrollbar-color: color-mix(in srgb, var(--text) 28%, transparent) transparent; }
 /* Autofill paints fields pale yellow or blue whatever the theme; this keeps the theme's surface. */
 input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, textarea:-webkit-autofill, select:-webkit-autofill {
   -webkit-text-fill-color: var(--text); caret-color: var(--text);
@@ -1221,10 +1222,9 @@ dialog::backdrop { background: rgb(11 11 12 / 0.6); }
   border-top: 1px solid var(--border); background: var(--bg);
 }
 /* The picker's list is part of the dialog's flow, so it is never cut off by the dialog's edge. */
-.task-form .target-menu { position: static; margin-top: var(--s2); min-width: 0; box-shadow: none; }
+.task-form .target-menu { position: static; margin-top: var(--s2); min-width: 0; box-shadow: none; scroll-margin-bottom: 96px; }
 .task-form .target-picker { flex-wrap: wrap; }
 .task-form .target-picker input { min-height: calc(var(--control) - 2px); }
-.task-form .target-menu { scroll-margin-bottom: 96px; }
 .task-form .target-picker .target-menu { flex-basis: 100%; margin-bottom: var(--s2); }
 [data-glass] .task-dialog {
   background: var(--glass-strong); border-color: var(--glass-border);
@@ -1240,8 +1240,7 @@ dialog::backdrop { background: rgb(11 11 12 / 0.6); }
   .task-form-actions { margin: auto calc(var(--s4) * -1) calc(var(--s4) * -1); padding: var(--s3) var(--s4); }
   .task-form-actions .button { flex: 1; }
   .composer-target { flex-basis: 100%; grid-column: 1 / -1; }
-  .target-menu li { min-height: 44px; align-items: center; }
-  .target-menu li { flex-wrap: wrap; row-gap: 0; }
+  .target-menu li { min-height: 44px; align-items: center; flex-wrap: wrap; row-gap: 0; }
   .target-detail { flex-basis: 100%; margin-left: 23px; padding-left: 0; }
   .main-tools .button.primary { flex-shrink: 0; }
 }
@@ -1328,6 +1327,7 @@ dialog::backdrop { background: rgb(11 11 12 / 0.6); }
 .detail-footer .field > span { color: var(--text); }
 
 /* The state buttons: blue for open, amber for on hold, green for done. Filled when it is the current state. */
+fieldset.state-bar { border: 0; margin: 0; padding: 0; min-width: 0; }
 .state-bar { display: flex; flex-wrap: wrap; gap: var(--s2); justify-content: flex-end; }
 .state-button {
   --tone: var(--accent);
@@ -1397,7 +1397,7 @@ dialog::backdrop { background: rgb(11 11 12 / 0.6); }
 .outcome.error { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: var(--danger-soft); color: var(--text); }
 .outcome-detail { color: var(--muted); overflow-wrap: anywhere; }
 .outcome-list { margin: var(--s2) 0 0; padding-left: var(--s4); }
-.confirm-box { margin-top: var(--s4); padding: var(--s4); border: 1px solid var(--warn); border-radius: var(--radius); font-size: var(--fs-sm); }
+.confirm-box { min-width: 0; margin-top: var(--s4); padding: var(--s4); border: 1px solid var(--warn); border-radius: var(--radius); font-size: var(--fs-sm); }
 .confirm-box .settings-actions { margin-top: var(--s3); }
 .kind-badge.keycloak { border-color: var(--border-strong); color: var(--text); }
 @media (max-width: 720px) {

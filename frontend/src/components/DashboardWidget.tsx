@@ -15,6 +15,9 @@ interface WidgetProps {
   onOpen: (view: View) => void
 }
 
+/** What the widgets that list the user's own tasks need. */
+type ListWidgetProps = Pick<WidgetProps, 'tasks' | 'today' | 'onOpen'>
+
 const MAX_ROWS = 5
 
 /** A compact list of tasks. Each row opens the view the task lives in. */
@@ -62,14 +65,14 @@ function TaskLines({
 
 const dueMeta = (task: TaskItem) => (task.dueDate ? formatDueDate(task.dueDate) : '')
 
-function Stats({ tasks, today, onOpen }: WidgetProps) {
+function Stats({ tasks, today, onOpen }: ListWidgetProps) {
   const open = tasks.filter((t) => !t.isCompleted)
   const weekAgo = addDaysIso(today, -6)
   const completedThisWeek = completedPerDay(tasks, today).reduce((sum, day) => sum + day.count, 0)
   const overdue = open.filter((t) => isOverdue(t, today)).length
 
   const tile = (label: string, value: number, icon: IconName, view: View, tone?: 'danger') => (
-    <button type="button" className={`stat${tone ? ` ${tone}` : ''}`} onClick={() => onOpen(view)}>
+    <button type="button" className={tone ? `stat ${tone}` : 'stat'} onClick={() => onOpen(view)}>
       <span className="stat-label">
         <Icon name={icon} size={15} />
         {label}
@@ -88,7 +91,7 @@ function Stats({ tasks, today, onOpen }: WidgetProps) {
   )
 }
 
-function Overdue({ tasks, today, onOpen }: WidgetProps) {
+function Overdue({ tasks, today, onOpen }: ListWidgetProps) {
   const overdue = tasks
     .filter((t) => isOverdue(t, today))
     .sort((a, b) => (a.dueDate ?? '').localeCompare(b.dueDate ?? ''))
@@ -97,7 +100,7 @@ function Overdue({ tasks, today, onOpen }: WidgetProps) {
   )
 }
 
-function Today({ tasks, today, onOpen }: WidgetProps) {
+function Today({ tasks, today, onOpen }: ListWidgetProps) {
   const due = tasks.filter((t) => !t.isCompleted && t.dueDate === today)
   return (
     <TaskLines
@@ -110,7 +113,7 @@ function Today({ tasks, today, onOpen }: WidgetProps) {
   )
 }
 
-function Upcoming({ tasks, today, onOpen }: WidgetProps) {
+function Upcoming({ tasks, today, onOpen }: ListWidgetProps) {
   const until = addDaysIso(today, 7)
   const upcoming = tasks
     .filter((t) => !t.isCompleted && t.dueDate !== null && t.dueDate > today && t.dueDate <= until)
@@ -126,7 +129,7 @@ function Upcoming({ tasks, today, onOpen }: WidgetProps) {
   )
 }
 
-function ReplyRequired({ tasks, onOpen }: WidgetProps) {
+function ReplyRequired({ tasks, onOpen }: Pick<WidgetProps, 'tasks' | 'onOpen'>) {
   const waiting = tasks.filter((t) => !t.isCompleted && t.sourceEmailAddress)
   return (
     <TaskLines
@@ -139,7 +142,7 @@ function ReplyRequired({ tasks, onOpen }: WidgetProps) {
   )
 }
 
-function Delegated({ delegated, onOpen }: WidgetProps) {
+function Delegated({ delegated, onOpen }: Pick<WidgetProps, 'delegated' | 'onOpen'>) {
   const open = delegated.filter((t) => !t.isCompleted)
   return (
     <TaskLines
@@ -159,7 +162,7 @@ const PRIORITIES: { priority: TaskPriority; label: string }[] = [
 ]
 
 /** One bar per priority on a shared scale: the bar carries magnitude, the label carries identity. */
-function Priority({ tasks }: WidgetProps) {
+function Priority({ tasks }: Pick<WidgetProps, 'tasks'>) {
   const open = tasks.filter((t) => !t.isCompleted)
   if (open.length === 0) return <p className="widget-empty">Niciun task deschis.</p>
   const rows = PRIORITIES.map((row) => ({ ...row, count: open.filter((t) => t.priority === row.priority).length }))
@@ -179,7 +182,7 @@ function Priority({ tasks }: WidgetProps) {
   )
 }
 
-function CompletedWeek({ tasks, today }: WidgetProps) {
+function CompletedWeek({ tasks, today }: Pick<WidgetProps, 'tasks' | 'today'>) {
   const days = completedPerDay(tasks, today)
   const total = days.reduce((sum, day) => sum + day.count, 0)
   if (total === 0) return <p className="widget-empty">Niciun task finalizat în ultimele 7 zile.</p>
@@ -192,7 +195,7 @@ function CompletedWeek({ tasks, today }: WidgetProps) {
           // Label only the tallest column and today, not every column.
           const labelled = day.count > 0 && (day.count === max || isToday)
           return (
-            <div key={day.date} className="column" tabIndex={0}>
+            <div key={day.date} className="column">
               <span className="column-tip">
                 {formatLongDate(day.date)}: {day.count}
               </span>
@@ -226,7 +229,7 @@ function CompletedWeek({ tasks, today }: WidgetProps) {
   )
 }
 
-function Tags({ tasks, onOpen }: WidgetProps) {
+function Tags({ tasks, onOpen }: Pick<WidgetProps, 'tasks' | 'onOpen'>) {
   const tags = tagCounts(tasks)
     .sort((a, b) => b.open - a.open || a.tag.localeCompare(b.tag))
     .slice(0, 10)
@@ -244,7 +247,7 @@ function Tags({ tasks, onOpen }: WidgetProps) {
   )
 }
 
-function Recent({ tasks, onOpen }: WidgetProps) {
+function Recent({ tasks, onOpen }: Pick<WidgetProps, 'tasks' | 'onOpen'>) {
   return (
     <TaskLines
       tasks={recentlyCompleted(tasks).slice(0, MAX_ROWS)}

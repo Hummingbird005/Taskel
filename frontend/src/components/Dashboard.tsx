@@ -71,7 +71,7 @@ export default function Dashboard({ tasks, delegated, today, settings, customizi
               checked={settings.showDueAlert}
               onChange={(e) => onChange({ ...settings, showDueAlert: e.target.checked })}
             />
-            Arată-mi o atenționare pentru task-urile întârziate și cele cu termen azi când deschid Taskel
+            <span>Arată-mi o atenționare pentru task-urile întârziate și cele cu termen azi când deschid Taskel</span>
           </label>
           {hidden.length > 0 && (
             <ul className="available-widgets">

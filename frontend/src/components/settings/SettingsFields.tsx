@@ -165,16 +165,19 @@ export function SecretField({
   )
 }
 
+/** "Salvate în aplicație de Ana, 13 nov. 2026, 18:20". */
+function savedBy(status: IntegrationStatus): string {
+  const who = status.updatedBy ? ` de ${status.updatedBy}` : ''
+  const when = status.updatedAt ? `, ${formatDateTime(status.updatedAt)}` : ''
+  return `Salvate în aplicație${who}${when}`
+}
+
 /** Whether the integration is in use, and where its settings come from. */
 export function StatusLine({ status, readyText, offText }: { status: IntegrationStatus; readyText: string; offText: string }) {
-  const source = status.saved
-    ? `Salvate în aplicație${status.updatedBy ? ` de ${status.updatedBy}` : ''}${
-        status.updatedAt ? `, ${formatDateTime(status.updatedAt)}` : ''
-      }`
-    : 'Din configurația serverului'
+  const source = status.saved ? savedBy(status) : 'Din configurația serverului'
   return (
     <p className="status-line">
-      <span className={`status-dot${status.ready ? ' on' : ''}`} aria-hidden="true" />
+      <span className={status.ready ? 'status-dot on' : 'status-dot'} aria-hidden="true" />
       <strong>{status.ready ? readyText : offText}</strong>
       <span className="muted">· {source}</span>
     </p>
@@ -183,9 +186,12 @@ export function StatusLine({ status, readyText, offText }: { status: Integration
 
 export function OutcomeNote({ outcome }: { outcome: Outcome | null }) {
   if (!outcome) return null
-  return (
-    <div className={`outcome ${outcome.tone}`} role={outcome.tone === 'error' ? 'alert' : 'status'}>
-      {outcome.text}
-    </div>
-  )
+  if (outcome.tone === 'error') {
+    return (
+      <div className="outcome error" role="alert">
+        {outcome.text}
+      </div>
+    )
+  }
+  return <output className="outcome ok">{outcome.text}</output>
 }

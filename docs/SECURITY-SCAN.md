@@ -3,7 +3,47 @@
 How Taskel's code was scanned for security problems, what was found and what was done about it. Run the scan
 again before a release, and after changes to authentication, file handling or the API's input.
 
-## Last scan: 13 November 2026
+## Last scan: 14 November 2026
+
+Run after adding the integration settings and Keycloak sign-in, and after clearing the remaining code smells.
+
+| Tool | Scope | Result |
+|---|---|---|
+| **SonarQube Community** 25.1 | Backend C# | Security, reliability, maintainability **A**. 0 vulnerabilities, 0 bugs, **0 code smells** (were 27, plus 14 in the new code), 3 hotspots reviewed (the published demo passwords, as before) |
+| **SonarQube Community** 25.1 | Frontend, `integrations/`, CI workflow | **A / A / A**. 0 vulnerabilities, 0 bugs, **0 code smells** (were 102, plus 18 in the new code); 4 accepted, see below |
+| **Semgrep** 1.185, open rules | Whole repository, including the new code | No security finding. Informational and internationalisation notes only; the email-pattern ReDoS warning reviewed earlier |
+
+What the code-smell work changed, without changing behaviour (backend 369 tests and the interface checked in a
+browser before and after):
+
+- **Complexity.** The workspace (cognitive complexity 74) and the task dialog (70) were split: task changes moved
+  to `lib/taskActions.ts`, the dialog into `TaskDetailParts`, pages into `PageView`. In the backend, the
+  attachment upload (26), the notification sender and the Keycloak account linking were split into small steps.
+- **Controllers with several jobs** were split: attachment settings, and one controller per integration.
+- Nested ternaries replaced by small functions; `void` on promises removed; `role="status"` replaced by
+  `<output>`, `role="group"` by `<fieldset>`; ambiguous spacing in JSX; duplicated CSS selectors merged; the
+  unused inline variant of the task form removed; case-insensitive comparisons in queries run as `ILIKE`;
+  test data rows made serializable.
+
+Accepted: four accessibility suggestions on the person and group search (`TargetPicker`), which asks for a native
+`<select>` instead of the `listbox`/`option` roles. The field is a WAI-ARIA combobox: a native control cannot
+search people and groups with a detail line. Keyboard and screen readers are supported. Marked *Won't fix* in
+SonarQube with this reason.
+
+### The new code, reviewed by hand
+
+| Area | How it is handled |
+|---|---|
+| Secrets in the settings | SMTP password and Keycloak client secret are encrypted with Data Protection, stored apart from the other values, never returned by the API (only whether one is set). An unreadable secret is reported, not used |
+| Who can change them | `[AdminOnly]` on every settings endpoint, role read from the database on each request; tests cover users and managers being refused |
+| Test buttons reaching other servers | Administrator only, rate limited like sign-ins; the test email goes only to the administrator's own address |
+| Keycloak sign-in | Code flow with PKCE, state and nonce checked by ASP.NET Core; the ID token's signature, issuer and audience validated; roles read from the access token received directly from Keycloak's token endpoint |
+| Account takeover through Keycloak | A local account is linked only on an address Keycloak marks verified; directory and other Keycloak accounts are never linked; tests for each case |
+| Open redirect | After sign-in and sign-out the browser goes only to Taskel's own address, never to one taken from the request's query |
+| Injection through settings | Server names, LDAP attribute names, claim names and client ids are limited to safe characters (an attribute like `department)(cn=*` is refused); addresses must be absolute http(s) without query or credentials |
+| Keycloak responses | Read with a size cap (4 MB) and a timeout; the realm's issuer must match the address entered |
+
+## Previous scan: 13 November 2026
 
 | Tool | What it covers | Result |
 |---|---|---|
@@ -61,7 +101,8 @@ that is in the paid editions. Semgrep's rules and the review below cover that gr
   props spread onto HTML elements in `Button` and the empty state (typed props, no user data), a string that
   looks like a template literal (it is a format string). No security impact.
 - **Remaining SonarQube code smells** (27 backend, 102 frontend): complexity, nested ternaries, `void`
-  operators, accessibility suggestions. None has a security impact; they are left for ordinary refactoring.
+  operators, accessibility suggestions. None had a security impact; they were cleared in the scan of
+  14 November.
 
 ## Reviewed by hand
 
@@ -78,7 +119,7 @@ What the tools above do not reach, checked against the code:
 | Passwords and tokens at rest | Passwords hashed with ASP.NET Core Identity's hasher; API tokens stored as SHA-256 hashes, shown once |
 | Access control | Every task read goes through `ITaskRepository.VisibleTo`; outsiders get `404`. Roles are read from the database on each request |
 | Upload size | Enforced while the file arrives; the request body limit is raised only for the upload endpoint |
-| Secrets in the repository | None found by Semgrep's secret rules; SMTP and directory passwords are read from configuration, never committed |
+| Secrets in the repository | None found by Semgrep's secret rules; SMTP and directory passwords are read from configuration or saved encrypted, never committed. The development Keycloak realm's passwords and client secret are public on purpose |
 
 ## Running the scan again
 

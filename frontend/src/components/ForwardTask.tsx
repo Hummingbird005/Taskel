@@ -114,10 +114,10 @@ export default function ForwardTask({ task, people, groups, onSubmit, onCancel }
         </p>
       )}
       {busyWarning && !error && (
-        <p className="composer-warning" role="status">
+        <output className="composer-warning">
           <Icon name="alert" size={15} />
           {busyWarning}
-        </p>
+        </output>
       )}
       <div className="reply-form-actions">
         <Button type="submit" variant="primary" disabled={!target} loading={sending}>

@@ -101,7 +101,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
       )}
 
       {created && (
-        <div className="new-token" role="status">
+        <output className="new-token">
           <p>
             <strong>Copiază acum acest token.</strong> Nu va mai fi afișat.
           </p>
@@ -111,7 +111,7 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
               {copied ? 'Copiat' : 'Copiază'}
             </button>
           </div>
-        </div>
+        </output>
       )}
 
       {tokens.length === 0 ? (

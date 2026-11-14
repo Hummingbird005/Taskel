@@ -36,13 +36,15 @@ public class TaskDetailsApiTests(TaskelApiFactory factory)
         Assert.Equal(["work", "release"], stored.Tags);
     }
 
+    private static readonly string[] OneTag = ["a"];
+
     [Fact]
     public async Task Wire_Format_Uses_String_Priority_And_Iso_Date()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
 
         var response = await client.PostApiAsync("/api/tasks",
-            new { title = "Wire", dueDate = "2027-01-31", priority = "low", tags = new[] { "a" } });
+            new { title = "Wire", dueDate = "2027-01-31", priority = "low", tags = OneTag });
         var json = await response.Content.ReadAsStringAsync();
 
         Assert.Contains("\"dueDate\":\"2027-01-31\"", json);
@@ -98,8 +100,8 @@ public class TaskDetailsApiTests(TaskelApiFactory factory)
         Assert.True(afterClear.IsCompleted);
     }
 
-    public static TheoryData<object> InvalidBodies => new()
-    {
+    public static TheoryData<string> InvalidBodies => ApiJson.Bodies(
+    [
         new { title = "x", priority = "urgent" },
         new { title = "x", priority = 2 },
         new { title = "x", priority = (string?)null },
@@ -107,19 +109,19 @@ public class TaskDetailsApiTests(TaskelApiFactory factory)
         new { title = "x", dueDate = "2027-02-30" },
         new { title = "x", tags = Enumerable.Range(0, TagList.MaxTags + 1).Select(i => $"tag{i}").ToArray() },
         new { title = "x", tags = new[] { new string('a', TagList.MaxTagLength + 1) } },
-    };
+    ]);
 
     [Theory]
     [MemberData(nameof(InvalidBodies))]
-    public async Task Invalid_Details_Return_BadRequest(object body)
+    public async Task Invalid_Details_Return_BadRequest(string body)
     {
         var client = await factory.CreateAuthenticatedClientAsync();
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostApiAsync("/api/tasks", body)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostApiAsync("/api/tasks", ApiJson.Element(body))).StatusCode);
 
         var created = await client.PostApiAsync("/api/tasks", new { title = "valid" });
         var task = (await created.Content.ReadApiAsync<TaskItem>())!;
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutApiAsync($"/api/tasks/{task.Id}", body)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutApiAsync($"/api/tasks/{task.Id}", ApiJson.Element(body))).StatusCode);
     }
 
     [Fact]

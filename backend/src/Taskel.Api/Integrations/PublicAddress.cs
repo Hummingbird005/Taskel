@@ -10,6 +10,11 @@ public static class PublicAddress
     public static string Of(HttpRequest request, IntegrationSettings settings) =>
         Parse(settings.Notifications.PublicUrl) ?? $"{request.Scheme}://{request.Host}{request.PathBase}".TrimEnd('/');
 
+    /// <summary>The interface's home page: <see cref="Of"/> with a trailing slash.</summary>
+    public static string HomeOf(HttpRequest request, IntegrationSettings settings) => $"{Of(request, settings)}{PathSeparator}";
+
+    private const char PathSeparator = '/';
+
     /// <summary>The address without a trailing slash, or null when it is not an absolute http(s) address without query or fragment.</summary>
     public static string? Parse(string? url) =>
         Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri)

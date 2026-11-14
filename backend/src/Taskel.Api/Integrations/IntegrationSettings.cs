@@ -44,6 +44,19 @@ public sealed class EmailSettings
     public NotificationOptions Notifications { get; set; } = new();
 }
 
+/// <summary>The integration settings in the server configuration: the values used until an administrator saves others.</summary>
+public sealed class IntegrationDefaults(
+    IOptions<SmtpOptions> smtp,
+    IOptions<NotificationOptions> notifications,
+    IOptions<DirectoryOptions> directory,
+    IOptions<KeycloakOptions> keycloak)
+{
+    public SmtpOptions Smtp => smtp.Value;
+    public NotificationOptions Notifications => notifications.Value;
+    public DirectoryOptions Directory => directory.Value;
+    public KeycloakOptions Keycloak => keycloak.Value;
+}
+
 /// <summary>Where an integration's settings come from right now.</summary>
 /// <param name="Saved">True when an administrator saved them; false when they come from the server configuration.</param>
 /// <param name="SecretSaved">A secret was saved in the interface.</param>
@@ -99,19 +112,16 @@ public sealed class IntegrationSettings
         IServiceScopeFactory scopes,
         IDataProtectionProvider dataProtection,
         IOptionsMonitorCache<OpenIdConnectOptions> oidcOptions,
-        IOptions<SmtpOptions> smtp,
-        IOptions<NotificationOptions> notifications,
-        IOptions<DirectoryOptions> directory,
-        IOptions<KeycloakOptions> keycloak,
+        IntegrationDefaults defaults,
         ILogger<IntegrationSettings> logger)
     {
         _scopes = scopes;
         _protector = dataProtection.CreateProtector("Taskel.IntegrationSecrets.v1");
         _oidcOptions = oidcOptions;
         _logger = logger;
-        _configuredEmail = new EmailSettings { Smtp = Clone(smtp.Value), Notifications = Clone(notifications.Value) };
-        _configuredDirectory = Clone(directory.Value);
-        _configuredKeycloak = Clone(keycloak.Value);
+        _configuredEmail = new EmailSettings { Smtp = Clone(defaults.Smtp), Notifications = Clone(defaults.Notifications) };
+        _configuredDirectory = Clone(defaults.Directory);
+        _configuredKeycloak = Clone(defaults.Keycloak);
         _current = FromConfiguration();
     }
 

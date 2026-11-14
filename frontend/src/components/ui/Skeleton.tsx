@@ -8,10 +8,10 @@ export function Skeleton({ width = '100%', height = 14, style }: { width?: numbe
 /** Wraps skeletons so assistive technology hears one "loading" instead of a pile of empty blocks. */
 function Loading({ className, children }: { className: string; children: React.ReactNode }) {
   return (
-    <div className={className} role="status" aria-live="polite">
+    <output className={className} aria-live="polite">
       <span className="visually-hidden">Se încarcă…</span>
       {children}
-    </div>
+    </output>
   )
 }
 
