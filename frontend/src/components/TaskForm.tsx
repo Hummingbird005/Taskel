@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { checkFiles, type AttachmentLimits } from '../api/attachments'
 import type { GroupListItem } from '../api/groups'
 import type { TaskDraft, TaskPriority } from '../api/tasks'
@@ -42,14 +42,8 @@ interface Props {
    * files are managed on the task itself.
    */
   attachmentLimits?: AttachmentLimits
-  /** Called when the user gives up: closes the editor in the list, or the dialog. */
+  /** Called when the user gives up: closes the dialog. */
   onCancel?: () => void
-  /**
-   * Where the form is shown. `inline` (the default) is the compact editor in the task list;
-   * `dialog` is the roomier layout of the new-task dialog, with a named field for each value
-   * and a message.
-   */
-  variant?: 'inline' | 'dialog'
   /**
    * The other users the task can be assigned to. Leave out (or pass an empty list) to hide the
    * assignee field, e.g. when the person editing is not the task's creator.
@@ -64,6 +58,16 @@ interface Props {
   currentUser?: { id: string }
   /** The task being edited, so it is not counted against itself in that warning. */
   taskId?: string
+}
+
+/**
+ * The question behind the "already has N tasks" warning: who, from when, until when. Null when
+ * there is nobody to ask about or the dates are not valid yet.
+ */
+function workloadKeyOf(responsibleId: string, startDate: string, dueDate: string): string | null {
+  if (!responsibleId || dueDate === '') return null
+  if (validateDueDate(dueDate) || validateInterval(startDate, dueDate)) return null
+  return `${responsibleId}|${startDate || dueDate}|${dueDate}`
 }
 
 /** The result of asking how loaded someone is, with the question it answers. */
@@ -83,9 +87,7 @@ export default function TaskForm({
   currentUser,
   taskId,
   attachmentLimits,
-  variant = 'inline',
 }: Props) {
-  const inDialog = variant === 'dialog'
   const [files, setFiles] = useState<File[]>([])
   const fileInput = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(initial.title)
@@ -106,8 +108,7 @@ export default function TaskForm({
   // Who the task is for, and when: the question behind the "already has N tasks" warning.
   // A task given to a group is nobody's until someone takes it, so there is nobody to check.
   const responsibleId = groupId ? '' : assigneeId || currentUser?.id || ''
-  const datesAreValid = dueDate !== '' && !validateDueDate(dueDate) && !validateInterval(startDate, dueDate)
-  const workloadKey = responsibleId && datesAreValid ? `${responsibleId}|${startDate || dueDate}|${dueDate}` : null
+  const workloadKey = workloadKeyOf(responsibleId, startDate, dueDate)
 
   useEffect(() => {
     if (!workloadKey) return
@@ -134,15 +135,12 @@ export default function TaskForm({
   const busyCount = workload && workload.key === workloadKey ? workload.count : 0
   const busyPerson = people.find((person) => person.id === assigneeId)
   // The period ends in an abbreviated month ("nov."), which already closes the sentence.
+  const busyWho = busyPerson ? busyPerson.displayName + ' mai are' : 'Mai ai'
   const busyWarning =
-    busyCount > 0 && dueDate
-      ? `${busyPerson ? `${busyPerson.displayName} mai are` : 'Mai ai'} ${tasksLabel(busyCount)} în ${describePeriod(startDate || null, dueDate)}`
-      : null
+    busyCount > 0 && dueDate ? `${busyWho} ${tasksLabel(busyCount)} în ${describePeriod(startDate || null, dueDate)}` : null
 
   // Editing an existing task, as opposed to writing a new one.
   const isEditing = taskId !== undefined
-  // The message can be written when adding from the dialog and when editing.
-  const hasNotes = isEditing || inDialog
 
   /** Updates a field and drops the last validation message, which no longer describes the form. */
   function change<T>(setter: (value: T) => void, value: T) {
@@ -152,11 +150,7 @@ export default function TaskForm({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    const trimmed = title.trim()
     if (submitting) return
-    // An empty composer is not an error worth announcing; in edit mode an empty title is.
-    if (!trimmed && !isEditing && !inDialog) return
-
     // The API applies the same rules; checking here gives a specific message.
     const parsedTags = parseTags(tags)
     const invalid = firstError(
@@ -164,7 +158,7 @@ export default function TaskForm({
       validateDueDate(dueDate),
       validateInterval(startDate, dueDate),
       validateTags(parsedTags),
-      hasNotes ? validateNotes(description) : null,
+      validateNotes(description),
     )
     if (invalid) {
       setFormError(invalid)
@@ -172,35 +166,30 @@ export default function TaskForm({
     }
     setFormError(null)
     setSubmitting(true)
-    const saved = await onSubmit(
-    {
-      title: trimmed,
+    const draft: TaskDraft = {
+      title: title.trim(),
       startDate: startDate || null,
       dueDate: dueDate || null,
       priority,
       tags: parsedTags,
-      // Notes are only editable in edit mode; new tasks start without any.
-      ...(hasNotes ? { description: description.trim() || null } : {}),
+      description: description.trim() || null,
       // Only sent when the form offers the choice.
       ...(people.length > 0 ? { assigneeId: assigneeId || null, groupId } : {}),
-    },
-    files,
-    )
-    setSubmitting(false)
-    if (saved && !isEditing) {
-      setTitle('')
-      setStartDate(initial.startDate ?? '')
-      setDueDate(initial.dueDate ?? '')
-      setPriority(initial.priority)
-      setTags(initial.tags.join(', '))
-      setTarget(initialTarget)
-      setFiles([])
     }
+    const saved = await onSubmit(draft, files)
+    setSubmitting(false)
+    if (saved && !isEditing) reset()
   }
 
-  function handleKeyDown(e: KeyboardEvent) {
-    // In the dialog, Escape belongs to the dialog itself.
-    if (e.key === 'Escape' && onCancel && !inDialog) onCancel()
+  /** Back to the starting values, for the next task. */
+  function reset() {
+    setTitle('')
+    setStartDate(initial.startDate ?? '')
+    setDueDate(initial.dueDate ?? '')
+    setPriority(initial.priority)
+    setTags(initial.tags.join(', '))
+    setTarget(initialTarget)
+    setFiles([])
   }
 
   const titleField = (
@@ -211,7 +200,7 @@ export default function TaskForm({
       placeholder={placeholder}
       maxLength={LIMITS.title}
       aria-label="Titlul task-ului"
-      autoFocus={isEditing || inDialog}
+      autoFocus
     />
   )
   const notesField = (
@@ -219,10 +208,10 @@ export default function TaskForm({
       className="composer-notes"
       value={description}
       onChange={(e) => change(setDescription, e.target.value)}
-      placeholder={inDialog ? 'Detalii, context, pași de urmat (opțional)' : 'Note'}
+      placeholder="Detalii, context, pași de urmat (opțional)"
       maxLength={LIMITS.notes}
-      rows={inDialog ? 5 : 4}
-      aria-label={inDialog ? 'Mesaj' : 'Note'}
+      rows={5}
+      aria-label="Mesaj"
     />
   )
   const startField = (
@@ -313,142 +302,76 @@ export default function TaskForm({
         </p>
       )}
       {busyWarning && !formError && (
-        <p className="composer-warning" role="status">
+        <output className="composer-warning">
           <Icon name="alert" size={15} />
           {busyWarning}
-        </p>
+        </output>
       )}
     </>
   )
 
-  // The dialog: every field with its name above it, and room for a message.
-  if (inDialog) {
-    return (
-      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="task-form" noValidate>
-        <label className="field">
-          <span>Titlu</span>
-          {titleField}
-        </label>
-        <label className="field">
-          <span>Mesaj</span>
-          {notesField}
-        </label>
-        <div className="task-form-grid">
-          <label className="field" title="Opțional: prima zi a intervalului în care se lucrează la task">
-            <span>Început</span>
-            {startField}
-          </label>
-          <label className="field" title="Ultima zi">
-            <span>Termen</span>
-            {dueField}
-          </label>
-          <label className="field">
-            <span>Prioritate</span>
-            {priorityField}
-          </label>
-          <label className="field">
-            <span>Etichete</span>
-            {tagsField}
-          </label>
-        </div>
-        {targetField && (
-          <div className="field">
-            <span>Alocat către</span>
-            {targetField}
-          </div>
-        )}
-        {messages}
-        {attachmentLimits && (
-          <div className="field">
-            <span>Fișiere</span>
-            {fileList}
-            {filePicker}
-            <div className="task-form-attach">
-              <button type="button" className="button ghost small" onClick={() => fileInput.current?.click()}>
-                <Icon name="paperclip" />
-                Atașează fișiere
-              </button>
-              <small className="muted">
-                Cel mult {attachmentLimits.maxFileSizeMb} MB pe fișier, {attachmentLimits.maxFilesPerTask} fișiere.
-              </small>
-            </div>
-          </div>
-        )}
-        <div className="task-form-actions">
-          {onCancel && (
-            <button type="button" className="button ghost" onClick={onCancel} disabled={submitting}>
-              Anulează
-            </button>
-          )}
-          <Button type="submit" variant="primary" loading={submitting}>
-            {!isEditing && <Icon name="plus" />}
-            {submitLabel}
-          </Button>
-        </div>
-      </form>
-    )
-  }
-
-  // In the list: a compact editor that replaces the task's row.
+  // Every field with its name above it, and room for a message.
   return (
-    <form
-      onSubmit={handleSubmit}
-      onKeyDown={handleKeyDown}
-      className={`composer${isEditing ? ' composer-edit' : ''}`}
-      // Validation is done in handleSubmit, so the messages are ours and in Romanian.
-      noValidate
-    >
-      {titleField}
-      {isEditing && notesField}
-      {fileList}
-      {messages}
-      <div className="composer-bar">
-        <label className="composer-field" title="Început (opțional): prima zi a intervalului în care se lucrează la task">
-          <Icon name="calendar" />
-          <span className="field-hint">De la</span>
+    <form onSubmit={handleSubmit} className="task-form" noValidate>
+      <label className="field">
+        <span>Titlu</span>
+        {titleField}
+      </label>
+      <label className="field">
+        <span>Mesaj</span>
+        {notesField}
+      </label>
+      <div className="task-form-grid">
+        <label className="field" title="Opțional: prima zi a intervalului în care se lucrează la task">
+          <span>Început</span>
           {startField}
         </label>
-        <label className="composer-field" title="Termen: ultima zi">
-          <span className="field-hint">până la</span>
+        <label className="field" title="Ultima zi">
+          <span>Termen</span>
           {dueField}
         </label>
-        <label className="composer-field">
-          <Icon name="flag" />
-          <span className="visually-hidden">Prioritate</span>
+        <label className="field">
+          <span>Prioritate</span>
           {priorityField}
         </label>
-        <label className="composer-field composer-tags">
-          <Icon name="hash" />
-          <span className="visually-hidden">Etichete</span>
+        <label className="field">
+          <span>Etichete</span>
           {tagsField}
         </label>
-        {targetField && <div className="composer-target">{targetField}</div>}
-        {attachmentLimits && (
-          <>
-            {filePicker}
-            <button
-              type="button"
-              className="composer-field composer-attach"
-              onClick={() => fileInput.current?.click()}
-              title={`Atașează fișiere (cel mult ${attachmentLimits.maxFileSizeMb} MB fiecare)`}
-              aria-label="Atașează fișiere"
-            >
-              <Icon name="paperclip" />
-              <span className="field-hint">Fișiere</span>
-            </button>
-          </>
-        )}
-        <div className="composer-actions">
-          {onCancel && (
-            <button type="button" className="button ghost" onClick={onCancel}>
-              Anulează
-            </button>
-          )}
-          <Button type="submit" variant="primary" disabled={!title.trim() && !isEditing} loading={submitting}>
-            {isEditing ? null : <Icon name="send" />}
-            {submitLabel}
-          </Button>
+      </div>
+      {targetField && (
+        <div className="field">
+          <span>Alocat către</span>
+          {targetField}
         </div>
+      )}
+      {messages}
+      {attachmentLimits && (
+        <div className="field">
+          <span>Fișiere</span>
+          {fileList}
+          {filePicker}
+          <div className="task-form-attach">
+            <button type="button" className="button ghost small" onClick={() => fileInput.current?.click()}>
+              <Icon name="paperclip" />
+              Atașează fișiere
+            </button>
+            <small className="muted">
+              Cel mult {attachmentLimits.maxFileSizeMb} MB pe fișier, {attachmentLimits.maxFilesPerTask} fișiere.
+            </small>
+          </div>
+        </div>
+      )}
+      <div className="task-form-actions">
+        {onCancel && (
+          <button type="button" className="button ghost" onClick={onCancel} disabled={submitting}>
+            Anulează
+          </button>
+        )}
+        <Button type="submit" variant="primary" loading={submitting}>
+          {!isEditing && <Icon name="plus" />}
+          {submitLabel}
+        </Button>
       </div>
     </form>
   )

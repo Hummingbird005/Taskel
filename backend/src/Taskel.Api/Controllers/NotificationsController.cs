@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Taskel.Api.Data;
-using Taskel.Api.Email;
+using Taskel.Api.Integrations;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Controllers;
@@ -12,8 +11,7 @@ namespace Taskel.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
-public class NotificationsController(
-    TaskelDbContext db, IOptions<NotificationOptions> options, IOptions<SmtpOptions> smtp) : ControllerBase
+public class NotificationsController(TaskelDbContext db, IntegrationSettings settings) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<NotificationSettingsResponse>> Get(CancellationToken ct)
@@ -36,5 +34,5 @@ public class NotificationsController(
     }
 
     private NotificationSettingsResponse ToResponse(User user) =>
-        new(user.EmailNotifications, user.Email, options.Value.Enabled && smtp.Value.IsConfigured);
+        new(user.EmailNotifications, user.Email, settings.Notifications.Enabled && settings.Smtp.IsConfigured);
 }

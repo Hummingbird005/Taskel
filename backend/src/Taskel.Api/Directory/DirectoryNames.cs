@@ -35,27 +35,34 @@ public static partial class DirectoryNames
     {
         var start = dn.IndexOf('=') + 1;
         var bytes = new List<byte>();
-        for (var i = start; i < dn.Length; i++)
+        var i = start;
+        while (i < dn.Length && dn[i] != ',')
         {
-            var c = dn[i];
-            if (c == ',') break;
-            if (c == '\\' && i + 1 < dn.Length)
-            {
-                if (i + 2 < dn.Length && Uri.IsHexDigit(dn[i + 1]) && Uri.IsHexDigit(dn[i + 2]))
-                {
-                    bytes.Add(Convert.ToByte(dn.Substring(i + 1, 2), 16));
-                    i += 2;
-                }
-                else
-                {
-                    bytes.AddRange(Encoding.UTF8.GetBytes(dn[i + 1].ToString()));
-                    i++;
-                }
-                continue;
-            }
-            bytes.AddRange(Encoding.UTF8.GetBytes(char.IsHighSurrogate(c) && i + 1 < dn.Length ? dn.Substring(i++, 2) : c.ToString()));
+            i += ReadOne(dn, i, bytes);
         }
         return Encoding.UTF8.GetString(bytes.ToArray());
+    }
+
+    /// <summary>
+    /// Adds the bytes of the value character at <paramref name="i"/> (an escape such as <c>\,</c> or
+    /// <c>\c3</c>, a surrogate pair, or a plain character) and returns how many characters it took.
+    /// </summary>
+    private static int ReadOne(string dn, int i, List<byte> bytes)
+    {
+        var c = dn[i];
+        if (c == '\\' && i + 1 < dn.Length)
+        {
+            if (i + 2 < dn.Length && Uri.IsHexDigit(dn[i + 1]) && Uri.IsHexDigit(dn[i + 2]))
+            {
+                bytes.Add(Convert.ToByte(dn.Substring(i + 1, 2), 16));
+                return 3;
+            }
+            bytes.AddRange(Encoding.UTF8.GetBytes(dn[i + 1].ToString()));
+            return 2;
+        }
+        var length = char.IsHighSurrogate(c) && i + 1 < dn.Length ? 2 : 1;
+        bytes.AddRange(Encoding.UTF8.GetBytes(dn.Substring(i, length)));
+        return length;
     }
 
     /// <summary>

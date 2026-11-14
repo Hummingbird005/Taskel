@@ -20,17 +20,32 @@ public static class DemoData
     public const string ManagerPassword = "Manager-Demo-2026";
     public const string UserPassword = "User-Demo-2026";
 
+    private const string Sales = "Vânzări";
+
+    /// <summary>How a sample task differs from a plain one: days are counted from today.</summary>
+    private sealed record Sample
+    {
+        public int? Due { get; init; }
+        public int? Start { get; init; }
+        public TaskPriority Priority { get; init; } = TaskPriority.Medium;
+        public string[] Tags { get; init; } = [];
+        public string? Notes { get; init; }
+        public User? Assignee { get; init; }
+        public Group? Group { get; init; }
+        public int? DoneDaysAgo { get; init; }
+    }
+
     /// <summary>An account as it is seeded. Listed here so the documentation and the tests read from one place.</summary>
     public record Account(string Email, string DisplayName, UserRole Role, string Department, string Password);
 
     public static readonly IReadOnlyList<Account> Accounts =
     [
         new("admin@taskel.example", "Cristina Vasile", UserRole.Admin, "IT", AdminPassword),
-        new("manager.vanzari@taskel.example", "Ion Popescu", UserRole.Manager, "Vânzări", ManagerPassword),
+        new("manager.vanzari@taskel.example", "Ion Popescu", UserRole.Manager, Sales, ManagerPassword),
         new("manager.suport@taskel.example", "Radu Marin", UserRole.Manager, "Suport", ManagerPassword),
-        new("maria.ionescu@taskel.example", "Maria Ionescu", UserRole.User, "Vânzări", UserPassword),
-        new("andrei.stan@taskel.example", "Andrei Stan", UserRole.User, "Vânzări", UserPassword),
-        new("elena.dumitru@taskel.example", "Elena Dumitru", UserRole.User, "Vânzări", UserPassword),
+        new("maria.ionescu@taskel.example", "Maria Ionescu", UserRole.User, Sales, UserPassword),
+        new("andrei.stan@taskel.example", "Andrei Stan", UserRole.User, Sales, UserPassword),
+        new("elena.dumitru@taskel.example", "Elena Dumitru", UserRole.User, Sales, UserPassword),
         new("dan.pavel@taskel.example", "Dan Pavel", UserRole.User, "Suport", UserPassword),
     ];
 
@@ -71,24 +86,24 @@ public static class DemoData
         var now = DateTime.UtcNow;
         var tasks = new List<TaskItem>();
 
-        TaskItem Add(User owner, string title, int? due = null, int? start = null, TaskPriority priority = TaskPriority.Medium,
-            string[]? tags = null, string? notes = null, User? assignee = null, Group? group = null, int? doneDaysAgo = null)
+        TaskItem Add(User owner, string title, Sample? sample = null)
         {
+            sample ??= new Sample();
             var task = new TaskItem
             {
                 UserId = owner.Id,
                 Title = title,
-                Description = notes,
-                DueDate = due is null ? null : Day(due.Value),
-                StartDate = start is null ? null : Day(start.Value),
-                Priority = priority,
-                Tags = [.. tags ?? []],
-                AssigneeId = assignee?.Id,
-                GroupId = group?.Id,
+                Description = sample.Notes,
+                DueDate = sample.Due is { } due ? Day(due) : null,
+                StartDate = sample.Start is { } start ? Day(start) : null,
+                Priority = sample.Priority,
+                Tags = [.. sample.Tags],
+                AssigneeId = sample.Assignee?.Id,
+                GroupId = sample.Group?.Id,
                 // Spread out so lists sorted by creation keep a stable, readable order.
                 CreatedAt = now.AddDays(-10).AddMinutes(tasks.Count)
             };
-            if (doneDaysAgo is { } daysAgo)
+            if (sample.DoneDaysAgo is { } daysAgo)
             {
                 task.IsCompleted = true;
                 task.CompletedAt = now.AddDays(-daysAgo);
@@ -98,36 +113,34 @@ public static class DemoData
         }
 
         // Ion (manager, Vânzări): his own work, in every state.
-        Add(ion, "Trimite factura către client", due: -3, priority: TaskPriority.High, tags: ["contabilitate"]);
-        Add(ion, "Reînnoiește contractul cu furnizorul", due: -1, tags: ["juridic"]);
-        Add(ion, "Pregătește prezentarea pentru ședința de luni", due: 0, priority: TaskPriority.High, tags: ["proiect-alfa", "ședințe"]);
-        Add(ion, "Sună furnizorul pentru ofertă", due: 0, tags: ["achiziții"], notes: "Telefon: 0721 000 000");
-        Add(ion, "Revizuiește planul de vânzări", due: 1, tags: ["proiect-alfa"]);
-        Add(ion, "Planifică obiectivele pe trimestru", due: 5, start: 3, priority: TaskPriority.Low, tags: ["proiect-alfa"]);
-        Add(ion, "Actualizează lista de prețuri", tags: ["contabilitate"]);
-        var onHold = Add(ion, "Semnează contractul de mentenanță", due: 2, tags: ["juridic"],
-            notes: "Contractul a fost trimis de furnizor. De verificat clauza de penalități înainte de semnare.");
+        Add(ion, "Trimite factura către client", new() { Due = -3, Priority = TaskPriority.High, Tags = ["contabilitate"] });
+        Add(ion, "Reînnoiește contractul cu furnizorul", new() { Due = -1, Tags = ["juridic"] });
+        Add(ion, "Pregătește prezentarea pentru ședința de luni", new() { Due = 0, Priority = TaskPriority.High, Tags = ["proiect-alfa", "ședințe"] });
+        Add(ion, "Sună furnizorul pentru ofertă", new() { Due = 0, Tags = ["achiziții"], Notes = "Telefon: 0721 000 000" });
+        Add(ion, "Revizuiește planul de vânzări", new() { Due = 1, Tags = ["proiect-alfa"] });
+        Add(ion, "Planifică obiectivele pe trimestru", new() { Due = 5, Start = 3, Priority = TaskPriority.Low, Tags = ["proiect-alfa"] });
+        Add(ion, "Actualizează lista de prețuri", new() { Tags = ["contabilitate"] });
+        var onHold = Add(ion, "Semnează contractul de mentenanță", new() { Due = 2, Tags = ["juridic"], Notes = "Contractul a fost trimis de furnizor. De verificat clauza de penalități înainte de semnare." });
         onHold.WaitingReason = "Aștept avizul departamentului juridic pentru clauza de penalități.";
         onHold.WaitingSince = now.AddDays(-1);
-        var room = Add(ion, "Rezervă sala de conferințe", doneDaysAgo: 0, notes: "Pentru ședința de luni, 10 persoane, cu proiector.");
+        var room = Add(ion, "Rezervă sala de conferințe", new() { DoneDaysAgo = 0, Notes = "Pentru ședința de luni, 10 persoane, cu proiector." });
         room.CompletionResponse = "Rezervată sala Mare de la 10:00 la 12:00. Proiectorul e verificat.";
-        Add(ion, "Trimite raportul lunar", doneDaysAgo: 1);
-        Add(ion, "Comandă consumabile", doneDaysAgo: 2);
-        Add(ion, "Întâlnire cu echipa", doneDaysAgo: 4);
+        Add(ion, "Trimite raportul lunar", new() { DoneDaysAgo = 1 });
+        Add(ion, "Comandă consumabile", new() { DoneDaysAgo = 2 });
+        Add(ion, "Întâlnire cu echipa", new() { DoneDaysAgo = 4 });
 
         // A task that came from an email: completing it needs a reply to the sender.
-        var fromEmail = Add(ion, "Cerere ofertă servicii consultanță", priority: TaskPriority.High, tags: ["email"],
-            notes: "De la: Ana Popescu <ana.popescu@client.example>\n\nBună ziua,\n\nVă rog să ne trimiteți o ofertă până vineri.\n\nMulțumesc,\nAna");
+        var fromEmail = Add(ion, "Cerere ofertă servicii consultanță", new() { Priority = TaskPriority.High, Tags = ["email"], Notes = "De la: Ana Popescu <ana.popescu@client.example>\n\nBună ziua,\n\nVă rog să ne trimiteți o ofertă până vineri.\n\nMulțumesc,\nAna" });
         fromEmail.SourceEmailAddress = "ana.popescu@client.example";
         fromEmail.SourceEmailSubject = "Cerere ofertă servicii consultanță";
         fromEmail.SourceEmailMessageId = "<demo-1@client.example>";
 
         // Delegated by Ion: created by him, given to someone else. He still owns them.
-        var report = Add(ion, "Pregătește raportul trimestrial", due: 2, priority: TaskPriority.High, tags: ["raportare"], assignee: maria);
-        Add(ion, "Actualizează prezentarea de produs", due: 5, assignee: andrei);
-        Add(ion, "Sună clientul Alfa pentru feedback", due: -1, assignee: elena);
+        var report = Add(ion, "Pregătește raportul trimestrial", new() { Due = 2, Priority = TaskPriority.High, Tags = ["raportare"], Assignee = maria });
+        Add(ion, "Actualizează prezentarea de produs", new() { Due = 5, Assignee = andrei });
+        Add(ion, "Sună clientul Alfa pentru feedback", new() { Due = -1, Assignee = elena });
         // Given to a group: every member sees it until one of them takes it.
-        Add(ion, "Ofertă pentru licitația Primăriei", due: 3, priority: TaskPriority.High, group: offers);
+        Add(ion, "Ofertă pentru licitația Primăriei", new() { Due = 3, Priority = TaskPriority.High, Group = offers });
 
         // Forwarded: Ion gave it to Maria, and Maria passed it on to Andrei. She can still read it.
         report.AssigneeId = andrei.Id;
@@ -141,33 +154,31 @@ public static class DemoData
         });
 
         // The team's own work, so the manager's workload and calendar screens have something to show.
-        Add(maria, "Ofertă pentru clientul Beta", due: -4, start: -6, priority: TaskPriority.High,
-            notes: "Clientul vrea discount de volum.\nDe verificat cu Ion marja minimă.");
-        var complaint = Add(maria, "Răspunde la reclamația #482", due: -1,
-            notes: "Clientul spune că livrarea a sosit incompletă: lipsesc două cutii din comanda 7731.");
+        Add(maria, "Ofertă pentru clientul Beta", new() { Due = -4, Start = -6, Priority = TaskPriority.High, Notes = "Clientul vrea discount de volum.\nDe verificat cu Ion marja minimă." });
+        var complaint = Add(maria, "Răspunde la reclamația #482", new() { Due = -1, Notes = "Clientul spune că livrarea a sosit incompletă: lipsesc două cutii din comanda 7731." });
         complaint.WaitingReason = "Aștept confirmarea depozitului despre ce s-a încărcat în camion.";
         complaint.WaitingSince = now.AddDays(-2);
-        Add(maria, "Actualizează CRM-ul după târg", due: 0);
-        Add(maria, "Demo pentru clientul Gamma", due: 4, start: 2, priority: TaskPriority.High, tags: ["demo"]);
-        Add(maria, "Pregătește standul pentru târg", due: 4, start: 1);
-        Add(maria, "Contract cadru cu Epsilon", due: 8, start: 3, priority: TaskPriority.High);
-        Add(maria, "Contract semnat cu Delta", doneDaysAgo: 0);
-        Add(maria, "Ofertă trimisă către Omega", doneDaysAgo: 2);
-        Add(andrei, "Prospectare zona de vest", due: 2, start: 0);
-        Add(andrei, "Pregătește mostrele pentru expoziție", due: 9, start: 7);
-        Add(andrei, "Vizită la clientul Sigma", doneDaysAgo: 0);
-        Add(andrei, "Ofertă Kappa", doneDaysAgo: 1);
-        Add(andrei, "Negociere Tau", doneDaysAgo: 3);
-        Add(elena, "Studiu de piață concurență", due: 14, start: 8, priority: TaskPriority.Low);
-        Add(elena, "Newsletter noiembrie", doneDaysAgo: 3);
+        Add(maria, "Actualizează CRM-ul după târg", new() { Due = 0 });
+        Add(maria, "Demo pentru clientul Gamma", new() { Due = 4, Start = 2, Priority = TaskPriority.High, Tags = ["demo"] });
+        Add(maria, "Pregătește standul pentru târg", new() { Due = 4, Start = 1 });
+        Add(maria, "Contract cadru cu Epsilon", new() { Due = 8, Start = 3, Priority = TaskPriority.High });
+        Add(maria, "Contract semnat cu Delta", new() { DoneDaysAgo = 0 });
+        Add(maria, "Ofertă trimisă către Omega", new() { DoneDaysAgo = 2 });
+        Add(andrei, "Prospectare zona de vest", new() { Due = 2, Start = 0 });
+        Add(andrei, "Pregătește mostrele pentru expoziție", new() { Due = 9, Start = 7 });
+        Add(andrei, "Vizită la clientul Sigma", new() { DoneDaysAgo = 0 });
+        Add(andrei, "Ofertă Kappa", new() { DoneDaysAgo = 1 });
+        Add(andrei, "Negociere Tau", new() { DoneDaysAgo = 3 });
+        Add(elena, "Studiu de piață concurență", new() { Due = 14, Start = 8, Priority = TaskPriority.Low });
+        Add(elena, "Newsletter noiembrie", new() { DoneDaysAgo = 3 });
 
         // The other department, which Ion cannot see and Radu can.
-        Add(radu, "Planifică turele de weekend", due: 1);
-        Add(radu, "Tichet #1021: imprimanta nu merge", due: 0, assignee: dan);
-        Add(dan, "Migrare cutii poștale", due: -2, priority: TaskPriority.High);
-        Add(dan, "Actualizează inventarul de laptopuri", due: 6, start: 4);
+        Add(radu, "Planifică turele de weekend", new() { Due = 1 });
+        Add(radu, "Tichet #1021: imprimanta nu merge", new() { Due = 0, Assignee = dan });
+        Add(dan, "Migrare cutii poștale", new() { Due = -2, Priority = TaskPriority.High });
+        Add(dan, "Actualizează inventarul de laptopuri", new() { Due = 6, Start = 4 });
 
-        Add(admin, "Verifică backup-ul săptămânal", due: 2, tags: ["mentenanță"]);
+        Add(admin, "Verifică backup-ul săptămânal", new() { Due = 2, Tags = ["mentenanță"] });
 
         db.Tasks.AddRange(tasks);
         await db.SaveChangesAsync(ct);

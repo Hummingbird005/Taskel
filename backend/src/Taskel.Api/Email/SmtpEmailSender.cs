@@ -1,24 +1,26 @@
 using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
-using Microsoft.Extensions.Options;
 using MimeKit;
+using Taskel.Api.Integrations;
 
 namespace Taskel.Api.Email;
 
-public class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSender> logger) : IEmailSender
+public class SmtpEmailSender(IntegrationSettings settings, ILogger<SmtpEmailSender> logger) : IEmailSender
 {
     private const int TimeoutMilliseconds = 15_000;
 
     public Task SendReplyAsync(ReplyEmail reply, CancellationToken ct = default) =>
-        SendAsync(smtp => BuildMessage(reply, smtp), "reply", ct);
+        SendAsync(settings.Smtp, smtp => BuildMessage(reply, smtp), "reply", ct);
 
     public Task SendAsync(EmailMessage message, CancellationToken ct = default) =>
-        SendAsync(smtp => BuildMessage(message, smtp), "notification", ct);
+        SendAsync(settings.Smtp, smtp => BuildMessage(message, smtp), "notification", ct);
 
-    private async Task SendAsync(Func<SmtpOptions, MimeMessage> build, string kind, CancellationToken ct)
+    public Task SendTestAsync(EmailMessage message, SmtpOptions smtp, CancellationToken ct = default) =>
+        SendAsync(smtp, options => BuildMessage(message, options), "test message", ct);
+
+    private async Task SendAsync(SmtpOptions smtp, Func<SmtpOptions, MimeMessage> build, string kind, CancellationToken ct)
     {
-        var smtp = options.Value;
         if (!smtp.IsConfigured) throw new EmailNotConfiguredException();
 
         try
@@ -26,10 +28,7 @@ public class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSen
             // Built inside the try: an address the mail library refuses is a failed send, not a crash.
             var message = build(smtp);
             using var client = new SmtpClient { Timeout = TimeoutMilliseconds };
-            var security = smtp.RequireTls
-                ? (smtp.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls)
-                : SecureSocketOptions.None;
-            await client.ConnectAsync(smtp.Host!, smtp.Port, security, ct);
+            await client.ConnectAsync(smtp.Host!, smtp.Port, SecurityFor(smtp), ct);
             if (!string.IsNullOrEmpty(smtp.Username))
                 await client.AuthenticateAsync(smtp.Username, smtp.Password ?? string.Empty, ct);
             await client.SendAsync(new SendRequest(message), ct);
@@ -40,6 +39,13 @@ public class SmtpEmailSender(IOptions<SmtpOptions> options, ILogger<SmtpEmailSen
             logger.LogError(ex, "Sending a {Kind} through {Host}:{Port} failed", kind, smtp.Host, smtp.Port);
             throw new EmailSendException("The SMTP server did not accept the message.", ex);
         }
+    }
+
+    /// <summary>TLS from the start on port 465, STARTTLS on any other port; none only when TLS is not required.</summary>
+    private static SecureSocketOptions SecurityFor(SmtpOptions smtp)
+    {
+        if (!smtp.RequireTls) return SecureSocketOptions.None;
+        return smtp.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
     }
 
     /// <summary>Builds the reply so mail clients show it in the original email's thread.</summary>

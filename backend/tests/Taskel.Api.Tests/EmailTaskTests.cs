@@ -85,20 +85,20 @@ public class EmailTaskTests(TaskelApiFactory factory)
         Assert.EndsWith("…", task.Description);
     }
 
-    public static TheoryData<object> InvalidEmails => new()
-    {
+    public static TheoryData<string> InvalidEmails => ApiJson.Bodies(
+    [
         new { subject = new string('s', 1001) },
         new { subject = "x", body = new string('b', 20_001) },
         new { subject = "x", importance = "urgent" },
         new { subject = "x", receivedAt = "yesterday" },
         new { subject = "x", dueDate = "soon" },
-    };
+    ]);
 
     [Theory]
     [MemberData(nameof(InvalidEmails))]
-    public async Task Invalid_Email_Returns_BadRequest(object email)
+    public async Task Invalid_Email_Returns_BadRequest(string email)
     {
-        var response = await (await CreateTokenClientAsync()).PostApiAsync("/api/tasks/from-email", email);
+        var response = await (await CreateTokenClientAsync()).PostApiAsync("/api/tasks/from-email", ApiJson.Element(email));
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 

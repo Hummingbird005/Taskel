@@ -2,7 +2,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Taskel.Api.Attachments;
 using Taskel.Api.Auth;
@@ -11,6 +14,8 @@ using Taskel.Api.Controllers;
 using Taskel.Api.Data;
 using Taskel.Api.Directory;
 using Taskel.Api.Email;
+using Taskel.Api.Integrations;
+using Taskel.Api.Keycloak;
 using Taskel.Api.Models;
 using Taskel.Api.Services;
 
@@ -47,6 +52,28 @@ builder.Services.Configure<DirectoryOptions>(builder.Configuration.GetSection(Di
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.Section));
 builder.Services.AddSingleton<IDirectoryAuthenticator, LdapDirectoryAuthenticator>();
 builder.Services.AddScoped<DirectoryAccounts>();
+builder.Services.AddScoped<ExternalAccounts>();
+
+// Settings an administrator can change in the interface (mail server, Active Directory, Keycloak).
+// The configuration above gives their starting values.
+builder.Services.Configure<KeycloakOptions>(builder.Configuration.GetSection(KeycloakOptions.Section));
+builder.Services.AddSingleton<IntegrationDefaults>();
+builder.Services.AddSingleton<IntegrationSettings>();
+builder.Services.AddHostedService<IntegrationSettingsRefresher>();
+builder.Services.AddScoped<KeycloakAccounts>();
+builder.Services.AddScoped<KeycloakOidcEvents>();
+builder.Services.AddScoped<KeycloakLogout>();
+builder.Services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, KeycloakOidcSetup>();
+builder.Services.AddHttpClient<KeycloakAdminClient>(KeycloakAdminClient.HttpClientName, client =>
+    client.Timeout = TimeSpan.FromSeconds(15));
+
+// Keys for the session cookies and for the secrets saved in the interface. Kept in the database by
+// default, so they survive restarts and are shared by every server; DataProtection:KeysPath keeps
+// them in a folder instead (away from the database backups that hold the encrypted secrets).
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Taskel");
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(keysPath)) dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+else dataProtection.PersistKeysToDbContext<TaskelDbContext>();
 builder.Services.AddScoped<CurrentUser>();
 builder.Services.Configure<AttachmentOptions>(builder.Configuration.GetSection(AttachmentOptions.Section));
 builder.Services.AddScoped<AttachmentStore>();
@@ -83,6 +110,8 @@ builder.Services
                 ? ApiTokens.Scheme
                 : CookieAuthenticationDefaults.AuthenticationScheme)
     .AddScheme<AuthenticationSchemeOptions, ApiTokenAuthenticationHandler>(ApiTokens.Scheme, configureOptions: null)
+    // Set up from the current Keycloak settings by KeycloakOidcSetup.
+    .AddOpenIdConnect(KeycloakOptions.Scheme, displayName: "Keycloak", _ => { })
     .AddCookie(options =>
     {
         options.Cookie.Name = "taskel.auth";
@@ -121,6 +150,10 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDe
     await scope.ServiceProvider.GetRequiredService<TaskelDbContext>().Database.MigrateAsync();
 }
 
+// The integration settings saved in the interface. If the database cannot be read yet, the
+// configuration applies until the next reload.
+await app.Services.GetRequiredService<IntegrationSettings>().ReloadAsync();
+
 // Sample accounts and tasks, for trying Taskel out. Off unless asked for (on in Development):
 // the passwords of these accounts are published in docs/DEMO-ACCOUNTS.md.
 if (app.Configuration.GetValue("Seed:DemoData", false) && app.Environment.IsProduction())
@@ -152,5 +185,3 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 await app.RunAsync();
 
-// Exposed for integration tests (WebApplicationFactory).
-public partial class Program;

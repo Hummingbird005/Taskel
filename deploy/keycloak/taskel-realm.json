@@ -1,0 +1,206 @@
+{
+  "realm": "taskel",
+  "displayName": "Taskel (development)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "taskel-user",
+        "description": "May sign in to Taskel"
+      },
+      {
+        "name": "taskel-manager",
+        "description": "Manager in Taskel"
+      },
+      {
+        "name": "taskel-admin",
+        "description": "Administrator in Taskel"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "Vanzari",
+      "subGroups": [
+        {
+          "name": "Ofertare"
+        }
+      ]
+    },
+    {
+      "name": "Suport"
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "taskel",
+      "name": "Taskel",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "taskel-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [
+        "http://localhost:5173/api/auth/keycloak/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": {
+            "claim.name": "groups",
+            "full.path": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "department",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "department",
+            "claim.name": "department",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-taskel",
+      "enabled": true,
+      "serviceAccountClientId": "taskel",
+      "clientRoles": {
+        "realm-management": [
+          "view-users"
+        ]
+      }
+    },
+    {
+      "username": "ana.admin",
+      "email": "ana.admin@taskel.example",
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "Administrator",
+      "enabled": true,
+      "attributes": {
+        "department": [
+          "IT"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Keycloak-Demo-2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "taskel-user",
+        "taskel-admin"
+      ]
+    },
+    {
+      "username": "mihai.manager",
+      "email": "mihai.manager@taskel.example",
+      "emailVerified": true,
+      "firstName": "Mihai",
+      "lastName": "Manager",
+      "enabled": true,
+      "attributes": {
+        "department": [
+          "Vânzări"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Keycloak-Demo-2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "taskel-user",
+        "taskel-manager"
+      ],
+      "groups": [
+        "/Vanzari"
+      ]
+    },
+    {
+      "username": "irina.user",
+      "email": "irina.user@taskel.example",
+      "emailVerified": true,
+      "firstName": "Irina",
+      "lastName": "Ofertant",
+      "enabled": true,
+      "attributes": {
+        "department": [
+          "Vânzări"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Keycloak-Demo-2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "taskel-user"
+      ],
+      "groups": [
+        "/Vanzari/Ofertare"
+      ]
+    },
+    {
+      "username": "fara.rol",
+      "email": "fara.rol@taskel.example",
+      "emailVerified": true,
+      "firstName": "Fără",
+      "lastName": "Rol",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Keycloak-Demo-2026",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"email\", \"displayName\": \"${email}\", \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}, \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"multivalued\": false}, {\"name\": \"department\", \"displayName\": \"Department\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"multivalued\": false, \"validations\": {\"length\": {\"max\": 100}}}], \"groups\": [{\"name\": \"user-metadata\", \"displayHeader\": \"User metadata\", \"displayDescription\": \"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -107,7 +107,7 @@ export default function TaskAttachments({
                 {file.uploadedBy && ` · ${file.uploadedBy.displayName}`}
               </span>
               {canEdit && (
-                <button type="button" className="attachment-remove" onClick={() => void remove(file)} aria-label={`Șterge fișierul ${file.fileName}`} title="Șterge fișierul">
+                <button type="button" className="attachment-remove" onClick={() => { remove(file) }} aria-label={`Șterge fișierul ${file.fileName}`} title="Șterge fișierul">
                   <Icon name="close" size={15} />
                 </button>
               )}
@@ -116,12 +116,12 @@ export default function TaskAttachments({
         </ul>
       )}
       {uploading && (
-        <div className="upload-progress" role="status">
+        <output className="upload-progress">
           <span>
             Se încarcă „{uploading.name}”… {Math.round(uploading.fraction * 100)}%
           </span>
           <progress value={uploading.fraction} max={1} aria-label={`Încărcare ${uploading.name}`} />
-        </div>
+        </output>
       )}
       {error && (
         <p className="error attachment-error" role="alert">
@@ -139,7 +139,7 @@ export default function TaskAttachments({
               const picked = [...(e.target.files ?? [])]
               // Cleared so the same file can be picked again after a failure.
               e.target.value = ''
-              void add(picked)
+              add(picked)
             }}
           />
           <button

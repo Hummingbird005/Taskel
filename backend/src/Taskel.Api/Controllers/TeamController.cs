@@ -38,13 +38,13 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser, Attachm
         if (named is not null && role != UserRole.Admin && !SameDepartment(named, user.Department)) return OtherDepartment();
         var requested = named ?? user.Department;
 
-        var departments = role == UserRole.Admin
-            ? await AllDepartmentsAsync(ct)
-            : user.Department is null ? [] : new List<string> { user.Department };
+        List<string> departments;
+        if (role == UserRole.Admin) departments = await AllDepartmentsAsync(ct);
+        else departments = user.Department is null ? [] : [user.Department];
         if (requested is null) return Ok(new TeamResponse(null, departments, [], TeamStats.Empty));
 
         var people = await db.Users.AsNoTracking()
-            .Where(u => u.Department != null && u.Department.ToLower() == requested.ToLower())
+            .Where(u => u.Department != null && EF.Functions.ILike(u.Department, Like.Exactly(requested)))
             .ToListAsync(ct);
         var ids = people.Select(p => p.Id).ToList();
 
@@ -95,7 +95,7 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser, Attachm
         if (requested is null) return Ok(new TeamCalendarResponse(null, from.Value, to.Value, []));
 
         var people = await db.Users.AsNoTracking()
-            .Where(u => u.Department != null && u.Department.ToLower() == requested.ToLower())
+            .Where(u => u.Department != null && EF.Functions.ILike(u.Department, Like.Exactly(requested)))
             .ToListAsync(ct);
         var ids = people.Select(p => p.Id).ToList();
 
@@ -155,7 +155,7 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser, Attachm
         return Ok(tasks.Select(task => TaskResponse.From(task, TaskAccess.Viewer)));
     }
 
-    private record TaskFacts(Guid ResponsibleId, bool IsCompleted, DateOnly? DueDate, TaskPriority Priority, DateTime? CompletedAt);
+    private sealed record TaskFacts(Guid ResponsibleId, bool IsCompleted, DateOnly? DueDate, TaskPriority Priority, DateTime? CompletedAt);
 
     private static TeamStats StatsFor(IEnumerable<TaskFacts> tasks, DateOnly today, DateTime now)
     {

@@ -226,24 +226,24 @@ public class TeamTests(TaskelApiFactory factory)
         Assert.Equal(UserRole.Admin, (await admin.GetApiAsync<UserResponse>("/api/auth/me"))!.Role);
     }
 
-    public static TheoryData<object> InvalidUserUpdates => new()
-    {
+    public static TheoryData<string> InvalidUserUpdates => ApiJson.Bodies(
+    [
         new { role = "owner", department = "X" },
         new { role = 2, department = "X" },
         new { role = "manager", department = new string('d', 101) },
         new { role = "manager", department = "a\u0007b" },
         new { role = "manager", department = "X", isAdmin = true },
         new { department = "X", role = (string?)null },
-    };
+    ]);
 
     [Theory]
     [MemberData(nameof(InvalidUserUpdates))]
-    public async Task Invalid_User_Update_Is_Rejected(object body)
+    public async Task Invalid_User_Update_Is_Rejected(string body)
     {
         var (admin, _) = await CreateAsync(UserRole.Admin, null);
         var (_, user) = await factory.CreateUserAsync();
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutApiAsync($"/api/admin/users/{user.Id}", body)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutApiAsync($"/api/admin/users/{user.Id}", ApiJson.Element(body))).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound,
             (await admin.PutApiAsync($"/api/admin/users/{Guid.NewGuid()}", new UpdateUserRequest(UserRole.User, null))).StatusCode);
     }

@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Taskel.Api.Integrations;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Data;
 
-public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbContext(options)
+public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbContext(options), IDataProtectionKeyContext
 {
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<User> Users => Set<User>();
@@ -13,6 +15,9 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
     public DbSet<TaskForward> TaskForwards => Set<TaskForward>();
     public DbSet<TaskAttachment> Attachments => Set<TaskAttachment>();
     public DbSet<AppSetting> Settings => Set<AppSetting>();
+    public DbSet<IntegrationSetting> IntegrationSettings => Set<IntegrationSetting>();
+    /// <summary>The keys that protect sign-in cookies and the stored integration secrets (ASP.NET Core Data Protection).</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +31,9 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             user.Property(u => u.DisplayName).HasMaxLength(256);
             user.Property(u => u.DirectoryId).HasMaxLength(64);
             user.HasIndex(u => u.DirectoryId).IsUnique();
+            user.Property(u => u.KeycloakSubject).HasMaxLength(255);
+            user.HasIndex(u => u.KeycloakSubject).IsUnique();
+            user.Ignore(u => u.IsExternal);
             user.Property(u => u.Department).HasMaxLength(User.MaxDepartmentLength);
             user.HasIndex(u => u.Department);
             user.Property(u => u.DashboardWidgets).HasColumnType("text[]");
@@ -87,6 +95,17 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             attachment.HasOne<TaskItem>().WithMany(t => t.Attachments).HasForeignKey(a => a.TaskId).OnDelete(DeleteBehavior.Cascade);
             attachment.HasOne(a => a.UploadedBy).WithMany().HasForeignKey(a => a.UploadedById).OnDelete(DeleteBehavior.SetNull);
         });
+
+        modelBuilder.Entity<IntegrationSetting>(setting =>
+        {
+            setting.ToTable("integration_settings");
+            setting.HasKey(s => s.Kind);
+            setting.Property(s => s.Kind).HasMaxLength(32);
+            setting.Property(s => s.Settings).IsRequired();
+            setting.HasOne<User>().WithMany().HasForeignKey(s => s.UpdatedById).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<DataProtectionKey>(key => key.ToTable("data_protection_keys"));
 
         modelBuilder.Entity<AppSetting>(setting =>
         {

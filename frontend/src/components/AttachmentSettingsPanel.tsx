@@ -84,9 +84,9 @@ export default function AttachmentSettingsPanel({ onSessionExpired, onChanged }:
             Salvează
           </Button>
           {saved && (
-            <span className="saved" role="status">
+            <output className="saved">
               Salvat
-            </span>
+            </output>
           )}
         </form>
       )}

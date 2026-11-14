@@ -42,21 +42,8 @@ public class AttachmentsController(ITaskRepository tasks, TaskelDbContext db, At
         var userId = User.GetUserId();
         var task = await tasks.GetAsync(userId, taskId, ct);
         if (task is null) return NotFound();
-        var access = TasksController.AccessOf(task, userId, await tasks.GetGroupIdsAsync(userId, ct));
-        if (access is not (TaskAccess.Creator or TaskAccess.Assignee))
-        {
-            return Problem(statusCode: StatusCodes.Status403Forbidden,
-                title: "Only the people who can work on this task can attach files to it.");
-        }
-        if (task.Attachments.Count >= store.MaxFilesPerTask)
-        {
-            return Problem(statusCode: StatusCodes.Status409Conflict,
-                title: $"A task can have at most {store.MaxFilesPerTask} files.");
-        }
-
-        if (!MediaTypeHeaderValue.TryParse(Request.ContentType, out var mediaType)
-            || !mediaType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase)
-            || HeaderUtilities.RemoveQuotes(mediaType.Boundary).Value is not { Length: > 0 and <= 200 } boundary)
+        if (await RefuseUploadAsync(task, userId, ct) is { } refusal) return refusal;
+        if (MultipartBoundary() is not { } boundary)
         {
             return Problem(statusCode: StatusCodes.Status415UnsupportedMediaType,
                 title: "Send the file as multipart/form-data, in a part named \"file\".");
@@ -68,64 +55,16 @@ public class AttachmentsController(ITaskRepository tasks, TaskelDbContext db, At
             bodySize.MaxRequestBodySize = limit + EnvelopeAllowance;
         if (Request.ContentLength > limit + EnvelopeAllowance) return TooLarge(limit);
 
-        string storedName;
-        long size;
-        string fileName;
-        string contentType;
-        try
-        {
-            var reader = new MultipartReader(boundary, Request.Body);
-            MultipartSection? section;
-            ContentDispositionHeaderValue? disposition = null;
-            while ((section = await reader.ReadNextSectionAsync(ct)) is not null)
-            {
-                if (ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out disposition)
-                    && disposition.IsFileDisposition()
-                    && HeaderUtilities.RemoveQuotes(disposition.Name).Equals("file", StringComparison.OrdinalIgnoreCase))
-                {
-                    break;
-                }
-            }
-            if (section is null || disposition is null)
-            {
-                return Problem(statusCode: StatusCodes.Status400BadRequest,
-                    title: "The request has no file. Send it in a part named \"file\".");
-            }
-
-            fileName = AttachmentStore.CleanFileName(
-                HeaderUtilities.RemoveQuotes(disposition.FileNameStar.HasValue ? disposition.FileNameStar : disposition.FileName).Value);
-            contentType = MediaTypeHeaderValue.TryParse(section.ContentType, out var partType) && partType.MediaType.Length <= 100
-                ? partType.MediaType.Value!
-                : "application/octet-stream";
-            (storedName, size) = await store.SaveAsync(section.Body, limit, ct);
-        }
-        catch (FileTooLargeException)
-        {
-            return TooLarge(limit);
-        }
-        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
-        {
-            return TooLarge(limit);
-        }
-        catch (Exception ex) when (ex is InvalidDataException or IOException or BadHttpRequestException)
-        {
-            if (ex is IOException) logger.LogWarning(ex, "An upload to task {TaskId} was cut short", taskId);
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "The upload was incomplete or malformed.");
-        }
-
-        if (size == 0)
-        {
-            store.Delete(storedName);
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "The file is empty.");
-        }
+        var (file, failure) = await ReceiveAsync(taskId, boundary, limit, ct);
+        if (file is null) return failure!;
 
         var attachment = new TaskAttachment
         {
             TaskId = task.Id,
-            FileName = fileName,
-            ContentType = contentType,
-            Size = size,
-            StoredName = storedName,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            Size = file.Size,
+            StoredName = file.StoredName,
             UploadedById = userId
         };
         try
@@ -135,11 +74,93 @@ public class AttachmentsController(ITaskRepository tasks, TaskelDbContext db, At
         }
         catch
         {
-            store.Delete(storedName);
+            store.Delete(file.StoredName);
             throw;
         }
         await db.Entry(attachment).Reference(a => a.UploadedBy).LoadAsync(ct);
         return CreatedAtAction(nameof(Download), new { taskId, id = attachment.Id }, AttachmentResponse.From(attachment));
+    }
+
+    /// <summary>A file written to disk, not yet recorded on the task.</summary>
+    private sealed record ReceivedFile(string StoredName, long Size, string FileName, string ContentType);
+
+    /// <summary>Why the caller may not attach a file to this task now; null when they may.</summary>
+    private async Task<ActionResult?> RefuseUploadAsync(TaskItem task, Guid userId, CancellationToken ct)
+    {
+        var access = TasksController.AccessOf(task, userId, await tasks.GetGroupIdsAsync(userId, ct));
+        if (access is not (TaskAccess.Creator or TaskAccess.Assignee))
+        {
+            return Problem(statusCode: StatusCodes.Status403Forbidden,
+                title: "Only the people who can work on this task can attach files to it.");
+        }
+        return task.Attachments.Count >= store.MaxFilesPerTask
+            ? Problem(statusCode: StatusCodes.Status409Conflict, title: $"A task can have at most {store.MaxFilesPerTask} files.")
+            : null;
+    }
+
+    /// <summary>The multipart boundary of the request, or null when the body is not multipart/form-data.</summary>
+    private string? MultipartBoundary() =>
+        MediaTypeHeaderValue.TryParse(Request.ContentType, out var mediaType)
+        && mediaType.MediaType.Equals("multipart/form-data", StringComparison.OrdinalIgnoreCase)
+        && HeaderUtilities.RemoveQuotes(mediaType.Boundary).Value is { Length: > 0 and <= 200 } boundary
+            ? boundary
+            : null;
+
+    /// <summary>Reads the part named "file" and writes it to disk; on failure, nothing is left behind.</summary>
+    private async Task<(ReceivedFile? File, ActionResult? Failure)> ReceiveAsync(
+        Guid taskId, string boundary, long limit, CancellationToken ct)
+    {
+        try
+        {
+            var (section, disposition) = await FileSectionAsync(new MultipartReader(boundary, Request.Body), ct);
+            if (section is null || disposition is null)
+            {
+                return (null, Problem(statusCode: StatusCodes.Status400BadRequest,
+                    title: "The request has no file. Send it in a part named \"file\"."));
+            }
+
+            var fileName = AttachmentStore.CleanFileName(
+                HeaderUtilities.RemoveQuotes(disposition.FileNameStar.HasValue ? disposition.FileNameStar : disposition.FileName).Value);
+            var contentType = MediaTypeHeaderValue.TryParse(section.ContentType, out var partType) && partType.MediaType.Length <= 100
+                ? partType.MediaType.Value!
+                : "application/octet-stream";
+            var (storedName, size) = await store.SaveAsync(section.Body, limit, ct);
+            if (size == 0)
+            {
+                store.Delete(storedName);
+                return (null, Problem(statusCode: StatusCodes.Status400BadRequest, title: "The file is empty."));
+            }
+            return (new ReceivedFile(storedName, size, fileName, contentType), null);
+        }
+        catch (FileTooLargeException)
+        {
+            return (null, TooLarge(limit));
+        }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            return (null, TooLarge(limit));
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or BadHttpRequestException)
+        {
+            if (ex is IOException) logger.LogWarning(ex, "An upload to task {TaskId} was cut short", taskId);
+            return (null, Problem(statusCode: StatusCodes.Status400BadRequest, title: "The upload was incomplete or malformed."));
+        }
+    }
+
+    /// <summary>Skips to the part named "file"; nulls when there is none.</summary>
+    private static async Task<(MultipartSection? Section, ContentDispositionHeaderValue? Disposition)> FileSectionAsync(
+        MultipartReader reader, CancellationToken ct)
+    {
+        while (await reader.ReadNextSectionAsync(ct) is { } section)
+        {
+            if (ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out var disposition)
+                && disposition.IsFileDisposition()
+                && HeaderUtilities.RemoveQuotes(disposition.Name).Equals("file", StringComparison.OrdinalIgnoreCase))
+            {
+                return (section, disposition);
+            }
+        }
+        return (null, null);
     }
 
     /// <summary>Downloads a file of a task the caller can see.</summary>

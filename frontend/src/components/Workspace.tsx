@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
 import { DEFAULT_DASHBOARD_SETTINGS, dashboardApi, type DashboardSettings } from '../api/dashboard'
-import { attachmentsApi, DEFAULT_ATTACHMENT_LIMITS, uploadErrorText, type AttachmentLimits } from '../api/attachments'
+import { attachmentsApi, DEFAULT_ATTACHMENT_LIMITS, type AttachmentLimits } from '../api/attachments'
 import { groupsApi, type GroupListItem } from '../api/groups'
-import { tasksApi, type TaskDraft, type TaskItem, type TaskTarget } from '../api/tasks'
+import { tasksApi, type TaskDraft, type TaskItem } from '../api/tasks'
+import { addTask, claimTask, taskActions, type TaskActionContext } from '../lib/taskActions'
 import { usersApi, type UserSummary } from '../api/users'
 import { todayIso } from '../lib/dates'
 import { tasksLabel } from '../lib/text'
@@ -16,6 +17,8 @@ import {
   isMine,
   isOverdue,
   matchesSearch,
+  PAGE_VIEWS,
+  sourceOf,
   tagCounts,
   tasksInView,
   viewHint,
@@ -24,38 +27,17 @@ import {
   type View,
 } from '../lib/taskViews'
 import Dashboard from './Dashboard'
-import EmailNotifications from './EmailNotifications'
 import NewTaskDialog from './NewTaskDialog'
-import Groups from './Groups'
 import DueAlert from './DueAlert'
 import Icon from './Icon'
 import Banner from './ui/Banner'
 import Button from './ui/Button'
 import EmptyState from './ui/EmptyState'
 import { CardsSkeleton, TaskListSkeleton } from './ui/Skeleton'
-import Integrations from './Integrations'
+import PageView from './PageView'
 import Sidebar from './Sidebar'
-import TaskDetail, { type TaskActions } from './TaskDetail'
-import Team from './Team'
-import AdminUsers from './AdminUsers'
+import TaskDetail from './TaskDetail'
 import TaskRow from './TaskRow'
-
-/** What to tell the user when completing an email task with a reply failed. */
-function replyErrorText(err: unknown): string {
-  if (!(err instanceof ApiError)) return 'Nu am putut contacta serverul Taskel. Task-ul nu a fost finalizat.'
-  switch (err.status) {
-    case 503:
-      return 'Trimiterea de emailuri nu este configurată pe serverul Taskel, deci răspunsul nu poate fi trimis. Task-ul nu a fost finalizat.'
-    case 502:
-      return 'Emailul de răspuns nu a putut fi trimis. Task-ul nu a fost finalizat. Încearcă din nou.'
-    case 409:
-      return 'Task-ul este deja finalizat.'
-    case 400:
-      return 'Răspunsul este obligatoriu și poate avea cel mult 4000 de caractere.'
-    default:
-      return 'A apărut o eroare. Task-ul nu a fost finalizat.'
-  }
-}
 
 interface Props {
   user: User
@@ -188,8 +170,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   const tags = useMemo(() => tagCounts(mine), [mine])
 
   const sections = useMemo(() => {
-    const source =
-      view.kind === 'delegated' ? delegated : view.kind === 'claimable' ? claimable : view.kind === 'forwarded' ? forwarded : mine
+    const source = sourceOf(view, { mine, delegated, claimable, forwarded })
     const visible = tasksInView(source, view, today).filter((t) => matchesSearch(t, search))
     return groupTasks(visible, sortBy, today)
   }, [mine, delegated, claimable, forwarded, view, today, search, sortBy])
@@ -219,173 +200,13 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
     }
   }
 
-  async function add(draft: TaskDraft, files: File[] = []): Promise<boolean> {
-    try {
-      let created = await tasksApi.create(draft)
-      setTasks((prev) => [...prev, created])
-      setError(null)
-      // The task exists from here on: a file that fails is reported, and can be added again on the task.
-      for (const [index, file] of files.entries()) {
-        const label = files.length > 1 ? ` (${index + 1} din ${files.length})` : ''
-        setNotice(`Se încarcă „${file.name}”${label}…`)
-        try {
-          const attachment = await attachmentsApi.upload(created.id, file, (fraction) =>
-            setNotice(`Se încarcă „${file.name}”${label}… ${Math.round(fraction * 100)}%`),
-          )
-          const withFile = { ...created, attachments: [...created.attachments, attachment] }
-          created = withFile
-          setTasks((prev) => prev.map((t) => (t.id === withFile.id ? withFile : t)))
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 401) {
-            onSessionExpired()
-            return true
-          }
-          setError(`Task-ul a fost adăugat, dar fără toate fișierele. ${uploadErrorText(err, file.name, attachmentLimits)}`)
-          break
-        }
-      }
-      // A task given to someone else leaves this view, so say where it went.
-      setNotice(
-        created.assignee
-          ? `Task alocat către ${created.assignee.displayName}. Îl găsești la „Delegate”.`
-          : created.group
-            ? `Task dat grupului ${created.group.name}. Îl găsești la „Delegate” până îl preia cineva.`
-            : // The dialog closes on success, so say that it worked even when the view does not show the task.
-              `Task adăugat: „${created.title}”.`,
-      )
-      return true
-    } catch (err) {
-      handleFailure(err, 'Nu am putut adăuga task-ul.')
-      return false
-    }
-  }
-
-  function replace(updated: TaskItem) {
-    setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-  }
-
-  /**
-   * Runs a change to a task and keeps the list up to date with the server's answer. Resolves to an
-   * error message for the dialog to show, or null when it worked. `explain` turns a refusal into
-   * Romanian; the server's own messages are in English.
-   */
-  async function attempt(
-    change: () => Promise<TaskItem | void>,
-    fallback: string,
-    explain?: (err: ApiError) => string | null,
-  ): Promise<string | null> {
-    try {
-      const updated = await change()
-      if (updated) replace(updated)
-      setError(null)
-      return null
-    } catch (err) {
-      if (!(err instanceof ApiError)) return 'Nu am putut contacta serverul Taskel. Încearcă din nou.'
-      if (err.status === 401) {
-        onSessionExpired()
-        return null
-      }
-      const explained = explain?.(err)
-      if (explained) return explained
-      if (err.status === 404) return 'Task-ul nu mai există sau nu mai ai acces la el.'
-      if (err.status === 403) return 'Nu mai poți schimba acest task: nu mai este la tine.'
-      return fallback
-    }
-  }
-
-  /** Everything the task's dialog can do with it. */
-  function actionsFor(task: TaskItem): TaskActions {
-    return {
-      // Who the task goes to is applied separately, and only when it differs: reassigning is its own
-      // request, which only the creator may make.
-      save: (draft) =>
-        attempt(async () => {
-          let updated = await tasksApi.update({ ...task, ...draft })
-          if (draft.assigneeId !== undefined) {
-            const next: TaskTarget = { assigneeId: draft.assigneeId, groupId: draft.groupId ?? null }
-            // A group task someone took shows that person in the form; leaving them there changes nothing.
-            const current: TaskTarget = { assigneeId: task.assignee?.id ?? null, groupId: task.assignee ? null : (task.group?.id ?? null) }
-            if (next.assigneeId !== current.assigneeId || next.groupId !== current.groupId) {
-              updated = await tasksApi.assign(task.id, next)
-            }
-          }
-          return updated
-        }, 'Nu am putut salva task-ul.'),
-      complete: async (response) => {
-        try {
-          replace(await tasksApi.complete(task.id, response))
-          setError(null)
-          return null
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 401) {
-            onSessionExpired()
-            return null
-          }
-          return replyErrorText(err)
-        }
-      },
-      wait: (reason) =>
-        attempt(() => tasksApi.wait(task.id, reason), 'Nu am putut pune task-ul în așteptare.', (err) =>
-          err.status === 400
-            ? 'Motivul este obligatoriu și poate avea cel mult 1000 de caractere.'
-            : err.status === 409
-              ? 'Task-ul este finalizat. Redeschide-l mai întâi.'
-              : null,
-        ),
-      resume: () => attempt(() => tasksApi.resume(task.id), 'Nu am putut relua task-ul.'),
-      reopen: () => attempt(() => tasksApi.update({ ...task, isCompleted: false }), 'Nu am putut redeschide task-ul.'),
-      forward: async (target, note) => {
-        const failure = await attempt(
-          () => tasksApi.forward(task.id, target, note),
-          'Nu am putut direcționa task-ul. Încearcă din nou.',
-          (err) =>
-            err.status === 400
-              ? 'Persoana sau grupul ales nu mai există. Alege altceva.'
-              : err.status === 403 || err.status === 404
-                ? 'Task-ul nu mai este la tine, deci nu îl mai poți direcționa.'
-                : null,
-        )
-        if (!failure) setNotice('Task direcționat. Îl poți urmări la „Direcționate”.')
-        return failure
-      },
-      claim: () => claim(task),
-      release: async () => {
-        const failure = await attempt(() => tasksApi.release(task.id), 'Nu am putut da task-ul înapoi grupului.')
-        if (failure) return failure
-        setOpenId(null)
-        setNotice(`„${task.title}” s-a întors la grupul ${task.group?.name ?? ''}.`.replace(' .', '.'))
-        // Whether the task is still visible depends on the user still being in the group.
-        await refresh()
-        return null
-      },
-      remove: async () => {
-        const failure = await attempt(
-          async () => {
-            await tasksApi.remove(task.id)
-            setTasks((prev) => prev.filter((t) => t.id !== task.id))
-          },
-          'Nu am putut șterge task-ul.',
-          (err) => (err.status === 403 ? 'Doar persoana care a creat task-ul îl poate șterge.' : null),
-        )
-        if (!failure) setNotice(`Task șters: „${task.title}”.`)
-        return failure
-      },
-      attachmentsChanged: (attachments) =>
-        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, attachments } : t))),
-    }
-  }
-
-  /** Takes a task waiting on one of the user's groups, from its row or from its dialog. */
-  async function claim(task: TaskItem): Promise<string | null> {
-    const failure = await attempt(() => tasksApi.claim(task.id), 'Nu am putut prelua task-ul.', (err) =>
-      err.status === 404 || err.status === 409 ? 'Task-ul a fost preluat între timp de altcineva.' : null,
-    )
-    if (failure) {
-      await refresh()
-      return failure
-    }
-    setNotice(`Ai preluat „${task.title}”. Îl găsești la „Toate task-urile”.`)
-    return null
+  const actionContext: TaskActionContext = {
+    setTasks,
+    setNotice,
+    setError,
+    closeTask: () => setOpenId(null),
+    refresh,
+    onSessionExpired,
   }
 
   // New tasks start in the view they are added from: tagged in a tag view, due today in Today.
@@ -398,7 +219,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
   }
   const isDashboard = view.kind === 'dashboard'
   const showsTasks =
-    !isDashboard && view.kind !== 'integrations' && view.kind !== 'team' && view.kind !== 'groups' && view.kind !== 'admin'
+    !isDashboard && !PAGE_VIEWS.has(view.kind)
   // New tasks are written in a dialog, opened from the header of the dashboard and of every task list.
   const canAdd = !loading && (isDashboard || showsTasks)
   const newTaskButton = canAdd && (
@@ -417,7 +238,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
         today={today}
         onOpen={() => setOpenId(task.id)}
         onClaim={() =>
-          void claim(task).then((failure) => {
+          claimTask(actionContext, task).then((failure) => {
             if (failure) setError(failure)
           })
         }
@@ -426,10 +247,63 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
     )
   }
 
+  const searching = search.trim().length > 0
+
+  /** What an empty list offers: clearing the search, or adding a task. */
+  function emptyAction() {
+    if (searching) return <Button onClick={() => setSearch('')}>Șterge căutarea</Button>
+    if (!canAdd) return undefined
+    return (
+      <Button variant="primary" onClick={() => setAdding(true)}>
+        <Icon name="plus" />
+        Adaugă un task
+      </Button>
+    )
+  }
+
+  /** The dashboard, or the selected list of tasks grouped in sections. */
+  function renderTasks() {
+    if (loading) return isDashboard ? <CardsSkeleton /> : <TaskListSkeleton />
+    if (isDashboard) {
+      return (
+        <Dashboard
+          tasks={mine}
+          delegated={delegated}
+          today={today}
+          settings={settings}
+          customizing={customizing}
+          onChange={changeSettings}
+          onDone={() => setCustomizing(false)}
+          onOpen={selectView}
+        />
+      )
+    }
+    if (visibleCount === 0) {
+      return (
+        <EmptyState {...emptyTitle(view, searching)} action={emptyAction()}>
+          {emptyMessage(view, searching)}
+        </EmptyState>
+      )
+    }
+    return sections.map((group) => (
+      <section key={group.key} className="task-group">
+        {group.label && (
+          <h2 className={['divider', group.tone].filter(Boolean).join(' ')}>
+            <span>
+              {group.label} <span className="divider-count">{group.tasks.length}</span>
+            </span>
+          </h2>
+        )}
+        <ul className="task-list">{group.tasks.map(renderTask)}</ul>
+      </section>
+    ))
+  }
+
   const openTask = openId ? tasks.find((t) => t.id === openId) : undefined
+  const wide = isDashboard || (PAGE_VIEWS.has(view.kind) && view.kind !== 'integrations')
 
   return (
-    <div className={`workspace${sidebarOpen ? ' sidebar-open' : ''}`}>
+    <div className={sidebarOpen ? 'workspace sidebar-open' : 'workspace'}>
       <Sidebar user={user} view={view} counts={counts} tags={tags} onSelect={selectView} onLogout={onLogout} />
       <button
         type="button"
@@ -439,7 +313,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
         onClick={() => setSidebarOpen(false)}
       />
 
-      <main className={`main${isDashboard || view.kind === 'team' || view.kind === 'groups' || view.kind === 'admin' ? ' wide' : ''}`}>
+      <main className={wide ? 'main wide' : 'main'}>
         <header className="main-header">
           <button
             type="button"
@@ -509,71 +383,22 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           {error && <Banner onClose={() => setError(null)}>{error}</Banner>}
           {hint && !loading && <p className="view-hint muted">{hint}</p>}
 
-          {view.kind === 'integrations' ? (
-            <>
-              <EmailNotifications onSessionExpired={onSessionExpired} />
-              <Integrations onSessionExpired={onSessionExpired} />
-            </>
-          ) : view.kind === 'team' ? (
-            <Team user={user} today={today} onSessionExpired={onSessionExpired} />
-          ) : view.kind === 'groups' ? (
-            <Groups user={user} onSessionExpired={onSessionExpired} onChanged={() => void refresh()} />
-          ) : view.kind === 'admin' ? (
-            <AdminUsers
+          {PAGE_VIEWS.has(view.kind) ? (
+            <PageView
+              kind={view.kind}
               user={user}
-              onSessionExpired={onSessionExpired}
-              onOwnAccountChanged={onUserChanged}
-              onAttachmentLimitChanged={() => void attachmentsApi.limits().then(setAttachmentLimits).catch(() => {})}
-            />
-          ) : loading ? (
-            isDashboard ? (
-              <CardsSkeleton />
-            ) : (
-              <TaskListSkeleton />
-            )
-          ) : isDashboard ? (
-            <Dashboard
-              tasks={mine}
-              delegated={delegated}
               today={today}
-              settings={settings}
-              customizing={customizing}
-              onChange={changeSettings}
-              onDone={() => setCustomizing(false)}
-              onOpen={selectView}
+              onSessionExpired={onSessionExpired}
+              onUserChanged={onUserChanged}
+              onGroupsChanged={() => {
+                refresh()
+              }}
+              onAttachmentLimitChanged={() => {
+                attachmentsApi.limits().then(setAttachmentLimits).catch(() => {})
+              }}
             />
-          ) : visibleCount === 0 ? (
-            <EmptyState
-              {...emptyTitle(view, search.trim().length > 0)}
-              action={
-                search.trim().length > 0 ? (
-                  <Button onClick={() => setSearch('')}>Șterge căutarea</Button>
-                ) : canAdd ? (
-                  <Button
-                    variant="primary"
-                    onClick={() => setAdding(true)}
-                  >
-                    <Icon name="plus" />
-                    Adaugă un task
-                  </Button>
-                ) : undefined
-              }
-            >
-              {emptyMessage(view, search.trim().length > 0)}
-            </EmptyState>
           ) : (
-            sections.map((group) => (
-              <section key={group.key} className="task-group">
-                {group.label && (
-                  <h2 className={`divider${group.tone ? ` ${group.tone}` : ''}`}>
-                    <span>
-                      {group.label} <span className="divider-count">{group.tasks.length}</span>
-                    </span>
-                  </h2>
-                )}
-                <ul className="task-list">{group.tasks.map(renderTask)}</ul>
-              </section>
-            ))
+            renderTasks()
           )}
         </div>
 
@@ -585,7 +410,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           key={openTask.id}
           task={openTask}
           today={today}
-          actions={openTask.access === 'viewer' ? undefined : actionsFor(openTask)}
+          actions={openTask.access === 'viewer' ? undefined : taskActions(actionContext, openTask)}
           people={people}
           groups={groups}
           currentUser={user}
@@ -603,7 +428,7 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
           groups={groups}
           currentUser={user}
           attachmentLimits={attachmentLimits}
-          onSubmit={add}
+          onSubmit={(draft, files) => addTask(actionContext, draft, files, attachmentLimits)}
           onClose={() => setAdding(false)}
         />
       )}

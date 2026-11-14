@@ -47,20 +47,20 @@ export function StateMark({ task }: { task: TaskItem }) {
   )
 }
 
+/** When the task is due, in the row: an interval, "azi", a date, or nothing. */
+function dueText(task: TaskItem, today: string): string | null {
+  if (!task.dueDate) return null
+  if (task.startDate && task.startDate !== task.dueDate) return formatRange(task.startDate, task.dueDate)
+  return task.dueDate === today ? 'azi' : formatDueDate(task.dueDate)
+}
+
 /**
  * One task in a list: its title, and a line of what matters at a glance. The whole row opens the
  * task; its message and everything else are shown there.
  */
 export default function TaskRow({ task, today, onOpen, onClaim, showHolder = false }: Props) {
   const overdue = isOverdue(task, today)
-  const hasInterval = task.startDate !== null && task.dueDate !== null && task.startDate !== task.dueDate
-  const dueLabel = !task.dueDate
-    ? null
-    : hasInterval
-      ? formatRange(task.startDate!, task.dueDate)
-      : task.dueDate === today
-        ? 'azi'
-        : formatDueDate(task.dueDate)
+  const dueLabel = dueText(task, today)
   const isCreator = task.access === 'creator'
   // Who has it now, from the reader's point of view.
   const holder = task.assignee ?? (task.group ? null : task.createdBy)

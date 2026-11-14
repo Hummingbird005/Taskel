@@ -5,7 +5,7 @@ import { TableSkeleton } from './ui/Skeleton'
 import { useEffect, useState, type FormEvent } from 'react'
 import type { User } from '../api/auth'
 import { ApiError } from '../api/client'
-import { groupsApi, type GroupDetail, type GroupListItem } from '../api/groups'
+import { GROUP_KIND_LABEL, groupsApi, type GroupDetail, type GroupListItem } from '../api/groups'
 import type { UserSummary } from '../api/users'
 import { countLabel } from '../lib/text'
 import { LIMITS, validateGroupName } from '../lib/validation'
@@ -26,6 +26,12 @@ type Panel = { mode: 'new' } | { mode: 'existing'; group: GroupDetail }
  * ones they created, with people from their department. Active Directory groups are shown with
  * the members who have signed in, and are changed in Active Directory.
  */
+/** Why the server refused a group: a taken name, or members the user may not add. */
+function refusedGroupText(err: ApiError, isAdmin: boolean): string {
+  if (err.message.includes('already')) return 'Există deja un grup cu acest nume.'
+  return isAdmin ? 'Unii dintre membrii aleși nu mai există.' : 'Poți adăuga doar persoane din departamentul tău.'
+}
+
 export default function Groups({ user, onSessionExpired, onChanged }: Props) {
   const [groups, setGroups] = useState<GroupListItem[] | null>(null)
   const [candidates, setCandidates] = useState<UserSummary[]>([])
@@ -99,17 +105,8 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
       setError(null)
       await reload()
     } catch (err) {
-      if (err instanceof ApiError && err.status === 400) {
-        setError(
-          err.message.includes('already')
-            ? 'Există deja un grup cu acest nume.'
-            : user.role === 'admin'
-              ? 'Unii dintre membrii aleși nu mai există.'
-              : 'Poți adăuga doar persoane din departamentul tău.',
-        )
-      } else {
-        fail(err, 'Nu am putut salva grupul.')
-      }
+      if (err instanceof ApiError && err.status === 400) setError(refusedGroupText(err, user.role === 'admin'))
+      else fail(err, 'Nu am putut salva grupul.')
     } finally {
       setSaving(false)
     }
@@ -214,19 +211,19 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
                   <th scope="row">{group.name}</th>
                   <td data-label="Tip">
                     <span className={`kind-badge ${group.kind}`}>
-                      {group.kind === 'directory' ? 'Active Directory' : 'Aplicație'}
+                      {GROUP_KIND_LABEL[group.kind]}
                     </span>
                   </td>
                   <td className="num" data-label="Membri">{group.memberCount}</td>
                   <td className="group-actions">
-                    <button type="button" className="button ghost" onClick={() => void open(group.id)}>
+                    <button type="button" className="button ghost" onClick={() => { open(group.id) }}>
                       {group.canManage ? 'Editează' : 'Vezi membrii'}
                     </button>
                     {group.canManage && (
                       <button
                         type="button"
                         className="button ghost danger"
-                        onClick={() => void remove(group)}
+                        onClick={() => { remove(group) }}
                         aria-label={`Șterge grupul ${group.name}`}
                       >
                         <Icon name="trash" />
@@ -298,9 +295,9 @@ export default function Groups({ user, onSessionExpired, onChanged }: Props) {
         <section className="group-form">
           <h3>{panel.group.name}</h3>
           <p className="muted">
-            {panel.group.kind === 'directory'
-              ? 'Grup din Active Directory: componența se schimbă acolo. Aici apar membrii care s-au conectat cel puțin o dată la Taskel.'
-              : 'Grup creat de altcineva: îl poți folosi, dar nu îl poți modifica.'}
+            {panel.group.kind === 'app'
+              ? 'Grup creat de altcineva: îl poți folosi, dar nu îl poți modifica.'
+              : `Grup din ${GROUP_KIND_LABEL[panel.group.kind]}: componența se schimbă acolo. Aici apar membrii care s-au conectat cel puțin o dată la Taskel.`}
           </p>
           {panel.group.members.length === 0 ? (
             <p className="muted">Niciun membru.</p>

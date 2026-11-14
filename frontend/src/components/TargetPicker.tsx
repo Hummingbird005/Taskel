@@ -1,9 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import type { GroupListItem } from '../api/groups'
+import type { GroupKind, GroupListItem } from '../api/groups'
+
+/** Added after "grup" in the search results, to tell where the group comes from. */
+const GROUP_SUFFIX: Record<GroupKind, string> = { app: '', directory: ' AD', keycloak: ' Keycloak' }
 import type { UserSummary } from '../api/users'
 import { GROUP_PREFIX } from '../lib/taskViews'
 import { countLabel } from '../lib/text'
-import Icon from './Icon'
+import Icon, { type IconName } from './Icon'
 
 interface Props {
   people: UserSummary[]
@@ -44,6 +47,12 @@ const fold = (text: string) =>
  * from the matches. Nothing is listed until something is typed, so it works the same with ten
  * people or with a thousand.
  */
+/** The field's icon: the chosen group, the search while typing, or a person. */
+function pickerIcon(kind: Option['kind'] | undefined, open: boolean): IconName {
+  if (kind === 'group') return 'users'
+  return open ? 'search' : 'user'
+}
+
 export default function TargetPicker({ people, groups, value, onChange, label, placeholder, emptyLabel, autoFocus }: Props) {
   const listId = useId()
   const input = useRef<HTMLInputElement>(null)
@@ -75,7 +84,7 @@ export default function TargetPicker({ people, groups, value, onChange, label, p
         .map((g): Option => ({
           value: GROUP_PREFIX + g.id,
           label: g.name,
-          detail: `grup${g.kind === 'directory' ? ' AD' : ''} · ${countLabel(g.memberCount, 'membru', 'membri')}`,
+          detail: `grup${GROUP_SUFFIX[g.kind]} · ${countLabel(g.memberCount, 'membru', 'membri')}`,
           kind: 'group',
         })),
     ]
@@ -118,17 +127,8 @@ export default function TargetPicker({ people, groups, value, onChange, label, p
   const empty = open && needle.length > 0 && options.length === 0
 
   return (
-    <div
-      className={`target-picker${open ? ' open' : ''}`}
-      onBlur={(e) => {
-        // Focus moving to one of the suggestions is not leaving the field.
-        if (!e.currentTarget.contains(e.relatedTarget)) {
-          setOpen(false)
-          setQuery('')
-        }
-      }}
-    >
-      <Icon name={selected?.kind === 'group' ? 'users' : open ? 'search' : 'user'} />
+    <div className={open ? 'target-picker open' : 'target-picker'}>
+      <Icon name={pickerIcon(selected?.kind, open)} />
       <input
         ref={input}
         role="combobox"
@@ -152,6 +152,13 @@ export default function TargetPicker({ people, groups, value, onChange, label, p
           setActive(0)
         }}
         onKeyDown={handleKeyDown}
+        onBlur={(e) => {
+          // Suggestions are chosen on mouse down and keep the focus here; only leaving the picker closes it.
+          if (!e.currentTarget.parentElement?.contains(e.relatedTarget)) {
+            setOpen(false)
+            setQuery('')
+          }
+        }}
       />
       {selected && !open && (
         <button

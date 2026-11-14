@@ -22,6 +22,15 @@ public class FakeDirectory : IDirectoryAuthenticator
 
     public void Replace(string username, string password, DirectoryUser user) => _accounts[username] = (password, user);
 
+    /// <summary>The settings the last test sign-in was made with.</summary>
+    public DirectoryOptions? LastTestedWith { get; private set; }
+
+    public Task<DirectoryUser?> AuthenticateAsync(DirectoryOptions directory, string username, string password, CancellationToken ct = default)
+    {
+        LastTestedWith = directory;
+        return AuthenticateAsync(username, password, ct);
+    }
+
     public Task<DirectoryUser?> AuthenticateAsync(string username, string password, CancellationToken ct = default)
     {
         if (Unavailable) throw new DirectoryUnavailableException("down");

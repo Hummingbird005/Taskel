@@ -10,6 +10,8 @@ using Microsoft.Extensions.Options;
 using Npgsql;
 using Taskel.Api.Data;
 using Taskel.Api.Directory;
+using Taskel.Api.Integrations;
+using Taskel.Api.Keycloak;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Controllers;
@@ -19,9 +21,7 @@ namespace Taskel.Api.Controllers;
 public class AuthController(
     TaskelDbContext db,
     IPasswordHasher<User> passwordHasher,
-    IDirectoryAuthenticator directory,
-    DirectoryAccounts directoryAccounts,
-    IOptions<DirectoryOptions> directoryOptions,
+    IntegrationSettings settings,
     IOptions<AuthOptions> authOptions) : ControllerBase
 {
     public const string LoginRateLimit = "login";
@@ -34,8 +34,22 @@ public class AuthController(
     [HttpGet("options")]
     public ActionResult<AuthOptionsResponse> Options()
     {
-        var ad = directoryOptions.Value;
-        return Ok(new AuthOptionsResponse(authOptions.Value.AllowLocalRegistration, ad.IsUsable, ad.IsUsable ? ad.Domain : null));
+        var ad = settings.Directory;
+        var keycloak = settings.Keycloak;
+        return Ok(new AuthOptionsResponse(authOptions.Value.AllowLocalRegistration, ad.IsUsable, ad.IsUsable ? ad.Domain : null,
+            keycloak.IsUsable, keycloak.IsUsable ? keycloak.DisplayName : null));
+    }
+
+    /// <summary>
+    /// Starts a Keycloak sign-in: the browser is sent to Keycloak and comes back to
+    /// <see cref="KeycloakOptions.CallbackPath"/>, where <see cref="KeycloakOidcEvents"/> opens the session.
+    /// </summary>
+    [HttpGet("keycloak/login")]
+    [EnableRateLimiting(LoginRateLimit)]
+    public IActionResult LoginWithKeycloak()
+    {
+        if (!settings.Keycloak.IsUsable) return NotFound();
+        return Challenge(new AuthenticationProperties { RedirectUri = PublicAddress.HomeOf(Request, settings) }, KeycloakOptions.Scheme);
     }
 
     [HttpPost("register")]
@@ -73,7 +87,7 @@ public class AuthController(
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
 
         // Directory accounts have no local password; they sign in through the directory.
-        var hasLocalPassword = user is not null && user.DirectoryId is null && user.PasswordHash.Length > 0;
+        var hasLocalPassword = user is not null && !user.IsExternal && user.PasswordHash.Length > 0;
         var result = hasLocalPassword
             ? passwordHasher.VerifyHashedPassword(user!, user!.PasswordHash, request.Password)
             : passwordHasher.VerifyHashedPassword(DummyUser, DummyHash, request.Password);
@@ -93,9 +107,13 @@ public class AuthController(
     /// <summary>Signs in with an Active Directory account. The Taskel account is created on first use.</summary>
     [HttpPost("login/directory")]
     [EnableRateLimiting(LoginRateLimit)]
-    public async Task<ActionResult<UserResponse>> LoginWithDirectory(DirectoryLoginRequest request, CancellationToken ct)
+    public async Task<ActionResult<UserResponse>> LoginWithDirectory(
+        DirectoryLoginRequest request,
+        [FromServices] IDirectoryAuthenticator directory,
+        [FromServices] DirectoryAccounts directoryAccounts,
+        CancellationToken ct)
     {
-        if (!directoryOptions.Value.IsUsable) return NotFound();
+        if (!settings.Directory.IsUsable) return NotFound();
 
         DirectoryUser? directoryUser;
         try
@@ -120,11 +138,21 @@ public class AuthController(
         return Ok(ToResponse(user));
     }
 
+    /// <summary>
+    /// Ends the Taskel session. For a Keycloak session it also answers with the address that ends
+    /// the Keycloak session, for the browser to go to; otherwise signing in again would be silent.
+    /// </summary>
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
+    public async Task<ActionResult<LogoutResponse>> Logout([FromServices] KeycloakLogout keycloakLogout, CancellationToken ct)
     {
+        string? logoutUrl = null;
+        if (User.FindFirst(KeycloakOidcEvents.ProviderClaim)?.Value == KeycloakOptions.Scheme && settings.Keycloak.IsUsable)
+        {
+            var idToken = await HttpContext.GetTokenAsync(CookieAuthenticationDefaults.AuthenticationScheme, KeycloakOidcEvents.IdTokenName);
+            logoutUrl = await keycloakLogout.AddressAsync(Request, idToken, ct);
+        }
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return NoContent();
+        return logoutUrl is null ? NoContent() : Ok(new LogoutResponse(logoutUrl));
     }
 
     [Authorize]

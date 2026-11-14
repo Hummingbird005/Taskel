@@ -24,6 +24,14 @@ type MemberTasks = { status: 'loading' } | { status: 'error' } | { status: 'read
 const ROLE_LABEL = { user: '', manager: 'Manager', admin: 'Administrator' } as const
 
 /** The manager's screen: how loaded each person in the department is, and what they are working on. */
+/** Why there is no team to show yet, and what to do about it. */
+function noTeamText(isAdmin: boolean, hasDepartments: boolean): string {
+  if (!isAdmin) return 'Nu ai un departament setat, așa că nu există o echipă de afișat. Cere unui administrator să îl seteze.'
+  return hasDepartments
+    ? 'Alege un departament ca să îi vezi încărcarea.'
+    : 'Niciun utilizator nu are încă un departament. Setează departamentele din „Utilizatori”.'
+}
+
 export default function Team({ user, today, onSessionExpired }: Props) {
   const [team, setTeam] = useState<TeamData | null>(null)
   const [department, setDepartment] = useState<string | null>(null)
@@ -80,7 +88,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
   const canChooseDepartment = user.role === 'admin' && team.departments.length > 0
   const departmentPicker = canChooseDepartment && (
     <label className="team-department">
-      Departament
+      <span>Departament</span>
       <select
         value={team.department ?? ''}
         onChange={(e) => {
@@ -104,11 +112,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
       <div className="team">
         {departmentPicker}
         <EmptyState icon="users" title="Nicio echipă de afișat">
-          {user.role === 'admin'
-            ? team.departments.length > 0
-              ? 'Alege un departament ca să îi vezi încărcarea.'
-              : 'Niciun utilizator nu are încă un departament. Setează departamentele din „Utilizatori”.'
-            : 'Nu ai un departament setat, așa că nu există o echipă de afișat. Cere unui administrator să îl seteze.'}
+          {noTeamText(user.role === 'admin', team.departments.length > 0)}
         </EmptyState>
       </div>
     )
@@ -118,7 +122,7 @@ export default function Team({ user, today, onSessionExpired }: Props) {
   const maxOpen = Math.max(1, ...members.map((m) => m.stats.open))
 
   const tile = (label: string, value: number, icon: IconName, tone?: 'danger') => (
-    <div className={`stat static${tone ? ` ${tone}` : ''}`}>
+    <div className={tone ? `stat static ${tone}` : 'stat static'}>
       <span className="stat-label">
         <Icon name={icon} size={15} />
         {label}

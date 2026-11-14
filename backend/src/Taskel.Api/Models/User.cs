@@ -26,6 +26,11 @@ public class User
     public string? DisplayName { get; set; }
     /// <summary>The account's objectGUID in Active Directory. Null for local accounts.</summary>
     public string? DirectoryId { get; set; }
+    /// <summary>The account's id (<c>sub</c>) in Keycloak. Null for local and directory accounts.</summary>
+    public string? KeycloakSubject { get; set; }
+
+    /// <summary>True for accounts that sign in somewhere else (Active Directory or Keycloak) and have no local password.</summary>
+    public bool IsExternal => DirectoryId is not null || KeycloakSubject is not null;
     public UserRole Role { get; set; } = UserRole.User;
     /// <summary>The department the user belongs to. A manager sees the people who share theirs.</summary>
     public string? Department { get; set; }
@@ -33,9 +38,9 @@ public class User
 
     /// <summary>Ids of the dashboard widgets the user shows, in order. Null means the default layout.</summary>
     public List<string>? DashboardWidgets { get; set; }
-    /// <summary>Whether to show the overdue / due-today reminder when the user opens the app.</summary>
     /// <summary>Whether Taskel emails this user when a task reaches them.</summary>
     public bool EmailNotifications { get; set; } = true;
+    /// <summary>Whether to show the overdue / due-today reminder when the user opens the app.</summary>
     public bool ShowDueAlert { get; set; } = true;
 }
 
@@ -58,17 +63,20 @@ public record UserResponse(
     string? DisplayName = null,
     bool IsDirectoryAccount = false,
     UserRole Role = UserRole.User,
-    string? Department = null)
+    string? Department = null,
+    bool IsKeycloakAccount = false)
 {
     /// <param name="role">The user's effective role, which may come from configuration rather than the account.</param>
     public static UserResponse From(User user, UserRole role) =>
-        new(user.Id, user.Email, user.DisplayName ?? user.Email, user.DirectoryId is not null, role, user.Department);
+        new(user.Id, user.Email, user.DisplayName ?? user.Email, user.DirectoryId is not null, role, user.Department,
+            user.KeycloakSubject is not null);
 }
 
 /// <summary>An account as the administrator sees it.</summary>
 /// <param name="RoleIsFixed">True when the role comes from configuration and cannot be changed here.</param>
 public record AdminUserResponse(
-    Guid Id, string Email, string DisplayName, UserRole Role, string? Department, bool IsDirectoryAccount, bool RoleIsFixed);
+    Guid Id, string Email, string DisplayName, UserRole Role, string? Department, bool IsDirectoryAccount, bool RoleIsFixed,
+    bool IsKeycloakAccount = false);
 
 /// <remarks>
 /// The role must be sent: left out, it would read as <see cref="UserRole.User"/> and demote the account.
@@ -78,7 +86,13 @@ public record UpdateUserRequest(
     [StringLength(User.MaxDepartmentLength), SafeText] string? Department);
 
 /// <summary>What the sign-in screen should offer.</summary>
-public record AuthOptionsResponse(bool LocalRegistration, bool ActiveDirectory, string? ActiveDirectoryDomain);
+/// <param name="Keycloak">Whether the "sign in with Keycloak" button is offered.</param>
+/// <param name="KeycloakName">The text on that button, e.g. the company's single sign-on name.</param>
+public record AuthOptionsResponse(
+    bool LocalRegistration, bool ActiveDirectory, string? ActiveDirectoryDomain, bool Keycloak = false, string? KeycloakName = null);
+
+/// <param name="LogoutUrl">Where to send the browser to end the Keycloak session too; null for other accounts.</param>
+public record LogoutResponse(string? LogoutUrl);
 
 /// <param name="EmailOnNewTask">Whether the user wants an email when a task reaches them.</param>
 /// <param name="Address">Where those emails go: the account's address.</param>

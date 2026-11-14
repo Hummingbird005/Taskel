@@ -27,6 +27,20 @@ public class FakeEmailSender : IEmailSender
         return Task.CompletedTask;
     }
 
+    private readonly ConcurrentQueue<(EmailMessage Message, SmtpOptions Smtp)> _tests = new();
+
+    /// <summary>Test messages sent from the administrator's settings page, with the server settings they were sent through.</summary>
+    public IReadOnlyList<(EmailMessage Message, SmtpOptions Smtp)> TestsTo(string address) =>
+        _tests.Where(t => t.Message.To == address).ToList();
+
+    public Task SendTestAsync(EmailMessage message, SmtpOptions smtp, CancellationToken ct = default)
+    {
+        if (!smtp.IsConfigured) throw new EmailNotConfiguredException();
+        if (_failures.TryGetValue(message.To, out var failure)) throw failure();
+        _tests.Enqueue((message, smtp));
+        return Task.CompletedTask;
+    }
+
     public Task SendReplyAsync(ReplyEmail reply, CancellationToken ct = default)
     {
         if (_failures.TryGetValue(reply.To, out var failure)) throw failure();

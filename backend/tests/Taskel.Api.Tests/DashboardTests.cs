@@ -58,25 +58,29 @@ public class DashboardTests(TaskelApiFactory factory)
         Assert.True(bobs.ShowDueAlert);
     }
 
-    public static TheoryData<object> InvalidSettings => new()
-    {
-        new { widgets = new[] { "stats", "stats" } },
-        new { widgets = new[] { "Not Valid" } },
-        new { widgets = new[] { "" } },
+    private static readonly string[] Duplicated = ["stats", "stats"];
+    private static readonly string[] BadId = ["Not Valid"];
+    private static readonly string[] EmptyId = [""];
+
+    public static TheoryData<string> InvalidSettings => ApiJson.Bodies(
+    [
+        new { widgets = Duplicated },
+        new { widgets = BadId },
+        new { widgets = EmptyId },
         new { widgets = new[] { new string('a', 41) } },
         new { widgets = new string?[] { null } },
         new { widgets = Enumerable.Range(0, WidgetIdsAttribute.MaxWidgets + 1).Select(i => $"w{i}").ToArray() },
         new { widgets = "stats" },
-    };
+    ]);
 
     [Theory]
     [MemberData(nameof(InvalidSettings))]
-    public async Task Invalid_Layout_Is_Rejected_And_Nothing_Changes(object body)
+    public async Task Invalid_Layout_Is_Rejected_And_Nothing_Changes(string body)
     {
         var client = await factory.CreateAuthenticatedClientAsync();
         await client.PutAsJsonAsync("/api/dashboard", new DashboardSettings(["stats"]));
 
-        var result = await client.PutAsJsonAsync("/api/dashboard", body);
+        var result = await client.PutAsJsonAsync("/api/dashboard", ApiJson.Element(body));
 
         Assert.Equal(HttpStatusCode.BadRequest, result.StatusCode);
         Assert.Equal(["stats"], (await GetAsync(client)).Widgets);

@@ -60,11 +60,11 @@ public class SmtpMessageTests
     [Fact]
     public async Task Sending_Without_Configuration_Fails_Clearly()
     {
-        var sender = new SmtpEmailSender(
-            Microsoft.Extensions.Options.Options.Create(new SmtpOptions()),
+        // The test send takes its settings as an argument, so no saved settings are needed here.
+        var sender = new SmtpEmailSender(null!,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<SmtpEmailSender>.Instance);
 
         await Assert.ThrowsAsync<EmailNotConfiguredException>(
-            () => sender.SendReplyAsync(new ReplyEmail("ana@example.com", "s", "b", null)));
+            () => sender.SendTestAsync(new EmailMessage("ana@example.com", "s", "b"), new SmtpOptions()));
     }
 }

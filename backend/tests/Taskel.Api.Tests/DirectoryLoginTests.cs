@@ -228,12 +228,10 @@ public class DirectoryLoginTests(TaskelApiFactory factory)
     public async Task Real_Authenticator_Refuses_Empty_Passwords_And_Bad_Names_Without_Contacting_The_Directory()
     {
         // Host is unroutable on purpose: reaching it would time out and throw instead of returning null.
-        var authenticator = new LdapDirectoryAuthenticator(
-            Microsoft.Extensions.Options.Options.Create(new DirectoryOptions
-            {
-                Enabled = true, Host = "192.0.2.1", Domain = "corp.example.com", BaseDn = "DC=corp,DC=example,DC=com", TimeoutSeconds = 1
-            }),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<LdapDirectoryAuthenticator>.Instance);
+        var authenticator = new LdapWithSettings(new DirectoryOptions
+        {
+            Enabled = true, Host = "192.0.2.1", Domain = "corp.example.com", BaseDn = "DC=corp,DC=example,DC=com", TimeoutSeconds = 1
+        });
 
         Assert.Null(await authenticator.AuthenticateAsync("ion", ""));
         Assert.Null(await authenticator.AuthenticateAsync("ion)(uid=*", "Domain-Pass-1"));
@@ -242,17 +240,15 @@ public class DirectoryLoginTests(TaskelApiFactory factory)
     [Fact]
     public async Task Real_Authenticator_Reports_An_Unreachable_Or_Unconfigured_Directory()
     {
-        var logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<LdapDirectoryAuthenticator>.Instance;
-        var unconfigured = new LdapDirectoryAuthenticator(Microsoft.Extensions.Options.Options.Create(new DirectoryOptions()), logger);
+        var unconfigured = new LdapWithSettings(new DirectoryOptions());
         await Assert.ThrowsAsync<DirectoryUnavailableException>(() => unconfigured.AuthenticateAsync("ion", "Domain-Pass-1"));
 
         // Port 1 on localhost: nothing listens there, so the connection is refused at once.
-        var unreachable = new LdapDirectoryAuthenticator(
-            Microsoft.Extensions.Options.Options.Create(new DirectoryOptions
-            {
-                Enabled = true, Host = "127.0.0.1", Port = 1, Security = DirectorySecurity.None,
-                Domain = "corp.example.com", BaseDn = "DC=corp,DC=example,DC=com", TimeoutSeconds = 2
-            }), logger);
+        var unreachable = new LdapWithSettings(new DirectoryOptions
+        {
+            Enabled = true, Host = "127.0.0.1", Port = 1, Security = DirectorySecurity.None,
+            Domain = "corp.example.com", BaseDn = "DC=corp,DC=example,DC=com", TimeoutSeconds = 2
+        });
         await Assert.ThrowsAsync<DirectoryUnavailableException>(() => unreachable.AuthenticateAsync("ion", "Domain-Pass-1"));
     }
 }

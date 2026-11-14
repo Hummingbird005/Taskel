@@ -2,7 +2,14 @@ import { request } from './client'
 import type { UserSummary } from './users'
 
 /** Where a group comes from: made in Taskel, or mirrored from Active Directory. */
-export type GroupKind = 'app' | 'directory'
+export type GroupKind = 'app' | 'directory' | 'keycloak'
+
+/** How a group's origin is named in the interface. */
+export const GROUP_KIND_LABEL: Record<GroupKind, string> = {
+  app: 'Aplicație',
+  directory: 'Active Directory',
+  keycloak: 'Keycloak',
+}
 
 /** A group as shown on a task. */
 export interface GroupSummary {

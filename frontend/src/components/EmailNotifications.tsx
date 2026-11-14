@@ -56,15 +56,15 @@ export default function EmailNotifications({ onSessionExpired }: { onSessionExpi
       {settings && (
         <>
           <label className="notify-toggle">
-            <input type="checkbox" checked={settings.emailOnNewTask} onChange={(e) => void change(e.target.checked)} />
+            <input type="checkbox" checked={settings.emailOnNewTask} onChange={(e) => { change(e.target.checked) }} />
             <span>
-              Trimite-mi un email când primesc un task
+              <span>Trimite-mi un email când primesc un task</span>
               <small className="muted">Către {settings.address}</small>
             </span>
             {saved && (
-              <span className="saved" role="status">
+              <output className="saved">
                 Salvat
-              </span>
+              </output>
             )}
           </label>
           {!settings.available && (

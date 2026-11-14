@@ -17,9 +17,16 @@ namespace Taskel.Api.Tests;
 /// </summary>
 public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private static readonly string ConnectionString =
+    private static readonly string DefaultConnectionString =
         Environment.GetEnvironmentVariable("TASKEL_TEST_CONNECTION")
         ?? "Host=localhost;Port=5432;Database=taskel_test;Username=taskel;Password=taskel";
+
+    /// <summary>The test database. A factory whose tests change server-wide settings uses one of its own.</summary>
+    protected virtual string ConnectionString => DefaultConnectionString;
+
+    /// <summary>The default connection string with another database name, for a factory that needs its own database.</summary>
+    protected static string WithDatabase(string database) =>
+        DefaultConnectionString.Replace("Database=taskel_test", $"Database={database}", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Stands in for the SMTP server; holds the replies the API tried to send.</summary>
     public FakeEmailSender Emails { get; } = new();
@@ -44,6 +51,9 @@ public class TaskelApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // The whole suite signs in from one address; the limit has its own test.
         builder.UseSetting("Auth:LoginAttemptsPerMinute", "100000");
         builder.UseSetting("Attachments:Path", AttachmentsPath);
+        // The database is recreated after the API starts, which would drop the key it made at startup:
+        // keep the keys in a folder instead, shared with any server WithWebHostBuilder derives from this one.
+        builder.UseSetting("DataProtection:KeysPath", Path.Combine(AttachmentsPath, "keys"));
         builder.UseSetting("Attachments:MaxFilesPerTask", "3");
         // Enough for Taskel to consider email set up; the fake sender takes the messages.
         builder.UseSetting("Email:Smtp:Host", "smtp.test.invalid");

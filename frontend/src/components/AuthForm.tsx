@@ -1,6 +1,6 @@
 import Button from './ui/Button'
 import { useEffect, useState, type FormEvent } from 'react'
-import { authApi, DEFAULT_AUTH_OPTIONS, type AuthOptions, type User } from '../api/auth'
+import { authApi, DEFAULT_AUTH_OPTIONS, KEYCLOAK_LOGIN_URL, type AuthOptions, type User } from '../api/auth'
 import { ApiError } from '../api/client'
 import { firstError, validateDirectoryUsername, validateEmail, validatePassword } from '../lib/validation'
 
@@ -31,13 +31,51 @@ function errorText(err: unknown, mode: Mode): string {
   }
 }
 
+/** Why the server sent the browser back from Keycloak without a session (the `loginError` parameter). */
+const KEYCLOAK_ERRORS: Record<string, string> = {
+  keycloak: 'Conectarea cu Keycloak nu a reușit. Încearcă din nou.',
+  'keycloak-cancelled': 'Conectarea cu Keycloak a fost anulată.',
+  'keycloak-no-email': 'Contul tău din Keycloak nu are o adresă de email validă. Cere-i administratorului să o completeze.',
+  'keycloak-email-taken':
+    'Adresa de email a contului tău din Keycloak este folosită deja în Taskel de un cont de domeniu sau de alt cont Keycloak.',
+  'keycloak-email-unverified':
+    'Există deja un cont local cu adresa ta. Ca să treacă pe Keycloak, adresa trebuie să fie verificată în Keycloak.',
+  'keycloak-role': 'Contul tău din Keycloak nu are acces la Taskel. Cere-i administratorului rolul necesar.',
+}
+
+/** The sign-in error the server put in the address, as a sentence. */
+function readLoginError(): string | null {
+  const code = new URLSearchParams(window.location.search).get('loginError')
+  if (!code) return null
+  return KEYCLOAK_ERRORS[code] ?? KEYCLOAK_ERRORS.keycloak
+}
+
+/** Removes the error from the address, so a reload does not show it again. */
+function clearLoginError() {
+  const params = new URLSearchParams(window.location.search)
+  if (!params.has('loginError')) return
+  params.delete('loginError')
+  const url = new URL(window.location.href)
+  url.search = params.toString()
+  window.history.replaceState(null, '', url)
+}
+
+/** Signs in, or creates the local account, as the chosen mode says. */
+function signIn(mode: Mode, name: string, password: string): Promise<User> {
+  if (mode === 'directory') return authApi.loginDirectory(name, password)
+  return mode === 'register' ? authApi.register(name, password) : authApi.login(name, password)
+}
+
 export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
   const [options, setOptions] = useState<AuthOptions>(DEFAULT_AUTH_OPTIONS)
   const [mode, setMode] = useState<Mode>('login')
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(readLoginError)
   const [submitting, setSubmitting] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
+
+  useEffect(clearLoginError, [])
 
   useEffect(() => {
     let cancelled = false
@@ -82,12 +120,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
     setError(null)
     try {
       const name = identifier.trim()
-      const user = isDirectory
-        ? await authApi.loginDirectory(name, password)
-        : isRegister
-          ? await authApi.register(name, password)
-          : await authApi.login(name, password)
-      onAuthenticated(user)
+      onAuthenticated(await signIn(mode, name, password))
     } catch (err) {
       setError(errorText(err, mode))
     } finally {
@@ -98,6 +131,22 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
   return (
     <form onSubmit={handleSubmit} className="auth-form" noValidate>
       <h2>{isRegister ? 'Creează-ți contul' : 'Conectează-te la Taskel'}</h2>
+
+      {options.keycloak && !isRegister && (
+        <>
+          <a
+            className={`button primary sso-button${redirecting ? ' is-loading' : ''}`}
+            href={KEYCLOAK_LOGIN_URL}
+            onClick={() => setRedirecting(true)}
+            aria-busy={redirecting || undefined}
+          >
+            Conectează-te cu {options.keycloakName ?? 'Keycloak'}
+          </a>
+          <p className="auth-divider">
+            <span>sau</span>
+          </p>
+        </>
+      )}
 
       {options.activeDirectory && !isRegister && (
         <div className="auth-tabs" role="tablist" aria-label="Tipul contului">
@@ -112,7 +161,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
 
       {isDirectory ? (
         <label>
-          Utilizator
+          <span>Utilizator</span>
           <input
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
@@ -123,12 +172,12 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
             placeholder="ion.popescu"
           />
           <small className="muted">
-            Contul tău de Windows{options.activeDirectoryDomain ? ` din domeniul ${options.activeDirectoryDomain}` : ''}.
+            Contul tău de Windows{options.activeDirectoryDomain && <> din domeniul {options.activeDirectoryDomain}</>}.
           </small>
         </label>
       ) : (
         <label>
-          Email
+          <span>Email</span>
           <input
             type="email"
             value={identifier}
@@ -140,7 +189,7 @@ export default function AuthForm({ onAuthenticated }: { onAuthenticated: (user: 
       )}
 
       <label>
-        Parolă
+        <span>Parolă</span>
         <input
           type="password"
           value={password}
