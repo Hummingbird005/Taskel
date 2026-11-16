@@ -516,19 +516,24 @@ Missing:
     InternetMessageId = ""
 End Function
 
+' The sender as shown in the task's notes: "Name <address>". For Exchange
+' senders the address is the SMTP one where it can be resolved; an internal
+' (X.500) address that could not be resolved is left out, as it means nothing
+' to a reader.
 Private Function SenderText(ByVal mail As Object) As String
     Dim displayName As String
-    Dim senderAddress As String
+    Dim address As String
 
     displayName = Trim$(mail.SenderName)
-    senderAddress = Trim$(mail.SenderEmailAddress)
+    address = Trim$(SenderAddress(mail))
+    If Left$(address, 1) = "/" And Len(displayName) > 0 Then address = ""
 
-    If Len(displayName) = 0 Or displayName = senderAddress Then
-        SenderText = senderAddress
-    ElseIf Len(senderAddress) = 0 Then
+    If Len(displayName) = 0 Or displayName = address Then
+        SenderText = address
+    ElseIf Len(address) = 0 Then
         SenderText = displayName
     Else
-        SenderText = displayName & " <" & senderAddress & ">"
+        SenderText = displayName & " <" & address & ">"
     End If
 End Function
 
