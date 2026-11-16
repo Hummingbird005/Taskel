@@ -30,6 +30,11 @@ The interface is in Romanian; code, API and documentation are in English.
 
 Screenshots use the [demo accounts and tasks](docs/DEMO-ACCOUNTS.md).
 
+**Manuals (PDF, in Romanian):** [user](docs/manuale/1-manual-utilizator.pdf), [manager](docs/manuale/2-manual-manager.pdf),
+[administrator](docs/manuale/3-manual-administrator.pdf) and the [installation guide](docs/manuale/4-ghid-instalare.pdf).
+Their sources are in `docs/manuale/src`; rebuild them with `node docs/manuale/build.mjs` after changing the text or the
+screenshots.
+
 **For developers:** how the code is organised and how to extend it is in [docs/DEVELOPER.md](docs/DEVELOPER.md). The last security scan (SonarQube, Semgrep, dependency audits), its findings and how to run it again are in
 [docs/SECURITY-SCAN.md](docs/SECURITY-SCAN.md).
 
@@ -650,7 +655,7 @@ Tasks can carry files, whether they were made in Taskel or from an email.
 | `MaxFilesPerTask` | `Attachments__MaxFilesPerTask`   | Default `20`                                             |
 | `Path`            | `Attachments__Path`              | Default `data/attachments`, under the application folder |
 
-An administrator can change the size limit from the interface, under **Utilizatori → Fișiere atașate** (1 to
+An administrator can change the size limit from the interface, under **Setări sistem → Fișiere atașate** (1 to
 2048 MB). A value set there is stored in the database, applies at once and wins over `MaxFileSizeMb`.
 
 Things to know:

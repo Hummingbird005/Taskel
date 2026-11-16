@@ -1,0 +1,277 @@
+<section class="cover">
+  <div class="brand"><span class="mark">✓</span>Taskel</div>
+  <div class="kind">Manual · rolul Administrator</div>
+  <h1>Manualul administratorului</h1>
+  <p class="lead">Conturi, roluri și departamente, grupuri, serverul de email, Active Directory, Keycloak și celelalte setări ale aplicației.</p>
+  <div class="meta"><span>Taskel · documentație pentru administratori</span><span>Ediția noiembrie 2026</span></div>
+</section>
+
+<section class="toc">
+  <h2 class="plain">Cuprins</h2>
+  <ol></ol>
+</section>
+
+<h2>Rolul de administrator</h2>
+<p class="lead-in">Administratorul stabilește cine ce rol are, din ce departament face parte fiecare și cum se leagă Taskel de serviciile firmei: email, Active Directory, Keycloak.</p>
+<p>Manualul descrie ce are în plus rolul <b>Administrator</b>. Lucrul cu task-urile este în <b>Manualul utilizatorului</b>, iar ecranele Echipă și Grupuri în <b>Manualul managerului</b>; ambele se aplică și administratorilor. Instalarea serverului este descrisă separat, în <b>Ghidul de instalare</b>.</p>
+<h3>Ce poți face ca administrator</h3>
+<table>
+  <tr><th style="width:30%">Unde</th><th>Ce poți face</th></tr>
+  <tr><td><b class="ui">Utilizatori</b></td><td>Setezi rolul și departamentul fiecărui cont.</td></tr>
+  <tr><td><b class="ui">Echipă</b></td><td>Vezi încărcarea și calendarul <b>oricărui</b> departament, ales dintr-o listă.</td></tr>
+  <tr><td><b class="ui">Grupuri</b></td><td>Creezi grupuri cu oameni din orice departament și modifici orice grup de aplicație.</td></tr>
+  <tr><td><b class="ui">Setări sistem</b></td><td>Configurezi serverul de email, Active Directory, Keycloak și limita fișierelor atașate.</td></tr>
+</table>
+<h3>Ce nu poate face nici administratorul</h3>
+<ul>
+  <li><b>Nu citește și nu modifică orice task.</b> Vede task-urile unui departament prin ecranul Echipă, doar pentru citire, ca un manager.</li>
+  <li><b>Nu își poate schimba propriul rol</b>, ca să nu rămână aplicația fără administrator din greșeală.</li>
+</ul>
+<div class="warn"><strong>Limitări actuale ale aplicației</strong>Din interfață <b>nu</b> se pot deocamdată: șterge sau dezactiva conturi, reseta parola unui cont local, crea conturi pentru alții. Conturile apar când omul se înregistrează, se conectează prima dată cu contul de domeniu ori Keycloak, sau prin importul din Keycloak. Pentru a opri accesul cuiva, dezactivează-i contul în Active Directory sau Keycloak; pentru conturile locale este nevoie de o intervenție în baza de date (vezi Ghidul de instalare).</div>
+<h3>Cele trei roluri</h3>
+<table>
+  <tr><th style="width:22%">Rol</th><th>Are în plus față de rolul dinainte</th></tr>
+  <tr><td>Utilizator</td><td>Lucrează cu task-urile proprii și cu cele primite.</td></tr>
+  <tr><td>Manager</td><td>Vede echipa din departamentul lui; creează grupuri cu oameni din departament.</td></tr>
+  <tr><td>Administrator</td><td>Vede orice departament; gestionează utilizatorii, toate grupurile de aplicație și setările sistemului.</td></tr>
+</table>
+
+<h2>Utilizatori: roluri și departamente</h2>
+<p>Deschide <b class="ui">Organizare → Utilizatori</b>. Tabelul listează toate conturile.</p>
+<figure>
+  <img src="../../screenshots/users.png" alt="Ecranul Utilizatori">
+  <figcaption>Ecranul <b>Utilizatori</b>: tipul contului, rolul și departamentul fiecărei persoane.</figcaption>
+</figure>
+<h3>Coloana Cont</h3>
+<table>
+  <tr><th style="width:22%">Valoare</th><th>Ce înseamnă</th></tr>
+  <tr><td>Local</td><td>Cont cu email și parolă ținute în Taskel.</td></tr>
+  <tr><td>Domeniu</td><td>Cont de Active Directory. Parola se verifică la controlerul de domeniu.</td></tr>
+  <tr><td>Keycloak</td><td>Cont care se conectează prin Keycloak.</td></tr>
+</table>
+<p>Un cont are un singur tip. Un cont local devine cont de domeniu sau Keycloak atunci când persoana cu aceeași adresă de email se conectează prima dată pe acea cale: își păstrează task-urile, iar parola locală nu mai funcționează.</p>
+<h3>Schimbarea rolului</h3>
+<p>Alege rolul din lista din dreptul persoanei. Se salvează imediat și se aplică de la următoarea acțiune a persoanei, fără reconectare.</p>
+<p>Lista este blocată în două situații:</p>
+<ul>
+  <li>pe <b>rândul tău</b> (nu îți poți schimba propriul rol; o poate face alt administrator);</li>
+  <li>la conturile numite administrator <b>în configurația serverului</b> (<code>Auth:AdminEmails</code>); acestea sunt întotdeauna administratori.</li>
+</ul>
+<h3>Schimbarea departamentului</h3>
+<p>Scrie departamentul în câmpul din dreptul persoanei și ieși din câmp (sau apasă Enter). Câmpul sugerează departamentele deja folosite; alege din listă ca să nu apară variante diferite ale aceluiași nume.</p>
+<div class="warn"><strong>Scrie departamentul la fel peste tot</strong>Echipa unui manager este formată din conturile cu același departament. Majusculele nu contează, dar diacriticele și spațiile da: „Vânzări” și „Vanzari” sunt două departamente.</div>
+<h3>Când rolul sau departamentul vin din altă parte</h3>
+<p>Pentru conturile de domeniu și Keycloak, dacă în Setări sistem ai configurat un grup sau un rol pentru manageri ori administratori, acesta se aplică <b>la fiecare conectare</b>, în ambele sensuri: dă rolul celor care îl au și îl ia celor care nu îl mai au. Tot la conectare se preia departamentul, dacă persoana are unul în director. Ce setezi manual aici poate fi deci suprascris la următoarea conectare.</p>
+<table>
+  <tr><th style="width:44%">Situație</th><th>Unde schimbi</th></tr>
+  <tr><td>Cont local</td><td>În Taskel, în acest ecran.</td></tr>
+  <tr><td>Cont de domeniu/Keycloak, fără grup sau rol configurat</td><td>În Taskel, în acest ecran.</td></tr>
+  <tr><td>Cont de domeniu, cu „Grupul managerilor/administratorilor” configurat</td><td>În Active Directory (apartenența la grup).</td></tr>
+  <tr><td>Cont Keycloak, cu „Rolul managerilor/administratorilor” configurat</td><td>În Keycloak (rolurile utilizatorului).</td></tr>
+</table>
+
+<h2>Echipă și grupuri, ca administrator</h2>
+<h3>Echipă</h3>
+<p>Ecranul <b class="ui">Echipă</b> are în plus lista <b class="ui">Departament</b>, din care alegi orice departament existent. Restul funcționează ca la manager: fila Încărcare, fila Calendar și task-urile fiecărei persoane, doar pentru citire.</p>
+<figure>
+  <img src="../../screenshots/team.png" alt="Ecranul Echipă">
+  <figcaption>Ecranul <b>Echipă</b>. Administratorul poate alege departamentul afișat.</figcaption>
+</figure>
+<h3>Grupuri</h3>
+<ul>
+  <li>Poți adăuga într-un grup persoane din <b>orice</b> departament.</li>
+  <li>Poți modifica și șterge <b>orice</b> grup de aplicație, inclusiv pe cele create de manageri.</li>
+  <li>Grupurile din Active Directory și Keycloak sunt doar afișate; componența lor se schimbă la sursă.</li>
+</ul>
+<p>Dacă ai pornit aducerea grupurilor din domeniu fără un filtru, lista se poate umple cu grupuri care nu au legătură cu task-urile. Restrânge-o din <b class="ui">Setări sistem → Active Directory → Doar grupurile din</b>.</p>
+
+<h2>Setări sistem: cum funcționează</h2>
+<p>Deschide <b class="ui">Organizare → Setări sistem</b>. Pagina are patru panouri: <b>Server de email (SMTP)</b>, <b>Active Directory (LDAP)</b>, <b>Keycloak (autentificare unică)</b> și <b>Fișiere atașate</b>.</p>
+<h3>Reguli comune tuturor panourilor</h3>
+<ul>
+  <li><b>Valorile de pornire</b> vin din configurația serverului (fișiere sau variabile de mediu, puse la instalare). Linia de stare de sub titlu spune de unde vin setările în vigoare: „Din configurația serverului” sau „Salvate în aplicație de …”.</li>
+  <li><b>Salvează</b> înlocuiește configurația acelei integrări în întregime și se aplică imediat, pentru toți utilizatorii, fără repornirea serverului.</li>
+  <li><b>Revino la configurația serverului</b> șterge ce ai salvat în aplicație pentru acel panou.</li>
+  <li><b>Butoanele de test folosesc valorile din formular</b>, nu pe cele salvate. Poți verifica o modificare înainte de a o salva.</li>
+  <li>Greșelile de completare sunt semnalate sub câmpul respectiv, înainte de trimitere.</li>
+</ul>
+<h3>Parole și secrete</h3>
+<p>Parola serverului de email și secretul clientului Keycloak se păstrează criptat și <b>nu mai sunt afișate niciodată</b>. Sub câmp scrie de unde vine valoarea în vigoare:</p>
+<table>
+  <tr><th style="width:40%">Text sub câmp</th><th>Ce înseamnă și ce poți face</th></tr>
+  <tr><td>Nesetată.</td><td>Nu există nicio valoare. Completeaz-o dacă serverul o cere.</td></tr>
+  <tr><td>Din configurația serverului.</td><td>Se folosește valoarea pusă la instalare. Completează doar ca să o înlocuiești.</td></tr>
+  <tr><td>Salvată (nu se afișează).</td><td>Se folosește valoarea salvată aici. Lasă câmpul gol ca să o păstrezi; scrie alta ca să o înlocuiești; apasă <b class="ui">Șterge</b> ca să revii la cea din configurație.</td></tr>
+  <tr><td>Valoarea salvată nu mai poate fi citită…</td><td>Cheile de criptare ale serverului s-au schimbat (de obicei după o restaurare incompletă). Introdu din nou valoarea și salvează.</td></tr>
+</table>
+
+<h2>Serverul de email</h2>
+<p>Prin acest server Taskel trimite răspunsurile la task-urile venite din email și notificările despre task-uri primite. Fără el, task-urile din email nu pot fi finalizate cu răspuns, iar notificările nu pleacă.</p>
+<figure class="tall">
+  <img src="../../screenshots/settings-email.png" alt="Panoul Server de email">
+  <figcaption>Panoul <b>Server de email (SMTP)</b>, după un test reușit.</figcaption>
+</figure>
+<table>
+  <tr><th style="width:30%">Câmp</th><th>Explicație</th></tr>
+  <tr><td>Server SMTP</td><td>Numele serverului, fără <code>http://</code> și fără port, de exemplu <code>smtp.firma.ro</code>.</td></tr>
+  <tr><td>Port</td><td><code>587</code> (STARTTLS, cel mai des) sau <code>465</code> (TLS de la început).</td></tr>
+  <tr><td>Utilizator, Parolă</td><td>Contul căsuței de email. Pentru Gmail sau Microsoft 365 folosește o „parolă de aplicație”, nu parola contului. Lasă goale dacă serverul nu cere autentificare.</td></tr>
+  <tr><td>Adresa expeditorului</td><td>Adresa de pe care pleacă mesajele. Implicit, utilizatorul.</td></tr>
+  <tr><td>Numele expeditorului</td><td>Numele afișat destinatarilor, de exemplu „Taskel”.</td></tr>
+  <tr><td>Cere conexiune criptată (TLS)</td><td>Lasă bifat. Debifează doar pentru un server de test fără TLS.</td></tr>
+  <tr><td>Trimite notificări…</td><td>Comutatorul general al notificărilor. Fiecare utilizator le poate opri apoi pentru el.</td></tr>
+  <tr><td>Adresa aplicației</td><td>Adresa la care oamenii deschid Taskel, de exemplu <code>https://taskel.firma.ro</code>. Apare ca link în emailuri și este adresa de întoarcere după conectarea cu Keycloak.</td></tr>
+</table>
+<h3>Procedura recomandată</h3>
+<ol class="steps">
+  <li>Completează câmpurile.</li>
+  <li>Apasă <b class="ui">Trimite un email de test</b>. Mesajul pleacă la adresa contului tău.</li>
+  <li>Dacă apare confirmarea și mesajul a ajuns, apasă <b class="ui">Salvează</b>.</li>
+</ol>
+<p>La eșec, sub formular apare motivul dat de serverul de email (autentificare refuzată, certificat, expirarea timpului), de obicei suficient pentru a găsi cauza.</p>
+<div class="note"><strong>De știut</strong>Toate răspunsurile pleacă de pe această unică adresă; cine răspunde la ele scrie acestei căsuțe. Notificările se trimit în fundal: dacă serverul de email refuză una, task-ul rămâne alocat, iar mesajul nu se retrimite.</div>
+
+<h2>Active Directory (LDAP)</h2>
+<p>Cu Active Directory configurat, oamenii se conectează cu contul de Windows. Taskel verifică parola direct la controlerul de domeniu, în numele utilizatorului, deci <b>nu are nevoie de un cont de serviciu</b>. Contul Taskel se creează la prima conectare.</p>
+<figure class="tall">
+  <img src="../../screenshots/settings-directory.png" alt="Panoul Active Directory">
+  <figcaption>Panoul <b>Active Directory (LDAP)</b>, cu rezultatul unui test de conectare.</figcaption>
+</figure>
+<table>
+  <tr><th style="width:32%">Câmp</th><th>Explicație</th></tr>
+  <tr><td>Permite conectarea cu cont de domeniu</td><td>Comutatorul general. Debifat, fila „Cont de domeniu” dispare de pe ecranul de conectare.</td></tr>
+  <tr><td>Controler de domeniu</td><td>Numele unui controler (<code>dc1.firma.local</code>) sau chiar numele domeniului.</td></tr>
+  <tr><td>Domeniu</td><td>Numele DNS al domeniului (<code>firma.local</code>). Completează numele scurt introdus de utilizator.</td></tr>
+  <tr><td>Securitate, Port</td><td>LDAPS (636, recomandat), StartTLS (389) sau Necriptat (doar pentru teste: parolele ar circula în clar).</td></tr>
+  <tr><td>Unde se caută utilizatorii (Base DN)</td><td>De exemplu <code>DC=firma,DC=local</code>.</td></tr>
+  <tr><td>Grup obligatoriu</td><td>Opțional. Numele distinct (DN) al unui grup; doar membrii lui direcți se pot conecta.</td></tr>
+  <tr><td>Grupul administratorilor / managerilor</td><td>Opțional. Membrii direcți primesc rolul la conectare; ceilalți îl pierd.</td></tr>
+  <tr><td>Atributul departamentului</td><td>Implicit <code>department</code>.</td></tr>
+  <tr><td>Adu grupurile din domeniu…</td><td>Grupurile din care face parte utilizatorul devin grupuri Taskel cărora li se pot da task-uri.</td></tr>
+  <tr><td>Doar grupurile din</td><td>Opțional. Un container (<code>OU=Echipe,DC=firma,DC=local</code>); se aduc doar grupurile de sub el.</td></tr>
+  <tr><td>Timp de așteptare</td><td>Cât se așteaptă răspunsul controlerului, în secunde (1–60).</td></tr>
+</table>
+<h3>Testarea</h3>
+<ol class="steps">
+  <li>Completează setările.</li>
+  <li>În caseta <b class="ui">Testează cu un cont de domeniu</b> introdu un utilizator și parola lui (poate fi contul tău).</li>
+  <li>Apasă <b class="ui">Testează conectarea</b>.</li>
+</ol>
+<p>La reușită vezi exact ce ar citi Taskel pentru acel cont: numele, emailul, departamentul, rolul rezultat din grupuri și grupurile aduse. Testul <b>nu creează niciun cont</b> și nu salvează nimic. Parola de test nu se păstrează.</p>
+<h3>Lucruri de știut</h3>
+<ul>
+  <li><b>Certificatul</b> controlerului trebuie să fie de încredere pentru serverul Taskel și să corespundă numelui din „Controler de domeniu”.</li>
+  <li><b>Apartenența la grupuri</b> se verifică direct; grupurile imbricate nu sunt urmărite.</li>
+  <li><b>Blocarea conturilor:</b> încercările greșite se numără și în domeniu. Taskel limitează încercările pe adresă de rețea (implicit 10 pe minut).</li>
+  <li><b>Plecarea unui angajat:</b> un cont dezactivat în domeniu nu se mai poate conecta, dar o sesiune deja deschisă durează până expiră (cel mult 14 zile). Task-urile lui rămân.</li>
+</ul>
+
+<h2>Keycloak (autentificare unică)</h2>
+<p>Cu Keycloak, pe ecranul de conectare apare butonul <b class="ui">Conectează-te cu …</b>. Utilizatorul se autentifică pe pagina Keycloak (cu tot ce presupune ea: al doilea factor, politici de parolă) și revine conectat în Taskel.</p>
+<figure class="tall">
+  <img src="../../screenshots/system-settings.png" alt="Panoul Keycloak">
+  <figcaption>Panoul <b>Keycloak</b>, cu adresele de înregistrat pe client și rezultatul unui import.</figcaption>
+</figure>
+<table>
+  <tr><th style="width:32%">Câmp</th><th>Explicație</th></tr>
+  <tr><td>Permite conectarea cu Keycloak</td><td>Comutatorul general al butonului de pe ecranul de conectare.</td></tr>
+  <tr><td>Adresa realm-ului</td><td>De forma <code>https://sso.firma.ro/realms/firma</code>.</td></tr>
+  <tr><td>Client ID, Secretul clientului</td><td>Clientul creat în Keycloak pentru Taskel și secretul lui (fila Credentials).</td></tr>
+  <tr><td>Textul butonului</td><td>Ce urmează după „Conectează-te cu”, de exemplu „contul firmei”.</td></tr>
+  <tr><td>Rol obligatoriu</td><td>Opțional. Doar cine are acest rol (de realm sau al clientului) se poate conecta.</td></tr>
+  <tr><td>Rolul administratorilor / managerilor</td><td>Opțional. Cine are rolul primește rolul Taskel la conectare; ceilalți îl pierd.</td></tr>
+  <tr><td>Claim-ul departamentului</td><td>Implicit <code>department</code>. Cere un mapper „User Attribute” pe client.</td></tr>
+  <tr><td>Adu grupurile din Keycloak…</td><td>Cere mapper-ul „Group Membership” pe client. Grupul <code>/Vanzari/Ofertare</code> devine grupul Taskel „Ofertare”.</td></tr>
+  <tr><td>Cere HTTPS pentru Keycloak</td><td>Lasă bifat. Debifează doar pentru un Keycloak de test servit prin <code>http://</code>.</td></tr>
+</table>
+<h3>Ce se configurează în Keycloak</h3>
+<p>Pe clientul Taskel, cu <i>Client authentication</i> pornit și <i>Standard flow</i> activ, înregistrează cele două adrese afișate în caseta gri a panoului:</p>
+<ul>
+  <li><b>Valid redirect URIs</b>: <code>…/api/auth/keycloak/callback</code></li>
+  <li><b>Valid post logout redirect URIs</b>: adresa aplicației, cu <code>/</code> la sfârșit</li>
+</ul>
+<p>Adresele se construiesc din <b class="ui">Adresa aplicației</b> din panoul de email; completeaz-o pe aceea mai întâi. Pașii detaliați din consola Keycloak sunt în Ghidul de instalare.</p>
+<h3>Testare și salvare</h3>
+<ol class="steps">
+  <li>Completează câmpurile și apasă <b class="ui">Testează conexiunea</b>. Rezultatul spune dacă realm-ul a fost găsit, dacă secretul funcționează și dacă lista de utilizatori poate fi citită.</li>
+  <li>Apasă <b class="ui">Salvează</b>.</li>
+  <li>Deschide aplicația într-o fereastră privată și verifică butonul de pe ecranul de conectare cu un cont obișnuit.</li>
+</ol>
+<h3>Importul utilizatorilor</h3>
+<p>Butonul <b class="ui">Importă utilizatorii</b> (apare după salvare) creează câte un cont Taskel pentru fiecare utilizator activ din realm, astfel încât colegii să le poată da task-uri înainte ca ei să se conecteze prima dată. Rezultatul arată câte conturi sunt noi, câte au fost actualizate și care au fost sărite, cu motivul.</p>
+<ul>
+  <li>Importul cere ca pe client să fie pornite <i>Service accounts</i>, iar contul de serviciu să aibă rolul <code>view-users</code> al clientului <code>realm-management</code>.</li>
+  <li>Rolurile și grupurile se aplică la prima conectare a fiecărei persoane, nu la import.</li>
+  <li>Sunt săriți utilizatorii fără adresă de email, cei a căror adresă aparține deja unui cont de domeniu și cei a căror adresă aparține unui cont local, dar nu este verificată în Keycloak.</li>
+</ul>
+<h3>Conturile existente</h3>
+<div class="warn"><strong>Preluarea conturilor locale</strong>Un cont local cu aceeași adresă de email este preluat de contul Keycloak (își păstrează task-urile, parola locală nu mai funcționează) <b>doar dacă adresa este marcată ca verificată în Keycloak</b>. Altfel, conectarea este refuzată cu un mesaj explicit. Regula există ca nimeni să nu poată prelua contul altcuiva punându-și în Keycloak adresa lui. Conturile de domeniu nu sunt preluate niciodată.</div>
+<p>La deconectarea din Taskel se închide și sesiunea din Keycloak, deci la următoarea conectare se cere din nou parola.</p>
+<h3>Mesaje de refuz la conectare</h3>
+<table>
+  <tr><th style="width:46%">Mesajul văzut de utilizator</th><th>Cauza</th></tr>
+  <tr><td>Contul tău din Keycloak nu are o adresă de email validă</td><td>Utilizatorul nu are email în Keycloak.</td></tr>
+  <tr><td>Adresa de email … este folosită deja</td><td>Adresa aparține unui cont de domeniu sau altui cont Keycloak.</td></tr>
+  <tr><td>Există deja un cont local cu adresa ta…</td><td>Adresa nu este verificată în Keycloak. Bifează „Email verified” la utilizator.</td></tr>
+  <tr><td>Contul tău din Keycloak nu are acces la Taskel</td><td>Lipsește rolul obligatoriu.</td></tr>
+  <tr><td>Conectarea cu Keycloak nu a reușit</td><td>Altă cauză; detaliile sunt în jurnalul serverului.</td></tr>
+</table>
+
+<h2>Fișiere atașate</h2>
+<figure>
+  <img src="../../screenshots/settings-attachments.png" alt="Panoul Fișiere atașate">
+  <figcaption>Panoul <b>Fișiere atașate</b>.</figcaption>
+</figure>
+<p>Setezi mărimea maximă a unui fișier atașat, între 1 și 2048 MB (implicit 100 MB). Se aplică imediat, atât pentru fișierele încărcate din aplicație, cât și pentru cele venite din Outlook.</p>
+<ul>
+  <li>Un task poate avea cel mult 20 de fișiere (valoare din configurația serverului).</li>
+  <li>Dacă în fața aplicației este un proxy (nginx, de exemplu), acesta are propria limită, care trebuie să fie cel puțin la fel de mare.</li>
+  <li>Spațiul total pe disc nu este limitat de aplicație. Urmărește spațiul liber al serverului.</li>
+  <li>Fișierele nu sunt scanate antivirus. Ele se descarcă întotdeauna, nu se deschid în aplicație.</li>
+</ul>
+
+<h2>Sarcini curente</h2>
+<h3>Un angajat nou</h3>
+<ol class="steps">
+  <li>Asigură-te că are cont: se conectează o dată cu contul de domeniu ori Keycloak, este importat din Keycloak, sau își creează cont local (dacă înregistrarea e permisă).</li>
+  <li>În <b class="ui">Utilizatori</b>, setează-i departamentul și, dacă e cazul, rolul (dacă nu vin automat).</li>
+  <li>Adaugă-l în grupurile de aplicație potrivite.</li>
+</ol>
+<h3>Un angajat care pleacă</h3>
+<ol class="steps">
+  <li>Dezactivează-i contul în Active Directory sau Keycloak. Pentru un cont local, vezi Ghidul de instalare.</li>
+  <li>Din <b class="ui">Echipă</b>, deschide task-urile lui deschise și anunță creatorii să le realoce. Task-urile create de el rămân vizibile celor cărora le-au fost date.</li>
+  <li>Scoate-l din grupurile de aplicație.</li>
+</ol>
+<h3>Numirea altui administrator</h3>
+<p>În <b class="ui">Utilizatori</b>, alege rolul Administrator pentru contul respectiv. Este bine să existe cel puțin doi administratori.</p>
+<h3>Verificări periodice</h3>
+<ul>
+  <li>După schimbarea parolei căsuței de email: actualizeaz-o în panoul de email și trimite un test.</li>
+  <li>După reînnoirea secretului clientului Keycloak: actualizează-l și apasă Testează conexiunea.</li>
+  <li>Lunar: lista de utilizatori (conturi fără departament, roluri rămase de la foști colegi) și lista de grupuri.</li>
+</ul>
+
+<h2>Recomandări de securitate</h2>
+<ul>
+  <li><b>Folosește doar HTTPS</b> pentru adresa aplicației.</li>
+  <li><b>Oprește înregistrarea liberă</b> a conturilor locale pe un server accesibil din internet (setarea <code>Auth:AllowLocalRegistration</code>, în configurația serverului). Adresele conturilor locale nu sunt verificate, iar oricine s-ar putea înregistra.</li>
+  <li><b>Lasă bifate</b> „Cere conexiune criptată (TLS)”, LDAPS și „Cere HTTPS pentru Keycloak”.</li>
+  <li><b>Restrânge accesul</b> cu „Grup obligatoriu” (Active Directory) sau „Rol obligatoriu” (Keycloak), dacă nu toți angajații trebuie să folosească aplicația.</li>
+  <li><b>Dă rolul de administrator</b> cât mai puținor persoane, dar nu uneia singure.</li>
+  <li><b>Token-urile de Outlook</b> le revocă fiecare utilizator din Integrări; amintește-le să o facă la schimbarea calculatorului.</li>
+</ul>
+
+<h2>Întrebări frecvente</h2>
+<h4>Am salvat o setare greșită și nu se mai poate conecta nimeni cu contul de domeniu.</h4>
+<p>Conectează-te cu un cont local de administrator (cel numit la instalare în <code>Auth:AdminEmails</code>) și corectează setarea sau apasă „Revino la configurația serverului”. Păstrează întotdeauna un astfel de cont local.</p>
+<h4>Am schimbat rolul unui om și la următoarea conectare a revenit.</h4>
+<p>Rolul lui vine din grupul sau rolul configurat în Active Directory ori Keycloak. Schimbă-l acolo.</p>
+<h4>De ce nu apare un coleg în lista de utilizatori?</h4>
+<p>Nu are încă un cont: nu s-a conectat niciodată și nu a fost importat.</p>
+<h4>Modificările din Setări sistem cer repornirea serverului?</h4>
+<p>Nu. Se aplică imediat; dacă aplicația rulează pe mai multe servere, celelalte le preiau în cel mult un minut.</p>
+<h4>Notificările nu ajung.</h4>
+<p>Verifică, în ordine: testul din panoul de email; bifa „Trimite notificări…”; opțiunea utilizatorului din Integrări; dosarul de spam al destinatarului.</p>
+<h4>Pot vedea parola salvată a serverului de email?</h4>
+<p>Nu. Poate fi doar înlocuită sau ștearsă.</p>

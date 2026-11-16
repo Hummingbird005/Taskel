@@ -1,0 +1,155 @@
+<section class="cover">
+  <div class="brand"><span class="mark">✓</span>Taskel</div>
+  <div class="kind">Manual · rolul Manager</div>
+  <h1>Manualul managerului</h1>
+  <p class="lead">Cum urmărești încărcarea echipei, cum citești task-urile oamenilor din departament și cum organizezi grupuri de lucru.</p>
+  <div class="meta"><span>Taskel · documentație pentru manageri</span><span>Ediția noiembrie 2026</span></div>
+</section>
+
+<section class="toc">
+  <h2 class="plain">Cuprins</h2>
+  <ol></ol>
+</section>
+
+<h2>Rolul de manager</h2>
+<p class="lead-in">Un manager lucrează în Taskel ca orice utilizator și, în plus, vede cum stă cu lucrul departamentul lui și poate crea grupuri.</p>
+<p>Acest manual descrie doar ce are în plus rolul <b>Manager</b>. Lucrul de zi cu zi cu task-urile (adăugare, stări, alocare, direcționare, emailuri, notificări) este descris în <b>Manualul utilizatorului</b> și se aplică întocmai și managerilor.</p>
+<h3>Ce poți face ca manager</h3>
+<table>
+  <tr><th style="width:30%">Unde</th><th>Ce poți face</th></tr>
+  <tr><td><b class="ui">Echipă → Încărcare</b></td><td>Vezi, pentru fiecare om din departamentul tău, câte task-uri are deschise, întârziate, cu termen azi și câte a rezolvat recent.</td></tr>
+  <tr><td><b class="ui">Echipă → Calendar</b></td><td>Vezi cum se așază task-urile cu termen pe zile, pe patru săptămâni, pentru toată echipa sau pentru o persoană.</td></tr>
+  <tr><td>Task-urile unei persoane</td><td>Citești task-urile oricărui om din departament, cu mesaje, fișiere și rezolvări.</td></tr>
+  <tr><td><b class="ui">Grupuri</b></td><td>Creezi grupuri cu oameni din departamentul tău și le modifici pe cele create de tine.</td></tr>
+</table>
+<h3>Ce nu poți face</h3>
+<ul>
+  <li><b>Nu poți modifica task-urile altora</b> doar pentru că ești manager. Le citești; nu le poți edita, finaliza, realoca sau șterge. Excepție fac, firesc, task-urile create de tine sau alocate ție.</li>
+  <li><b>Nu vezi alte departamente.</b> Vezi doar oamenii care au același departament ca tine.</li>
+  <li><b>Nu schimbi roluri și departamente.</b> Asta face administratorul.</li>
+</ul>
+<div class="warn"><strong>Departamentul contează</strong>Echipa ta este formată din conturile care au exact același departament ca al tău. Dacă nu ai un departament setat, ecranul Echipă este gol și afișează „Nu ai un departament setat”. Dacă lipsește cineva din listă, cere administratorului să îi seteze departamentul (sau să fie corectat în Active Directory ori Keycloak, dacă de acolo vine).</div>
+<p>În meniu, managerii au o secțiune în plus, <b class="ui">Organizare</b>, cu <b class="ui">Echipă</b> și <b class="ui">Grupuri</b>.</p>
+
+<h2>Încărcarea echipei</h2>
+<p>Deschide <b class="ui">Echipă</b>. Fila <b class="ui">Încărcare</b> este afișată implicit.</p>
+<figure>
+  <img src="../../screenshots/team.png" alt="Ecranul Echipă, fila Încărcare">
+  <figcaption>Fila <b>Încărcare</b>: totalurile departamentului și situația pe fiecare persoană.</figcaption>
+</figure>
+<h3>Totalurile departamentului</h3>
+<p>Casetele de sus însumează toată echipa: <b class="ui">Deschise</b>, <b class="ui">Întârziate</b> (cu roșu când există), <b class="ui">Cu termen azi</b>, <b class="ui">Rezolvate, 7 zile</b> și <b class="ui">Rezolvate, 30 de zile</b>.</p>
+<h3>Tabelul pe persoane</h3>
+<table>
+  <tr><th style="width:30%">Coloană</th><th>Ce numără</th></tr>
+  <tr><td>Deschise</td><td>Task-urile nefinalizate de care răspunde persoana. Bara arată încărcarea față de cel mai încărcat coleg. Task-urile „în așteptare” sunt tot deschise.</td></tr>
+  <tr><td>Întârziate</td><td>Deschise, cu termenul depășit.</td></tr>
+  <tr><td>Azi</td><td>Deschise, cu termen azi.</td></tr>
+  <tr><td>Următoarele 7 zile</td><td>Deschise, cu termen în săptămâna care urmează.</td></tr>
+  <tr><td>Prioritate ridicată</td><td>Deschise, cu prioritate ridicată.</td></tr>
+  <tr><td>Rezolvate, 7 zile / 30 de zile</td><td>Finalizate în ultimele 7, respectiv 30 de zile.</td></tr>
+</table>
+<div class="note"><strong>Cum se atribuie un task unei persoane</strong>O persoană este numărată pentru task-urile de care <i>răspunde</i>: cele alocate ei și cele proprii pe care nu le-a dat altcuiva. Un task delegat se numără la cel care îl are de făcut, nu la cel care l-a creat. Un task dat unui grup și nepreluat încă nu se numără la nimeni.</div>
+<h3>Cum folosești tabelul</h3>
+<ul>
+  <li>Înainte de a aloca ceva urgent, uită-te la <b>Deschise</b> și <b>Următoarele 7 zile</b> ca să alegi pe cineva mai liber.</li>
+  <li>O valoare mare la <b>Întârziate</b> este semnalul să deschizi task-urile persoanei și să vezi ce le blochează; caută task-urile „în așteptare” și motivele lor.</li>
+  <li><b>Rezolvate</b> îți arată ritmul, nu doar stocul.</li>
+</ul>
+
+<h2>Task-urile unei persoane</h2>
+<p>În tabelul de încărcare, apasă pe numele unei persoane. Sub tabel apar task-urile ei deschise și <b class="ui">Ultimele finalizate</b>.</p>
+<figure>
+  <img src="../../screenshots/team-member.png" alt="Task-urile unui membru al echipei">
+  <figcaption>Task-urile unui om din echipă, afișate sub tabelul de încărcare.</figcaption>
+</figure>
+<p>Un clic pe un task îl deschide în aceeași fereastră ca la task-urile tale, dar <b>doar pentru citire</b>: vezi titlul, mesajul, termenul, starea, motivul așteptării sau mesajul de rezolvare, fișierele (le poți descărca) și traseul. Nu apar butoanele de stare, de editare sau de ștergere.</p>
+<div class="tip"><strong>Sfat</strong>Dacă vrei să intervii pe un task al unui coleg, discută cu el sau cu creatorul task-ului: ei îl pot realoca, direcționa sau finaliza. Pentru lucrările pe care vrei să le controlezi tu, creează tu task-ul și alocă-l: rămâne la tine în <b class="ui">Delegate</b>, cu toate drepturile.</div>
+
+<h2>Calendarul echipei</h2>
+<p>Fila <b class="ui">Calendar</b> arată task-urile <i>deschise și cu termen</i>, pe zile, câte patru săptămâni odată.</p>
+<figure>
+  <img src="../../screenshots/team-calendar.png" alt="Calendarul echipei">
+  <figcaption>Calendarul echipei: câte task-uri are fiecare persoană în fiecare zi.</figcaption>
+</figure>
+<h3>Vederea pe toată echipa</h3>
+<ul>
+  <li>Fiecare rând este o persoană, fiecare coloană o zi. Cifra din celulă este numărul de task-uri deschise care cad în acea zi; cu cât culoarea e mai intensă, cu atât ziua e mai încărcată.</li>
+  <li>Un task cu interval (Început – Termen) se numără în <b>fiecare zi</b> a intervalului. Un task doar cu termen se numără în ziua termenului.</li>
+  <li>Sub numele persoanei poate apărea „N fără termen”: task-uri deschise care nu au dată și deci nu apar în calendar.</li>
+  <li>Zilele de weekend și ziua de azi sunt marcate distinct.</li>
+  <li>Cu săgețile din stânga sus te muți cu patru săptămâni înainte sau înapoi.</li>
+</ul>
+<p>Un clic pe o celulă afișează dedesubt task-urile persoanei din acea zi.</p>
+<h3>Calendarul unei persoane</h3>
+<p>Din lista <b class="ui">Arată</b> alege o persoană (sau apasă pe numele ei în tabel). Calendarul devine unul clasic, cu zilele pe săptămâni, iar în fiecare zi apar primele trei task-uri și numărul celor rămase. Alege <b class="ui">Toată echipa</b> ca să revii.</p>
+<figure>
+  <img src="../../screenshots/team-calendar-person.png" alt="Calendarul unei persoane">
+  <figcaption>Calendarul unei singure persoane.</figcaption>
+</figure>
+<div class="tip"><strong>Planificare</strong>Ca să apară în calendar, un task trebuie să aibă termen. Încurajează echipa să pună cel puțin termenul, iar pentru lucrările de mai multe zile și data de început: abia atunci calendarul arată încărcarea reală.</div>
+
+<h2>Grupuri</h2>
+<p>Un grup este o listă de persoane căreia i se poate da un task. Task-ul apare la toți membrii în <b class="ui">De preluat</b>, iar cel care îl preia devine responsabil. Grupurile sunt potrivite pentru lucrări pe care le poate face oricine dintr-o echipă: oferte, solicitări de suport, aprobări.</p>
+<figure>
+  <img src="../../screenshots/groups.png" alt="Ecranul Grupuri">
+  <figcaption>Ecranul <b>Grupuri</b>, cu lista grupurilor și formularul unui grup nou.</figcaption>
+</figure>
+<h3>Tipuri de grupuri</h3>
+<table>
+  <tr><th style="width:26%">Tip</th><th>De unde vine</th><th style="width:32%">Ce poți face cu el</th></tr>
+  <tr><td>Aplicație</td><td>Creat în Taskel de un manager sau de un administrator.</td><td>Îl modifici dacă l-ai creat tu; altfel doar îi vezi membrii.</td></tr>
+  <tr><td>Active Directory</td><td>Grup din domeniul firmei, adus automat când membrii se conectează.</td><td>Doar îi vezi membrii. Componența se schimbă în domeniu.</td></tr>
+  <tr><td>Keycloak</td><td>Grup din Keycloak, adus automat la conectare.</td><td>Doar îi vezi membrii. Componența se schimbă în Keycloak.</td></tr>
+</table>
+<div class="note"><strong>Grupurile din domeniu și Keycloak</strong>La aceste grupuri apar ca membri doar persoanele care s-au conectat cel puțin o dată la Taskel. O schimbare de componență se vede la următoarea conectare a persoanei respective.</div>
+<h3>Crearea unui grup</h3>
+<ol class="steps">
+  <li>Deschide <b class="ui">Grupuri</b> și apasă <b class="ui">Grup nou</b>.</li>
+  <li>Scrie numele grupului (cel mult 100 de caractere; nu pot exista două grupuri cu același nume).</li>
+  <li>Bifează membrii. Ca manager, poți alege doar persoane din departamentul tău.</li>
+  <li>Apasă <b class="ui">Creează grupul</b>.</li>
+</ol>
+<p>Grupul poate fi folosit imediat de oricine din aplicație, la <b class="ui">Alocat către</b> și la direcționare.</p>
+<h3>Modificarea și ștergerea</h3>
+<ul>
+  <li>Apasă <b class="ui">Editează</b> în dreptul unui grup creat de tine ca să îi schimbi numele sau membrii.</li>
+  <li>Membrii din alte departamente adăugați de un administrator rămân în grup când îl modifici; nu poți însă adăuga tu alții din afara departamentului.</li>
+  <li>Butonul cu coșul șterge grupul. Task-urile care așteptau la grup nu se șterg: se întorc la cel care le-a creat.</li>
+</ul>
+<div class="warn"><strong>Înainte de a scoate un om din grup</strong>Task-urile pe care le-a preluat deja rămân la el. Task-urile nepreluate ale grupului nu le mai vede.</div>
+
+<h2>Bune practici pentru manageri</h2>
+<h3>Când aloci direct și când dai unui grup</h3>
+<table>
+  <tr><th style="width:50%">Alocă unei persoane când…</th><th>Dă unui grup când…</th></tr>
+  <tr><td>știi cine trebuie să facă lucrarea;</td><td>o poate face oricine din echipă;</td></tr>
+  <tr><td>ai verificat încărcarea și persoana are loc;</td><td>vrei ca primul om liber să o ia;</td></tr>
+  <tr><td>vrei un singur responsabil de la început.</td><td>solicitările vin continuu și se împart de la sine.</td></tr>
+</table>
+<h3>Urmărirea lucrărilor date</h3>
+<ul>
+  <li>Vederea <b class="ui">Delegate</b> arată tot ce ai creat și ai dat altora, cu starea curentă. Un task de grup rămâne aici „de preluat” până îl ia cineva.</li>
+  <li>Caseta <b>Delegate de mine</b> de pe Acasă îți arată aceleași task-uri fără să schimbi vederea.</li>
+  <li>Un task „în așteptare” are întotdeauna un motiv scris. Citește-l înainte de a întreba omul: de multe ori blocajul este la altcineva și îl poți debloca tu.</li>
+</ul>
+<h3>O rutină săptămânală de 10 minute</h3>
+<ol class="steps">
+  <li><b>Încărcare:</b> sortează din ochi după Întârziate; deschide task-urile celor cu cele mai multe.</li>
+  <li><b>Calendar:</b> uită-te la următoarele două săptămâni; mută sau realocă task-urile tale delegate din zilele supraîncărcate.</li>
+  <li><b>Delegate:</b> verifică task-urile de grup nepreluate de mai multe zile.</li>
+</ol>
+
+<h2>Întrebări frecvente</h2>
+<h4>Nu văd secțiunea Organizare în meniu.</h4>
+<p>Contul tău nu are rolul Manager. Rolul îl dă administratorul sau, la conturile de domeniu și Keycloak, apartenența la grupul sau rolul stabilit acolo.</p>
+<h4>Ecranul Echipă este gol.</h4>
+<p>Nu ai departament setat, sau nimeni altcineva nu are același departament. Verifică împreună cu administratorul cum este scris departamentul (diferențele de majuscule nu contează, dar „Vânzări” și „Vanzari” sunt departamente diferite).</p>
+<h4>Un coleg nou nu apare în echipă.</h4>
+<p>Trebuie să aibă cont în Taskel (la conturile de domeniu, să se fi conectat o dată) și același departament ca tine.</p>
+<h4>De ce cifrele din Încărcare nu se potrivesc cu ce văd eu în Delegate?</h4>
+<p>Încărcarea numără toate task-urile de care răspunde persoana, inclusiv cele create de ea sau primite de la alții, nu doar pe cele date de tine.</p>
+<h4>Pot vedea task-urile unui om din alt departament?</h4>
+<p>Nu, în afara celor în care ești implicat direct (create de tine, alocate ție sau direcționate de tine). Administratorii pot vedea orice departament.</p>
+<h4>Am două departamente în subordine.</h4>
+<p>Un cont are un singur departament. Soluția obișnuită este ca administratorul să dea aceluiași nume de departament ambelor echipe, sau să îți urmărească el, cu rolul de administrator, al doilea departament.</p>

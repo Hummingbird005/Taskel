@@ -1,0 +1,360 @@
+<section class="cover">
+  <div class="brand"><span class="mark">✓</span>Taskel</div>
+  <div class="kind">Ghid tehnic</div>
+  <h1>Ghid de instalare</h1>
+  <p class="lead">Instalarea pe un server Linux, configurarea, legarea la email, Active Directory și Keycloak, copiile de siguranță și actualizarea.</p>
+  <div class="meta"><span>Taskel · documentație pentru administratori de sistem</span><span>Ediția noiembrie 2026</span></div>
+</section>
+
+<section class="toc">
+  <h2 class="plain">Cuprins</h2>
+  <ol></ol>
+</section>
+
+<h2>Prezentare</h2>
+<p class="lead-in">Taskel are trei părți: o interfață web (fișiere statice), un serviciu API și o bază de date PostgreSQL. Un server web (nginx) le pune pe toate sub o singură adresă HTTPS.</p>
+<pre>Browser / Outlook
+      │  HTTPS  (https://taskel.firma.ro)
+      ▼
+   nginx ──────────────► fișierele interfeței (frontend/dist)
+      │  /api/*
+      ▼
+Taskel.Api (ASP.NET Core, port local 5080)
+      ├──► PostgreSQL            date, setări, chei de criptare
+      ├──► disc                  fișierele atașate
+      ├──► server SMTP           răspunsuri, notificări          (opțional)
+      ├──► Active Directory      conectare cu cont de domeniu    (opțional)
+      └──► Keycloak              autentificare unică             (opțional)</pre>
+<h3>Cui se adresează ghidul</h3>
+<p>Persoanei care instalează și întreține serverul. Presupune cunoștințe de bază de Linux, PostgreSQL și nginx. Setările care se pot face ulterior din interfață (email, Active Directory, Keycloak) sunt descrise pe larg în <b>Manualul administratorului</b>.</p>
+<h3>Cerințe</h3>
+<table>
+  <tr><th style="width:30%">Componentă</th><th>Cerință</th></tr>
+  <tr><td>Sistem de operare</td><td>Linux pe 64 de biți. Comenzile din ghid sunt pentru Ubuntu Server 24.04; pe alte distribuții diferă doar instalarea pachetelor.</td></tr>
+  <tr><td>.NET</td><td>.NET 10: SDK pentru compilare, ASP.NET Core Runtime pentru rulare.</td></tr>
+  <tr><td>Node.js</td><td>Versiunea 22 sau mai nouă, doar pentru compilarea interfeței.</td></tr>
+  <tr><td>PostgreSQL</td><td>Versiunea 16 sau mai nouă.</td></tr>
+  <tr><td>Server web</td><td>nginx (sau alt proxy invers) cu un certificat TLS valid.</td></tr>
+  <tr><td>Resurse</td><td>Pentru câteva zeci de utilizatori: 2 procesoare, 2 GB memorie, plus spațiul pentru fișierele atașate.</td></tr>
+  <tr><td>Rețea</td><td>Un nume DNS pentru aplicație (de exemplu <code>taskel.firma.ro</code>). De la server către: SMTP, controlerul de domeniu (636), Keycloak (443), după caz.</td></tr>
+</table>
+<div class="note"><strong>Compilare în altă parte</strong>Compilarea (pașii 3 și 4 din capitolul următor) se poate face pe alt calculator; pe server copiezi doar rezultatul și ai nevoie numai de ASP.NET Core Runtime, PostgreSQL și nginx.</div>
+
+<h2>Instalarea pe server</h2>
+<p>Exemplele folosesc adresa <code>taskel.firma.ro</code>, directorul <code>/opt/taskel</code> și utilizatorul de sistem <code>taskel</code>. Înlocuiește-le cu ale tale.</p>
+
+<h3>Pasul 1 · Pachetele</h3>
+<pre><code>sudo apt update
+sudo apt install -y postgresql nginx git
+# .NET 10 SDK și Node.js 22: urmează instrucțiunile oficiale pentru distribuția ta
+#   https://learn.microsoft.com/dotnet/core/install/linux
+#   https://nodejs.org/en/download
+dotnet --version     # trebuie să înceapă cu 10.
+node --version       # v22 sau mai nou</code></pre>
+
+<h3>Pasul 2 · Baza de date</h3>
+<pre><code>sudo -u postgres psql &lt;&lt;'SQL'
+CREATE ROLE taskel LOGIN PASSWORD 'o-parola-lunga-si-unica';
+CREATE DATABASE taskel OWNER taskel;
+SQL</code></pre>
+<p>Tabelele le creează aplicația la prima pornire (vezi <code>Database__MigrateOnStartup</code> mai jos).</p>
+
+<h3>Pasul 3 · Codul și compilarea serviciului API</h3>
+<pre><code>git clone https://github.com/Hummingbird005/Taskel.git
+cd Taskel/backend
+dotnet publish src/Taskel.Api -c Release -o /tmp/taskel-api</code></pre>
+
+<h3>Pasul 4 · Compilarea interfeței</h3>
+<pre><code>cd ../frontend
+npm ci
+npm run build        # rezultatul este în frontend/dist</code></pre>
+
+<h3>Pasul 5 · Utilizatorul de sistem și directoarele</h3>
+<pre><code>sudo useradd --system --home /opt/taskel --shell /usr/sbin/nologin taskel
+sudo mkdir -p /opt/taskel/api /opt/taskel/www /var/lib/taskel/attachments /etc/taskel
+sudo cp -r /tmp/taskel-api/. /opt/taskel/api/
+sudo cp -r dist/. /opt/taskel/www/
+sudo chown -R taskel:taskel /opt/taskel/api /var/lib/taskel
+sudo chmod -R a+rX /opt/taskel/www</code></pre>
+
+<h3>Pasul 6 · Configurația</h3>
+<p>Configurația se dă prin variabile de mediu. Creează <code>/etc/taskel/taskel.env</code>:</p>
+<pre><code>ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://127.0.0.1:5080
+ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+
+ConnectionStrings__Taskel=Host=localhost;Database=taskel;Username=taskel;Password=o-parola-lunga-si-unica
+Database__MigrateOnStartup=true
+
+# Primul administrator: contul cu această adresă este întotdeauna administrator
+Auth__AdminEmails__0=admin@firma.ro
+# După ce conturile necesare există, oprește înregistrarea liberă:
+# Auth__AllowLocalRegistration=false
+
+Attachments__Path=/var/lib/taskel/attachments
+Email__Notifications__PublicUrl=https://taskel.firma.ro</code></pre>
+<pre><code>sudo chown root:taskel /etc/taskel/taskel.env
+sudo chmod 640 /etc/taskel/taskel.env        # conține parola bazei de date</code></pre>
+<div class="warn"><strong>Trei setări care nu trebuie uitate</strong>
+<p><code>ASPNETCORE_FORWARDEDHEADERS_ENABLED=true</code> face ca aplicația să știe, de la nginx, că cererea a venit prin HTTPS și de la ce adresă. Fără ea, limitarea încercărilor de conectare ar trata toți utilizatorii ca pe unul singur.</p>
+<p><code>Email__Notifications__PublicUrl</code> este adresa la care oamenii deschid aplicația. Se folosește în emailuri și la conectarea cu Keycloak.</p>
+<p><code>Auth__AdminEmails__0</code> numește primul administrator. Fără ea, nimeni nu are acces la setări.</p></div>
+
+<h3>Pasul 7 · Serviciul systemd</h3>
+<p>Creează <code>/etc/systemd/system/taskel.service</code>:</p>
+<pre><code>[Unit]
+Description=Taskel API
+After=network.target postgresql.service
+
+[Service]
+WorkingDirectory=/opt/taskel/api
+ExecStart=/usr/bin/dotnet /opt/taskel/api/Taskel.Api.dll
+EnvironmentFile=/etc/taskel/taskel.env
+User=taskel
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+<pre><code>sudo systemctl daemon-reload
+sudo systemctl enable --now taskel
+curl http://127.0.0.1:5080/api/health        # răspuns: {"status":"ok"}</code></pre>
+<div class="note"><strong>La prima pornire</strong>În jurnal (<code>journalctl -u taskel</code>) apare o singură dată o eroare despre tabela <code>__EFMigrationsHistory</code>, care nu există încă. Este normală: imediat după, aplicația își creează tabelele.</div>
+
+<h3>Pasul 8 · nginx și HTTPS</h3>
+<p>Creează <code>/etc/nginx/sites-available/taskel</code> (certificatul îl obții de la autoritatea firmei sau cu Let's Encrypt):</p>
+<pre><code>server {
+    listen 80;
+    server_name taskel.firma.ro;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name taskel.firma.ro;
+    ssl_certificate     /etc/ssl/taskel/fullchain.pem;
+    ssl_certificate_key /etc/ssl/taskel/privkey.pem;
+
+    root  /opt/taskel/www;
+    index index.html;
+
+    # Cel puțin cât limita fișierelor atașate (implicit 100 MB), plus o rezervă
+    client_max_body_size 110m;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:5080;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;       # fișierele mari merg direct la aplicație
+        proxy_read_timeout 300s;
+    }
+
+    location / {
+        try_files $uri /index.html;
+    }
+}</code></pre>
+<pre><code>sudo ln -s /etc/nginx/sites-available/taskel /etc/nginx/sites-enabled/
+sudo nginx -t &amp;&amp; sudo systemctl reload nginx</code></pre>
+<div class="warn"><strong>HTTPS este obligatoriu</strong>În modul Production, sesiunea este ținută într-un cookie marcat „Secure”, pe care browserul îl trimite doar prin HTTPS. Prin HTTP simplu, conectarea pare să reușească, dar utilizatorul este întors imediat la ecranul de conectare.</div>
+
+<h3>Pasul 9 · Primul administrator</h3>
+<ol class="steps">
+  <li>Deschide <code>https://taskel.firma.ro</code> în browser.</li>
+  <li>Pe ecranul de conectare apasă <b class="ui">Creează unul</b> și înregistrează contul cu adresa pusă la <code>Auth__AdminEmails__0</code>, cu o parolă puternică.</li>
+  <li>În meniu apare secțiunea <b class="ui">Organizare</b>, cu <b class="ui">Utilizatori</b> și <b class="ui">Setări sistem</b>.</li>
+</ol>
+<figure>
+  <img src="../../screenshots/signin.png" alt="Ecranul de conectare">
+  <figcaption>Ecranul de conectare. Butonul Keycloak și fila „Cont de domeniu” apar după configurarea lor.</figcaption>
+</figure>
+<p>Păstrează acest cont local chiar dacă treceți apoi pe conturi de domeniu sau Keycloak: este calea de acces dacă o integrare este configurată greșit.</p>
+<div class="tip"><strong>După ce conturile necesare există</strong>Pe un server accesibil din internet, adaugă în <code>taskel.env</code> linia <code>Auth__AllowLocalRegistration=false</code> și repornește serviciul (<code>sudo systemctl restart taskel</code>). Conectarea cu conturile locale existente funcționează în continuare.</div>
+
+<h2>Referința setărilor</h2>
+<p>Toate setările se dau ca variabile de mediu în <code>/etc/taskel/taskel.env</code>; după o modificare, repornește serviciul. Numele folosesc două liniuțe de subliniere între niveluri.</p>
+<h3>De bază</h3>
+<table>
+  <tr><th style="width:44%">Variabilă</th><th>Rol</th></tr>
+  <tr><td><code>ConnectionStrings__Taskel</code></td><td>Conexiunea la PostgreSQL. Obligatorie.</td></tr>
+  <tr><td><code>Database__MigrateOnStartup</code></td><td><code>true</code>: aplicația își creează și își actualizează singură tabelele la pornire.</td></tr>
+  <tr><td><code>ASPNETCORE_URLS</code></td><td>Adresa locală pe care ascultă serviciul.</td></tr>
+  <tr><td><code>ASPNETCORE_FORWARDEDHEADERS_ENABLED</code></td><td><code>true</code> când aplicația stă în spatele unui proxy.</td></tr>
+  <tr><td><code>DataProtection__KeysPath</code></td><td>Opțional. Un director pentru cheile de criptare, în loc de baza de date (vezi capitolul despre copii de siguranță).</td></tr>
+</table>
+<h3>Conturi și conectare</h3>
+<table>
+  <tr><th style="width:44%">Variabilă</th><th>Rol</th></tr>
+  <tr><td><code>Auth__AdminEmails__0</code>, <code>__1</code>, …</td><td>Adresele conturilor care sunt întotdeauna administratori.</td></tr>
+  <tr><td><code>Auth__AllowLocalRegistration</code></td><td>Implicit <code>true</code>. <code>false</code> ascunde crearea de conturi locale.</td></tr>
+  <tr><td><code>Auth__LoginAttemptsPerMinute</code></td><td>Implicit <code>10</code>, pe adresă de rețea.</td></tr>
+</table>
+<h3>Fișiere atașate</h3>
+<table>
+  <tr><th style="width:44%">Variabilă</th><th>Rol</th></tr>
+  <tr><td><code>Attachments__Path</code></td><td>Directorul fișierelor. Implicit <code>data/attachments</code> sub directorul aplicației; pune-l în afara lui, ca să supraviețuiască actualizărilor.</td></tr>
+  <tr><td><code>Attachments__MaxFileSizeMb</code></td><td>Implicit <code>100</code>. Poate fi schimbată și din interfață.</td></tr>
+  <tr><td><code>Attachments__MaxFilesPerTask</code></td><td>Implicit <code>20</code>.</td></tr>
+</table>
+<h3>Email, Active Directory, Keycloak</h3>
+<p>Aceste trei grupuri de setări pot fi date aici <b>sau</b> din interfață (<b class="ui">Setări sistem</b>). Ce se salvează în interfață înlocuiește ce este aici. O abordare bună: pune aici doar secretele, dacă vrei să nu stea în baza de date, și restul din interfață.</p>
+<table>
+  <tr><th style="width:44%">Variabilă</th><th>Rol</th></tr>
+  <tr><td><code>Email__Smtp__Host</code>, <code>__Port</code>, <code>__Username</code>, <code>__Password</code>, <code>__FromAddress</code>, <code>__FromName</code>, <code>__RequireTls</code></td><td>Serverul de email. Port implicit 587.</td></tr>
+  <tr><td><code>Email__Notifications__Enabled</code></td><td>Implicit <code>true</code>.</td></tr>
+  <tr><td><code>Email__Notifications__PublicUrl</code></td><td>Adresa publică a aplicației.</td></tr>
+  <tr><td><code>ActiveDirectory__Enabled</code>, <code>__Host</code>, <code>__Port</code>, <code>__Security</code>, <code>__Domain</code>, <code>__BaseDn</code></td><td>Legătura cu domeniul. <code>Security</code>: <code>Ldaps</code> (implicit), <code>StartTls</code>, <code>None</code>.</td></tr>
+  <tr><td><code>ActiveDirectory__RequiredGroupDn</code>, <code>__ManagerGroupDn</code>, <code>__AdminGroupDn</code>, <code>__DepartmentAttribute</code>, <code>__SyncGroups</code>, <code>__GroupsBaseDn</code>, <code>__TimeoutSeconds</code></td><td>Restricții, roluri, departament și grupuri din domeniu.</td></tr>
+  <tr><td><code>Keycloak__Enabled</code>, <code>__Authority</code>, <code>__ClientId</code>, <code>__ClientSecret</code>, <code>__DisplayName</code></td><td>Legătura cu Keycloak.</td></tr>
+  <tr><td><code>Keycloak__RequiredRole</code>, <code>__AdminRole</code>, <code>__ManagerRole</code>, <code>__DepartmentClaim</code>, <code>__SyncGroups</code>, <code>__GroupsClaim</code>, <code>__RequireHttpsMetadata</code></td><td>Restricții, roluri, departament și grupuri din Keycloak.</td></tr>
+</table>
+<div class="warn"><strong>Nu activa datele demonstrative</strong>Setarea <code>Seed__DemoData</code> adaugă conturi cu parole publice și este destinată doar probelor. În modul Production aplicația o refuză oricum și scrie o eroare în jurnal.</div>
+
+<h2>Legarea la serviciile firmei</h2>
+<p>Toate cele trei integrări sunt opționale și se configurează cel mai ușor din interfață, cu contul de administrator: <b class="ui">Organizare → Setări sistem</b>. Fiecare panou are un buton de test care folosește valorile din formular, înainte de salvare.</p>
+<figure class="tall">
+  <img src="../../screenshots/settings-email.png" alt="Panoul Server de email">
+  <figcaption>Panoul serverului de email din <b>Setări sistem</b>.</figcaption>
+</figure>
+<h3>Ordinea recomandată</h3>
+<ol class="steps">
+  <li><b>Server de email.</b> Completează și <b class="ui">Adresa aplicației</b>. Trimite un email de test, apoi salvează.</li>
+  <li><b>Active Directory</b> sau <b>Keycloak</b>, după cum se autentifică firma. Testează, apoi salvează.</li>
+  <li>Verifică într-o fereastră privată a browserului conectarea cu un cont obișnuit.</li>
+</ol>
+<h3>Active Directory: ce trebuie pregătit</h3>
+<ul>
+  <li>Acces de la serverul Taskel la controlerul de domeniu pe portul 636 (LDAPS).</li>
+  <li>Certificatul controlerului trebuie să fie de încredere pe serverul Taskel. Pentru o autoritate internă: copiază certificatul rădăcină în <code>/usr/local/share/ca-certificates/</code> (cu extensia <code>.crt</code>) și rulează <code>sudo update-ca-certificates</code>, apoi repornește serviciul.</li>
+  <li>Nu este nevoie de un cont de serviciu: Taskel verifică parola în numele utilizatorului care se conectează.</li>
+  <li>Opțional, grupuri în domeniu pentru: cine are acces, cine este manager, cine este administrator.</li>
+</ul>
+<h3>Keycloak: configurarea clientului</h3>
+<p>În consola Keycloak, în realm-ul firmei, <b>Clients → Create client</b>:</p>
+<table>
+  <tr><th style="width:40%">Setare</th><th>Valoare</th></tr>
+  <tr><td>Client type · Client ID</td><td>OpenID Connect · <code>taskel</code></td></tr>
+  <tr><td>Client authentication</td><td>Pornit (client confidențial)</td></tr>
+  <tr><td>Standard flow</td><td>Pornit. Direct access grants: oprit</td></tr>
+  <tr><td>Service accounts roles</td><td>Pornit, dacă vrei importul de utilizatori</td></tr>
+  <tr><td>Valid redirect URIs</td><td><code>https://taskel.firma.ro/api/auth/keycloak/callback</code></td></tr>
+  <tr><td>Valid post logout redirect URIs</td><td><code>https://taskel.firma.ro/</code></td></tr>
+  <tr><td>Web origins</td><td><code>https://taskel.firma.ro</code></td></tr>
+  <tr><td>Advanced → PKCE Code Challenge Method</td><td><code>S256</code></td></tr>
+</table>
+<p>Apoi:</p>
+<ul>
+  <li><b>Secretul</b> îl copiezi din fila <b>Credentials</b> în panoul Keycloak din Taskel.</li>
+  <li><b>Roluri</b> (opțional): creează de exemplu <code>taskel-user</code>, <code>taskel-manager</code>, <code>taskel-admin</code> și trece-le în câmpurile corespunzătoare din Taskel.</li>
+  <li><b>Departament</b> (opțional): pe client, <b>Client scopes → taskel-dedicated → Add mapper → User Attribute</b>, atribut și claim <code>department</code>, adăugat în ID token. În Keycloak 24 și mai nou, declară întâi atributul la <b>Realm settings → User profile</b>.</li>
+  <li><b>Grupuri</b> (opțional): mapper <b>Group Membership</b>, claim <code>groups</code>, cu <i>Full group path</i> pornit, adăugat în ID token.</li>
+  <li><b>Import</b> (opțional): <b>Clients → taskel → Service accounts roles → Assign role</b>, rolul <code>view-users</code> al clientului <code>realm-management</code>.</li>
+</ul>
+<figure class="tall">
+  <img src="../../screenshots/system-settings.png" alt="Panoul Keycloak">
+  <figcaption>Panoul Keycloak din Taskel afișează cele două adrese de înregistrat pe client.</figcaption>
+</figure>
+<h3>Macro-ul pentru Outlook</h3>
+<p>Fișierul <code>integrations/outlook/TaskelOutlook.bas</code> din codul sursă se distribuie utilizatorilor de Outlook clasic pentru Windows. Fiecare îl importă și îl leagă de contul lui cu un token creat în <b class="ui">Integrări</b>; pașii sunt în Manualul utilizatorului. Adresa cerută de macro este adresa publică a aplicației (<code>https://taskel.firma.ro</code>).</p>
+
+<h2>Copii de siguranță și restaurare</h2>
+<h3>Ce trebuie salvat</h3>
+<table>
+  <tr><th style="width:34%">Ce</th><th>Unde</th><th style="width:30%">De ce</th></tr>
+  <tr><td>Baza de date</td><td>PostgreSQL, baza <code>taskel</code></td><td>Conturi, task-uri, setări, cheile de criptare</td></tr>
+  <tr><td>Fișierele atașate</td><td><code>/var/lib/taskel/attachments</code></td><td>Conținutul fișierelor (în bază sunt doar numele)</td></tr>
+  <tr><td>Configurația</td><td><code>/etc/taskel/taskel.env</code>, configurația nginx</td><td>Refacerea rapidă a serverului</td></tr>
+</table>
+<p>Baza de date și directorul de fișiere trebuie salvate <b>împreună</b>, la același moment.</p>
+<pre><code># exemplu de copie zilnică
+sudo -u postgres pg_dump -Fc taskel &gt; /backup/taskel-$(date +%F).dump
+sudo tar -czf /backup/taskel-fisiere-$(date +%F).tar.gz -C /var/lib/taskel attachments</code></pre>
+<h3>Cheile de criptare</h3>
+<p>Sesiunile utilizatorilor și secretele salvate din interfață (parola SMTP, secretul Keycloak) sunt criptate cu chei pe care aplicația le ține, implicit, în baza de date. Consecințe:</p>
+<ul>
+  <li>copia bazei de date conține atât secretele criptate, cât și cheile; păstreaz-o într-un loc protejat;</li>
+  <li>dacă preferi ca ele să fie separate, setează <code>DataProtection__KeysPath=/var/lib/taskel/keys</code> (director al utilizatorului <code>taskel</code>, cu drepturi <code>700</code>) și salvează acel director separat;</li>
+  <li>dacă se pierd cheile, toți utilizatorii trebuie să se reconecteze, iar secretele salvate în interfață trebuie reintroduse.</li>
+</ul>
+<h3>Restaurarea</h3>
+<pre><code>sudo systemctl stop taskel
+sudo -u postgres dropdb taskel
+sudo -u postgres createdb -O taskel taskel
+sudo -u postgres pg_restore -d taskel /backup/taskel-2026-11-16.dump
+sudo tar -xzf /backup/taskel-fisiere-2026-11-16.tar.gz -C /var/lib/taskel
+sudo chown -R taskel:taskel /var/lib/taskel
+sudo systemctl start taskel</code></pre>
+
+<h2>Actualizarea</h2>
+<ol class="steps">
+  <li>Fă o copie de siguranță (capitolul anterior).</li>
+  <li>Adu codul nou și compilează-l:
+<pre><code>cd Taskel &amp;&amp; git pull
+cd backend &amp;&amp; dotnet publish src/Taskel.Api -c Release -o /tmp/taskel-api
+cd ../frontend &amp;&amp; npm ci &amp;&amp; npm run build</code></pre></li>
+  <li>Înlocuiește fișierele și repornește:
+<pre><code>sudo systemctl stop taskel
+sudo rm -rf /opt/taskel/api/* /opt/taskel/www/*
+sudo cp -r /tmp/taskel-api/. /opt/taskel/api/
+sudo cp -r dist/. /opt/taskel/www/
+sudo chown -R taskel:taskel /opt/taskel/api
+sudo systemctl start taskel</code></pre></li>
+  <li>Verifică: <code>curl http://127.0.0.1:5080/api/health</code>, apoi conectarea din browser.</li>
+</ol>
+<p>Cu <code>Database__MigrateOnStartup=true</code>, structura bazei de date se actualizează singură la pornire. Utilizatorii rămân conectați. Dacă interfața pare neschimbată, reîncarcă pagina cu Ctrl+F5.</p>
+<div class="warn"><strong>Fișierele atașate</strong>Dacă nu ai setat <code>Attachments__Path</code> în afara directorului aplicației, fișierele sunt în <code>/opt/taskel/api/data/attachments</code> și comanda de ștergere de mai sus le-ar șterge. Verifică înainte.</div>
+
+<h2>Administrarea conturilor locale din baza de date</h2>
+<p>Interfața nu are deocamdată ștergerea conturilor sau resetarea parolelor locale. Până atunci, cele două operații uzuale se pot face direct în baza de date. Conturile de domeniu și Keycloak se administrează la sursa lor.</p>
+<pre><code>sudo -u postgres psql taskel</code></pre>
+<h3>Blocarea unui cont local</h3>
+<pre><code>UPDATE users SET "PasswordHash" = '' WHERE "Email" = 'fost.angajat@firma.ro';</code></pre>
+<p>Contul nu se mai poate conecta; task-urile lui rămân. O sesiune deja deschisă pe un dispozitiv rămâne valabilă până expiră (cel mult 14 zile de la ultima folosire).</p>
+<h3>Resetarea parolei unui cont local</h3>
+<ol class="steps">
+  <li>Înregistrează din interfață un cont temporar (de exemplu <code>temporar@firma.ro</code>) cu parola pe care vrei să o dai.</li>
+  <li>Copiază parola criptată pe contul persoanei și șterge contul temporar:
+<pre><code>UPDATE users SET "PasswordHash" =
+  (SELECT "PasswordHash" FROM users WHERE "Email" = 'temporar@firma.ro')
+WHERE "Email" = 'persoana@firma.ro';
+DELETE FROM users WHERE "Email" = 'temporar@firma.ro';</code></pre></li>
+  <li>Comunică persoanei parola pe un canal sigur.</li>
+</ol>
+<div class="note"><strong>Adresele sunt cu litere mici</strong>Taskel ține adresele de email cu litere mici; scrie-le așa în comenzile de mai sus.</div>
+
+<h2>Depanare</h2>
+<table>
+  <tr><th style="width:40%">Simptom</th><th>Cauză probabilă și rezolvare</th></tr>
+  <tr><td>Serviciul nu pornește: „Connection string … is not configured”</td><td>Lipsește <code>ConnectionStrings__Taskel</code> sau fișierul <code>.env</code> nu este citit de serviciu.</td></tr>
+  <tr><td>Serviciul nu pornește: eroare de conectare la PostgreSQL</td><td>Verifică parola, numele bazei și că PostgreSQL rulează: <code>pg_isready</code>.</td></tr>
+  <tr><td>Pagină albă sau 500 la adresa aplicației; în jurnalul nginx „Permission denied”</td><td>nginx nu poate citi <code>/opt/taskel/www</code>. Rulează <code>sudo chmod -R a+rX /opt/taskel/www</code> și verifică drepturile pe directoarele părinte.</td></tr>
+  <tr><td>Conectarea „reușește”, dar revine ecranul de conectare</td><td>Aplicația este accesată prin HTTP, sau lipsesc antetul <code>X-Forwarded-Proto</code> ori <code>ASPNETCORE_FORWARDEDHEADERS_ENABLED=true</code>.</td></tr>
+  <tr><td>„Prea multe încercări de conectare” pentru toată lumea</td><td>Aplicația vede toți utilizatorii la adresa proxy-ului. Aceeași cauză ca mai sus (<code>X-Forwarded-For</code>).</td></tr>
+  <tr><td>Fișierele mari nu se încarcă (eroare 413)</td><td>Mărește <code>client_max_body_size</code> în nginx peste limita din Setări sistem.</td></tr>
+  <tr><td>Încărcarea fișierelor eșuează cu eroare de server</td><td>Utilizatorul <code>taskel</code> nu poate scrie în <code>Attachments__Path</code>.</td></tr>
+  <tr><td>Nimeni nu vede Setări sistem</td><td><code>Auth__AdminEmails__0</code> nu corespunde adresei contului, sau serviciul nu a fost repornit după modificare.</td></tr>
+  <tr><td>Keycloak: „Invalid parameter: redirect_uri”</td><td>Adresa de întoarcere nu este înregistrată pe client sau <b class="ui">Adresa aplicației</b> este greșită. Compară cu adresa afișată în panoul Keycloak.</td></tr>
+  <tr><td>Active Directory: testul eșuează cu eroare de certificat</td><td>Certificatul controlerului nu este de încredere pe server sau nu corespunde numelui introdus.</td></tr>
+  <tr><td>După restaurare: toți sunt deconectați, secretele „nu mai pot fi citite”</td><td>Cheile de criptare nu au fost restaurate. Reintrodu parola SMTP și secretul Keycloak în Setări sistem.</td></tr>
+</table>
+<h3>Unde te uiți</h3>
+<pre><code>sudo journalctl -u taskel -n 100 --no-pager     # jurnalul aplicației
+sudo tail -n 50 /var/log/nginx/error.log        # jurnalul nginx
+curl http://127.0.0.1:5080/api/health           # aplicația răspunde direct?
+curl -I https://taskel.firma.ro/api/health      # ...și prin nginx?</code></pre>
+
+<h2>Lista de verificare la punerea în funcțiune</h2>
+<table>
+  <tr><th style="width:6%">✓</th><th>Verificare</th></tr>
+  <tr><td>☐</td><td>Aplicația se deschide la adresa <code>https://</code>, iar <code>http://</code> redirecționează către ea.</td></tr>
+  <tr><td>☐</td><td>Contul din <code>Auth__AdminEmails__0</code> vede <b class="ui">Setări sistem</b>.</td></tr>
+  <tr><td>☐</td><td><b class="ui">Adresa aplicației</b> este completată în panoul de email.</td></tr>
+  <tr><td>☐</td><td>Emailul de test ajunge.</td></tr>
+  <tr><td>☐</td><td>Un utilizator obișnuit se poate conecta pe calea aleasă (domeniu, Keycloak sau cont local).</td></tr>
+  <tr><td>☐</td><td>Un task cu un fișier atașat de mărime apropiată de limită se salvează și fișierul se descarcă.</td></tr>
+  <tr><td>☐</td><td>Un task alocat altui utilizator produce un email de notificare.</td></tr>
+  <tr><td>☐</td><td>Înregistrarea liberă este oprită, dacă serverul este accesibil din internet.</td></tr>
+  <tr><td>☐</td><td>Există cel puțin doi administratori, dintre care unul cu cont local.</td></tr>
+  <tr><td>☐</td><td>Copia de siguranță rulează zilnic și a fost încercată o restaurare.</td></tr>
+  <tr><td>☐</td><td>Spațiul pe disc al directorului de fișiere este monitorizat.</td></tr>
+</table>

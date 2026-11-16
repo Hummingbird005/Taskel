@@ -1,0 +1,315 @@
+<section class="cover">
+  <div class="brand"><span class="mark">✓</span>Taskel</div>
+  <div class="kind">Manual · rolul Utilizator</div>
+  <h1>Manualul utilizatorului</h1>
+  <p class="lead">Cum îți organizezi task-urile, cum lucrezi pe cele primite de la colegi și cum transformi emailurile în task-uri.</p>
+  <div class="meta"><span>Taskel · documentație pentru utilizatori</span><span>Ediția noiembrie 2026</span></div>
+</section>
+
+<section class="toc">
+  <h2 class="plain">Cuprins</h2>
+  <ol></ol>
+</section>
+
+<h2>Despre Taskel și despre acest manual</h2>
+<p class="lead-in">Taskel este aplicația în care ții evidența lucrurilor de făcut: ale tale, cele pe care le dai colegilor și cele pe care le primești de la ei sau din email.</p>
+<p>Acest manual este pentru oricine are un cont în Taskel. Descrie tot ce poate face un cont cu rolul <b>Utilizator</b>. Managerii și administratorii pot face în plus alte lucruri, descrise în manualele lor; tot ce scrie aici li se aplică și lor.</p>
+<h3>Ce găsești în aplicație</h3>
+<ul>
+  <li><b>Task-uri</b> cu titlu, mesaj, termen sau interval, prioritate, etichete și fișiere atașate.</li>
+  <li><b>Vederi</b> care îți arată ce ai de făcut azi, ce urmează și ce a întârziat.</li>
+  <li><b>Alocare</b>: dai un task unui coleg sau unui grup și îl urmărești până la capăt.</li>
+  <li><b>Stări</b>: un task este deschis, în așteptare (cu motiv) sau finalizat (cu mesaj de rezolvare).</li>
+  <li><b>Emailuri din Outlook</b> transformate în task-uri, cu răspuns trimis automat expeditorului la finalizare.</li>
+  <li><b>Notificări pe email</b> când un task ajunge la tine.</li>
+</ul>
+<h3>Cuvinte folosite în manual</h3>
+<table>
+  <tr><th style="width:28%">Termen</th><th>Ce înseamnă</th></tr>
+  <tr><td>Creator</td><td>Persoana care a adăugat task-ul. Rămâne „proprietarul” lui: îl poate modifica, realoca și șterge oricând.</td></tr>
+  <tr><td>Responsabil</td><td>Persoana la care se află task-ul acum și care lucrează la el.</td></tr>
+  <tr><td>Task delegat</td><td>Un task creat de tine și dat altcuiva (unei persoane sau unui grup).</td></tr>
+  <tr><td>Task direcționat</td><td>Un task primit de tine și dat mai departe altcuiva. Nu mai este la tine, dar îl poți citi.</td></tr>
+  <tr><td>Grup</td><td>O listă de persoane. Un task dat unui grup îl văd toți membrii, până îl preia unul dintre ei.</td></tr>
+</table>
+
+<h2>Conectarea</h2>
+<p>Deschide adresa aplicației primită de la administrator (de exemplu <code>https://taskel.firma.ro</code>) într-un browser actual: Chrome, Edge, Firefox sau Safari. Aplicația funcționează și pe telefon și tabletă.</p>
+<figure>
+  <img src="../../screenshots/signin.png" alt="Ecranul de conectare">
+  <figcaption>Ecranul de conectare. Opțiunile afișate depind de cum este configurat serverul.</figcaption>
+</figure>
+<p>În funcție de configurarea făcută de administrator, ai una sau mai multe dintre aceste posibilități:</p>
+<table>
+  <tr><th style="width:30%">Mod de conectare</th><th>Cum procedezi</th></tr>
+  <tr><td><b>Autentificare unică (Keycloak)</b></td><td>Apeși butonul <b class="ui">Conectează-te cu …</b>. Ești dus pe pagina de autentificare a firmei, introduci acolo datele, apoi revii automat în Taskel.</td></tr>
+  <tr><td><b>Cont de domeniu</b></td><td>Pe fila <b class="ui">Cont de domeniu</b> introduci utilizatorul de Windows (de exemplu <code>ion.popescu</code>) și parola de Windows.</td></tr>
+  <tr><td><b>Cont local</b></td><td>Pe fila <b class="ui">Cont local</b> introduci adresa de email și parola contului Taskel.</td></tr>
+</table>
+<h3>Crearea unui cont local</h3>
+<p>Dacă sub formular apare <b class="ui">Nu ai încă un cont? Creează unul</b>, îți poți face singur un cont: introduci adresa de email și o parolă de cel puțin 8 caractere. Dacă linkul nu apare, conturile se creează doar de către administrator sau prin contul de domeniu ori Keycloak.</p>
+<h3>Dacă nu te poți conecta</h3>
+<table>
+  <tr><th style="width:44%">Mesaj</th><th>Ce faci</th></tr>
+  <tr><td>Email sau parolă greșită / Nume de utilizator sau parolă greșită</td><td>Verifică datele și fila aleasă. Conturile de domeniu nu se pot conecta pe fila „Cont local”.</td></tr>
+  <tr><td>Prea multe încercări de conectare</td><td>Așteaptă un minut și încearcă din nou.</td></tr>
+  <tr><td>Active Directory nu este disponibil acum</td><td>Serverul de domeniu nu răspunde. Încearcă mai târziu sau anunță administratorul.</td></tr>
+  <tr><td>Contul tău din Keycloak nu are acces la Taskel</td><td>Cere administratorului rolul necesar.</td></tr>
+  <tr><td>Există deja un cont local cu adresa ta…</td><td>Adresa ta de email trebuie verificată în Keycloak. Anunță administratorul.</td></tr>
+</table>
+<div class="note"><strong>De știut</strong>Rămâi conectat 14 zile pe dispozitivul respectiv. Pe un calculator folosit și de alții, deconectează-te cu butonul din colțul din stânga jos, lângă numele tău.</div>
+
+<h2>Ecranul principal</h2>
+<p>După conectare ajungi pe <b class="ui">Acasă</b>. Ecranul are două zone: meniul din stânga și conținutul vederii alese.</p>
+<figure>
+  <img src="../../screenshots/dashboard.png" alt="Ecranul Acasă">
+  <figcaption>Ecranul <b>Acasă</b>: meniul cu vederi în stânga, rezumatul task-urilor în dreapta.</figcaption>
+</figure>
+<h3>Meniul</h3>
+<table>
+  <tr><th style="width:26%">Vedere</th><th>Ce arată</th></tr>
+  <tr><td><b class="ui">Acasă</b></td><td>Rezumatul: câte task-uri ai deschise, ce e de făcut azi, ce a întârziat, ce urmează.</td></tr>
+  <tr><td><b class="ui">Toate task-urile</b></td><td>Tot ce ai de făcut tu: task-urile tale și cele alocate ție.</td></tr>
+  <tr><td><b class="ui">Azi</b></td><td>Task-urile deschise cu termen azi.</td></tr>
+  <tr><td><b class="ui">Urmează</b></td><td>Task-urile deschise cu termen în viitor.</td></tr>
+  <tr><td><b class="ui">Întârziate</b></td><td>Task-urile deschise cu termenul depășit. Numărul apare cu roșu.</td></tr>
+  <tr><td><b class="ui">Finalizate</b></td><td>Ce ai terminat.</td></tr>
+  <tr><td><b class="ui">De preluat</b></td><td>Task-uri date unui grup din care faci parte și pe care nu le-a luat încă nimeni.</td></tr>
+  <tr><td><b class="ui">Delegate</b></td><td>Task-uri create de tine și date altcuiva.</td></tr>
+  <tr><td><b class="ui">Direcționate</b></td><td>Task-uri primite de tine și date mai departe.</td></tr>
+  <tr><td><b class="ui">Etichete</b></td><td>Câte o vedere pentru fiecare etichetă pe care ai folosit-o.</td></tr>
+  <tr><td><b class="ui">Integrări</b></td><td>Notificările pe email și legătura cu Outlook.</td></tr>
+</table>
+<p>Numărul din dreptul unei vederi arată câte task-uri <i>deschise</i> conține. Jos, în meniu, alegi tema de culori și te deconectezi.</p>
+<h3>Atenționarea de la deschidere</h3>
+<p>Dacă ai task-uri întârziate sau cu termen azi, la deschiderea aplicației apare o fereastră care le enumeră, cu scurtături către vederile respective. Apare o singură dată la fiecare vizită și o poți opri din <b class="ui">Acasă → Personalizează</b>.</p>
+<figure>
+  <img src="../../screenshots/reminder.png" alt="Atenționarea de la deschidere">
+  <figcaption>Atenționarea pentru task-urile întârziate și cele cu termen azi.</figcaption>
+</figure>
+
+<h2>Adăugarea unui task</h2>
+<ol class="steps">
+  <li>Apasă <b class="ui">Task nou</b>, în dreapta sus (pe Acasă sau în orice listă de task-uri).</li>
+  <li>Scrie <b>titlul</b>. Este singurul câmp obligatoriu.</li>
+  <li>Completează, dacă e cazul, mesajul, datele, prioritatea, etichetele, persoana și fișierele.</li>
+  <li>Apasă <b class="ui">Adaugă task-ul</b>. Un mesaj în partea de sus confirmă și îți spune unde găsești task-ul.</li>
+</ol>
+<figure>
+  <img src="../../screenshots/new-task.png" alt="Fereastra Task nou">
+  <figcaption>Fereastra <b>Task nou</b>, cu toate câmpurile completate.</figcaption>
+</figure>
+<table>
+  <tr><th style="width:22%">Câmp</th><th>Explicație</th></tr>
+  <tr><td>Titlu</td><td>Ce este de făcut, pe scurt. Cel mult 200 de caractere. Este ce se vede în liste.</td></tr>
+  <tr><td>Mesaj</td><td>Detalii, context, pași. Cel mult 2000 de caractere. Se vede când deschizi task-ul.</td></tr>
+  <tr><td>Început</td><td>Opțional. Prima zi a intervalului în care se lucrează la task. Fără el, task-ul are doar termen.</td></tr>
+  <tr><td>Termen</td><td>Ultima zi. După această zi, task-ul nefinalizat apare la <b class="ui">Întârziate</b>.</td></tr>
+  <tr><td>Prioritate</td><td>Scăzută, Medie (implicit) sau Ridicată.</td></tr>
+  <tr><td>Etichete</td><td>Cuvinte separate prin virgulă, de exemplu <code>contabilitate, proiect-alfa</code>. Cel mult 10 etichete a câte 30 de caractere. Fiecare etichetă devine o vedere în meniu.</td></tr>
+  <tr><td>Alocat către</td><td>Cine face task-ul. Implicit „Eu”. Vezi capitolul <i>Lucrul cu colegii</i>.</td></tr>
+  <tr><td>Fișiere</td><td>Documente atașate. Implicit, cel mult 100 MB pe fișier și 20 de fișiere pe task (administratorul poate schimba limita de mărime).</td></tr>
+</table>
+<div class="tip"><strong>Sfat</strong>Dacă apeși <b class="ui">Task nou</b> din vederea <b class="ui">Azi</b>, termenul vine precompletat cu ziua de azi. Dintr-o vedere de etichetă, eticheta vine precompletată.</div>
+
+<h2>Listele de task-uri</h2>
+<p>Orice vedere din meniu (în afară de Acasă și Integrări) este o listă. În listă apar doar <b>titlurile</b>, cu câteva informații esențiale; restul se vede când deschizi task-ul.</p>
+<figure>
+  <img src="../../screenshots/tasks.png" alt="Lista de task-uri">
+  <figcaption>O listă de task-uri, grupată după termen.</figcaption>
+</figure>
+<h3>Cum citești un rând</h3>
+<ul>
+  <li><b>Semnul din stânga</b> arată starea: cerc gol pentru deschis, ceas pentru în așteptare, <b>bifă verde</b> pentru finalizat. Task-urile finalizate nu sunt tăiate cu o linie; le recunoști după bifă.</li>
+  <li><b>Titlul</b>, apoi termenul sau intervalul, prioritatea (dacă nu e medie), etichetele, persoana sau grupul și numărul de fișiere.</li>
+  <li>Termenul depășit apare cu roșu.</li>
+</ul>
+<h3>Grupare, sortare, căutare</h3>
+<ul>
+  <li>Implicit, lista este grupată după termen: <b class="ui">Întârziate</b>, <b class="ui">Azi</b>, <b class="ui">Mâine</b>, <b class="ui">Mai târziu</b>, <b class="ui">Fără termen</b>.</li>
+  <li>Din lista derulantă din dreapta sus alegi <b class="ui">După termen</b>, <b class="ui">După prioritate</b> sau <b class="ui">După data creării</b>.</li>
+  <li>În câmpul <b class="ui">Caută task-uri</b> scrii câteva litere din titlu, mesaj, etichetă sau numele unei persoane; lista se filtrează pe loc.</li>
+</ul>
+<p><b>Un clic oriunde pe rând deschide task-ul.</b></p>
+
+<h2>Lucrul pe un task</h2>
+<p>Fereastra task-ului arată titlul, detaliile, mesajul, fișierele și traseul, iar în partea de jos câmpul de mesaj și butoanele de stare.</p>
+<figure>
+  <img src="../../screenshots/task-detail.png" alt="Un task deschis">
+  <figcaption>Un task deschis: detalii sus, mesajul de rezolvare și butoanele de stare jos.</figcaption>
+</figure>
+<h3>Cele trei stări</h3>
+<table>
+  <tr><th style="width:22%">Stare</th><th>Când o folosești</th><th style="width:34%">Ce trebuie să scrii</th></tr>
+  <tr><td><span class="state open">Deschis</span></td><td>Se lucrează la task. Este starea de pornire.</td><td>Nimic.</td></tr>
+  <tr><td><span class="state waiting">În așteptare</span></td><td>Nu poți continua până nu se întâmplă altceva: un răspuns, o aprobare, o livrare.</td><td><b>Motivul este obligatoriu</b> (cel mult 1000 de caractere).</td></tr>
+  <tr><td><span class="state done">Finalizat</span></td><td>Ai terminat.</td><td>Mesajul de rezolvare este opțional, dar recomandat. Pentru task-urile venite din email, răspunsul este obligatoriu.</td></tr>
+</table>
+<h3>Punerea în așteptare</h3>
+<ol class="steps">
+  <li>Scrie motivul în câmpul <b class="ui">Mesaj de rezolvare</b> (de exemplu „Aștept avizul departamentului juridic”).</li>
+  <li>Apasă <b class="ui">În așteptare</b>.</li>
+</ol>
+<p>Task-ul rămâne în listele tale ca task deschis, marcat cu un ceas, iar motivul apare într-o casetă galbenă. Când poți continua, apasă <b class="ui">Reia lucrul</b>. Ca să schimbi motivul, scrie-l pe cel nou și apasă <b class="ui">Schimbă motivul</b>.</p>
+<figure>
+  <img src="../../screenshots/task-waiting.png" alt="Task în așteptare">
+  <figcaption>Un task în așteptare, cu motivul și data de la care așteaptă.</figcaption>
+</figure>
+<h3>Finalizarea</h3>
+<ol class="steps">
+  <li>Scrie, dacă vrei, ce s-a rezolvat.</li>
+  <li>Apasă <b class="ui">Finalizat</b>.</li>
+</ol>
+<p>Task-ul trece la <b class="ui">Finalizate</b>, iar mesajul tău rămâne vizibil într-o casetă verde, cu data finalizării. Dacă te-ai grăbit, apasă <b class="ui">Redeschide</b>.</p>
+<figure>
+  <img src="../../screenshots/task-done.png" alt="Task finalizat">
+  <figcaption>Un task finalizat, cu mesajul de rezolvare.</figcaption>
+</figure>
+<h3>Butoanele din antetul ferestrei</h3>
+<table>
+  <tr><th style="width:30%">Buton</th><th>Ce face</th><th style="width:28%">Cine îl vede</th></tr>
+  <tr><td>Creion · <b class="ui">Editează</b></td><td>Schimbi titlul, mesajul, datele, prioritatea, etichetele. Creatorul poate schimba și persoana.</td><td>Creatorul și responsabilul</td></tr>
+  <tr><td>Săgeată · <b class="ui">Direcționează</b></td><td>Dai task-ul primit mai departe, altei persoane sau unui grup.</td><td>Responsabilul</td></tr>
+  <tr><td>Persoane · <b class="ui">Dă înapoi grupului</b></td><td>Renunți la un task preluat dintr-un grup; îl poate lua alt membru.</td><td>Cine l-a preluat</td></tr>
+  <tr><td>Coș · <b class="ui">Șterge</b></td><td>Șterge definitiv task-ul, cu fișierele lui. Nu poate fi recuperat.</td><td>Doar creatorul</td></tr>
+</table>
+<h3>Fișierele</h3>
+<p>În secțiunea <b class="ui">Fișiere</b> adaugi documente cu <b class="ui">Adaugă fișier</b>, le descarci cu un clic pe nume și le ștergi cu „×”. Fișierele se descarcă întotdeauna pe calculator; nu se deschid în aplicație.</p>
+<h3>Traseul</h3>
+<p>Dacă task-ul a trecut pe la mai multe persoane, secțiunea <b class="ui">Traseu</b> arată cine l-a dat cui, când și cu ce mesaj.</p>
+
+<h2>Lucrul cu colegii</h2>
+<h3>Alocarea unui task</h3>
+<p>În câmpul <b class="ui">Alocat către</b> începi să scrii numele, emailul sau grupul. Apar cel mult opt potriviri; alegi cu mouse-ul sau cu săgețile și Enter. Căutarea nu ține cont de majuscule sau diacritice.</p>
+<figure>
+  <img src="../../screenshots/assign-search.png" alt="Căutarea unei persoane">
+  <figcaption>Alegerea persoanei prin căutare.</figcaption>
+</figure>
+<div class="note"><strong>Avertizarea de încărcare</strong>Dacă persoana aleasă are deja task-uri în aceeași zi sau perioadă, apare un mesaj de forma „Maria Ionescu mai are 4 task-uri în perioada 15–17 nov.”. Este doar o informare; poți aloca task-ul oricum.</div>
+<p>Task-ul alocat altcuiva dispare din lista ta de lucru și apare la <b class="ui">Delegate</b>. Rămâne al tău: îl poți modifica, realoca sau șterge.</p>
+<figure>
+  <img src="../../screenshots/delegated.png" alt="Vederea Delegate">
+  <figcaption>Vederea <b>Delegate</b>: ce ai dat altora și la cine se află.</figcaption>
+</figure>
+<h3>Task-uri pentru un grup</h3>
+<p>Un task dat unui grup apare la toți membrii, în vederea <b class="ui">De preluat</b>. Primul care apasă <b class="ui">Preia</b> devine responsabil, iar task-ul dispare de la ceilalți. Dacă nu îl mai poți face, deschide-l și apasă <b class="ui">Dă înapoi grupului</b>.</p>
+<figure>
+  <img src="../../screenshots/claimable.png" alt="Vederea De preluat">
+  <figcaption>Vederea <b>De preluat</b>, cu butonul <b>Preia</b> pe fiecare task.</figcaption>
+</figure>
+<h3>Direcționarea unui task primit</h3>
+<ol class="steps">
+  <li>Deschide task-ul primit și apasă butonul <b class="ui">Direcționează</b> din antet.</li>
+  <li>Caută persoana sau grupul la <b class="ui">Direcționează către</b>.</li>
+  <li>Scrie, opțional, un mesaj pentru cine îl primește (cel mult 500 de caractere).</li>
+  <li>Apasă <b class="ui">Direcționează</b>.</li>
+</ol>
+<figure>
+  <img src="../../screenshots/forward.png" alt="Direcționarea unui task">
+  <figcaption>Formularul de direcționare.</figcaption>
+</figure>
+<p>Task-ul nu mai este la tine. Îl găsești la <b class="ui">Direcționate</b>, unde îl poți doar citi: vezi la cine a ajuns, în ce stare este și tot traseul.</p>
+<figure>
+  <img src="../../screenshots/forwarded.png" alt="Vederea Direcționate">
+  <figcaption>Vederea <b>Direcționate</b>.</figcaption>
+</figure>
+<h3>Delegate sau Direcționate?</h3>
+<table>
+  <tr><th style="width:22%"></th><th>Delegate</th><th>Direcționate</th></tr>
+  <tr><td>Cine a creat task-ul</td><td>Tu</td><td>Altcineva</td></tr>
+  <tr><td>Ce ai făcut</td><td>L-ai dat cuiva să îl facă</td><td>L-ai primit și l-ai dat mai departe</td></tr>
+  <tr><td>Ce mai poți face</td><td>Orice: modifici, realoci, ștergi, finalizezi</td><td>Doar îl citești</td></tr>
+</table>
+<h3>Cine ce poate face</h3>
+<table>
+  <tr><th>Ești…</th><th>Citești</th><th>Editezi, schimbi starea</th><th>Direcționezi</th><th>Realoci oricui</th><th>Ștergi</th></tr>
+  <tr><td>Creatorul</td><td>da</td><td>da</td><td>–</td><td>da</td><td>da</td></tr>
+  <tr><td>Responsabilul (l-ai primit)</td><td>da</td><td>da</td><td>da</td><td>–</td><td>–</td></tr>
+  <tr><td>Membru al grupului (nepreluat)</td><td>da</td><td>îl poți prelua</td><td>–</td><td>–</td><td>–</td></tr>
+  <tr><td>Cel care l-a direcționat</td><td>da</td><td>–</td><td>–</td><td>–</td><td>–</td></tr>
+</table>
+
+<h2>Task-uri din email</h2>
+<p>Cu macro-ul Taskel pentru Outlook, un email devine task dintr-un clic. Titlul este subiectul emailului, mesajul conține expeditorul, data și textul, iar fișierele atașate emailului se atașează task-ului. Task-ul primește eticheta <code>email</code>.</p>
+<h3>Finalizarea cu răspuns</h3>
+<p>Un task venit din email se finalizează doar scriind un răspuns. La apăsarea butonului <b class="ui">Trimite și finalizează</b>, Taskel trimite textul pe email expeditorului, ca răspuns la mesajul inițial, apoi marchează task-ul finalizat.</p>
+<figure>
+  <img src="../../screenshots/reply.png" alt="Răspunsul la un task din email">
+  <figcaption>Un task din email: câmpul de jos este răspunsul către expeditor.</figcaption>
+</figure>
+<div class="warn"><strong>Atenție</strong>Răspunsul pleacă de pe adresa de email a aplicației, nu de pe adresa ta. Dacă trimiterea eșuează, task-ul rămâne deschis și primești un mesaj de eroare; încearcă din nou sau anunță administratorul.</div>
+<h3>Instalarea macro-ului în Outlook</h3>
+<p>Macro-ul funcționează în <b>Outlook clasic pentru Windows</b>. Nu funcționează în „noul Outlook”, în Outlook pe web sau pe Mac. Fișierul <code>TaskelOutlook.bas</code> îl primești de la administrator.</p>
+<ol class="steps">
+  <li>În Taskel, deschide <b class="ui">Integrări</b>, apasă <b class="ui">Token nou</b> și copiază tokenul afișat (începe cu <code>tsk_</code>). Este afișat o singură dată.</li>
+  <li>În Outlook: <b>File → Options → Trust Center → Trust Center Settings → Macro Settings</b>, alege <b>Notifications for all macros</b>, apoi repornește Outlook.</li>
+  <li>Apasă <b>Alt+F11</b>, apoi <b>File → Import File…</b> și alege <code>TaskelOutlook.bas</code>. Apasă <b>Ctrl+S</b> și închide editorul.</li>
+  <li>Apasă <b>Alt+F8</b>, rulează <b>ConfigureTaskel</b>, introdu adresa aplicației (aceeași ca în browser) și lipește tokenul. Trebuie să apară „Connected to Taskel.”</li>
+  <li>Clic dreapta pe panglică → <b>Customize the Ribbon…</b>, creează un grup nou în fila <b>Home (Mail)</b> și adaugă macro-ul <code>Project1.TaskelOutlook.SendToTaskel</code>. Redenumește-l „Send to Taskel”.</li>
+</ol>
+<figure>
+  <img src="../../screenshots/integrations.png" alt="Ecranul Integrări">
+  <figcaption>Ecranul <b>Integrări</b>: notificările pe email și token-urile pentru Outlook.</figcaption>
+</figure>
+<p><b>Folosire:</b> selectezi unul sau mai multe emailuri și apeși <b>Send to Taskel</b>. Trimiterea aceluiași email de două ori creează două task-uri.</p>
+<div class="warn"><strong>Securitate</strong>Tokenul dă acces la task-urile tale. Dacă pierzi calculatorul sau nu mai folosești macro-ul, apasă <b class="ui">Revocă</b> în dreptul tokenului, în Integrări. Poți avea cel mult 10 token-uri.</div>
+
+<h2>Notificări pe email</h2>
+<p>Primești un email când:</p>
+<ul>
+  <li>cineva îți alocă sau îți direcționează un task;</li>
+  <li>un task este dat unui grup din care faci parte.</li>
+</ul>
+<p>Emailul conține titlul, termenul, prioritatea, mesajul celui care ți l-a trimis și un link către aplicație. Nu primești email pentru propriile acțiuni.</p>
+<p>Notificările sunt pornite implicit. Le oprești sau le repornești din <b class="ui">Integrări → Notificări pe email</b>, cu bifa <b class="ui">Trimite-mi un email când primesc un task</b>. Dacă sub bifă scrie că trimiterea de emailuri nu este configurată, serverul nu trimite deocamdată nimic; alegerea ta se păstrează.</p>
+
+<h2>Personalizare</h2>
+<h3>Ecranul Acasă</h3>
+<p>Apasă <b class="ui">Personalizează</b> (dreapta sus, pe Acasă). Poți elimina casete, le poți muta mai devreme sau mai târziu și poți adăuga altele din listă. Modificările se salvează pe contul tău, deci le regăsești pe orice dispozitiv. Apasă <b class="ui">Gata</b> când ai terminat.</p>
+<figure>
+  <img src="../../screenshots/customize.png" alt="Personalizarea ecranului Acasă">
+  <figcaption>Ecranul Acasă în modul de personalizare.</figcaption>
+</figure>
+<table>
+  <tr><th style="width:36%">Casetă</th><th>Ce arată</th></tr>
+  <tr><td>Pe scurt</td><td>Câte task-uri sunt deschise, cu termen azi, întârziate și finalizate recent.</td></tr>
+  <tr><td>Întârziate · De făcut azi · Următoarele 7 zile</td><td>Task-urile deschise din fiecare categorie.</td></tr>
+  <tr><td>Așteaptă răspunsul tău</td><td>Task-uri din email care se finalizează doar cu un răspuns.</td></tr>
+  <tr><td>Delegate de mine</td><td>Task-uri deschise date altora.</td></tr>
+  <tr><td>Task-uri deschise pe priorități</td><td>Împărțirea pe priorități.</td></tr>
+  <tr><td>Finalizate în ultimele 7 zile</td><td>Câte ai terminat în fiecare zi.</td></tr>
+  <tr><td>Etichete · Finalizate recent</td><td>Cele mai folosite etichete; ultimele task-uri terminate.</td></tr>
+</table>
+<h3>Tema de culori</h3>
+<p>Din lista <b class="ui">Temă</b>, în josul meniului, alegi: <b>Automată</b> (urmează setarea sistemului), <b>Luminoasă</b>, <b>Întunecată</b>, <b>Arctic Frost</b> (sticlă mată, luminoasă) sau <b>Amber Glass</b> (sticlă fumurie, caldă). Tema se ține minte pe fiecare browser în parte.</p>
+<figure class="pair">
+  <img src="../../screenshots/frost-dashboard.png" alt="Tema Arctic Frost" style="width:48%">
+  <img src="../../screenshots/amber-dashboard.png" alt="Tema Amber Glass" style="width:48%">
+  <figcaption>Temele <b>Arctic Frost</b> (stânga) și <b>Amber Glass</b> (dreapta).</figcaption>
+</figure>
+
+<h2>Taskel pe telefon</h2>
+<p>Pe telefon folosești aceeași adresă, în browser. Meniul se deschide din butonul cu trei linii din stânga sus, iar ferestrele de task ocupă tot ecranul.</p>
+<figure class="pair phone">
+  <img src="../../screenshots/mobile-dashboard.png" alt="Acasă pe telefon" style="width:23%">
+  <img src="../../screenshots/mobile-tasks.png" alt="Lista pe telefon" style="width:23%">
+  <img src="../../screenshots/mobile-new-task.png" alt="Task nou pe telefon" style="width:23%">
+  <img src="../../screenshots/mobile-task.png" alt="Task deschis pe telefon" style="width:23%">
+  <figcaption>Pe telefon: Acasă, lista de task-uri, task nou și un task deschis.</figcaption>
+</figure>
+
+<h2>Întrebări frecvente</h2>
+<h4>Am dat un task unui coleg și nu îl mai văd în lista mea.</h4>
+<p>Este la <b class="ui">Delegate</b>. Lista „Toate task-urile” conține doar ce ai de făcut tu.</p>
+<h4>Pot recupera un task șters?</h4>
+<p>Nu. Ștergerea este definitivă, inclusiv pentru fișierele atașate.</p>
+<h4>De ce nu pot finaliza un task venit din email?</h4>
+<p>Trebuie să scrii răspunsul către expeditor. Dacă apare un mesaj că trimiterea de emailuri nu este configurată, anunță administratorul.</p>
+<h4>De ce nu pot edita un task din „Direcționate”?</h4>
+<p>Nu mai este la tine. Îl poate modifica persoana la care se află acum sau cel care l-a creat.</p>
+<h4>Colegul nu apare când îl caut la „Alocat către”.</h4>
+<p>Apar doar persoanele care au cont în Taskel. Dacă firma folosește conturi de domeniu, colegul trebuie să se fi conectat cel puțin o dată (sau administratorul să fi importat utilizatorii).</p>
+<h4>Fișierul meu nu se încarcă.</h4>
+<p>Verifică mărimea (limita apare sub butonul de atașare) și numărul de fișiere de pe task. Un fișier foarte mare pe o conexiune lentă poate eșua; încearcă din nou.</p>
+<h4>Cum îmi schimb parola?</h4>
+<p>Pentru conturile de domeniu și Keycloak, parola se schimbă acolo (Windows, respectiv pagina firmei). Pentru conturile locale, aplicația nu are deocamdată schimbare de parolă; adresează-te administratorului.</p>
