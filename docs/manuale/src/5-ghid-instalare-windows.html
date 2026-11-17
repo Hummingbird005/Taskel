@@ -1,0 +1,289 @@
+<section class="cover">
+  <div class="brand"><span class="mark">✓</span>Taskel</div>
+  <div class="kind">Ghid tehnic · Windows</div>
+  <h1>Ghid de instalare pe Windows</h1>
+  <p class="lead">Instalarea pe Windows Server cu IIS și PostgreSQL, fără acces la internet, plus pregătirea unui calculator de dezvoltare offline.</p>
+  <div class="meta"><span>Taskel · documentație pentru administratori de sistem</span><span>Ediția noiembrie 2026</span></div>
+</section>
+
+<section class="toc">
+  <h2 class="plain">Cuprins</h2>
+  <ol></ol>
+</section>
+
+<h2>Prezentare</h2>
+<p class="lead-in">Pe Windows, IIS ține locul lui nginx: servește interfața și pornește singur serviciul API prin modulul ASP.NET Core. Baza de date este PostgreSQL, ca pe Linux.</p>
+<pre>Browser / Outlook
+      │  HTTPS  (https://taskel.firma.ro)
+      ▼
+IIS · site „Taskel” (C:\Taskel\www) ──► fișierele interfeței
+      │  /api/*  prin ASP.NET Core Module
+      ▼
+Taskel.Api.exe (C:\Taskel\api), pornit și oprit de IIS
+      ├──► PostgreSQL              date, setări, chei de criptare
+      ├──► C:\TaskelData           fișierele atașate, jurnale
+      └──► SMTP, Active Directory, Keycloak                 (opțional)</pre>
+<h3>Despre acest ghid</h3>
+<p>Ghidul presupune că serverul <b>nu are acces la internet</b>. Tot ce trebuie se pregătește pe un calculator conectat și se copiază pe server: codul sursă (care conține deja pachetele NuGet și npm, în folderul <code>offline</code>) și kiturile de instalare ale programelor.</p>
+<p>Setările aplicației sunt aceleași ca pe Linux; aici diferă doar locul în care se pun (fișierul <code>web.config</code>, în loc de un fișier <code>.env</code>). Setările făcute ulterior din interfață (email, Active Directory, Keycloak) sunt descrise în <b>Manualul administratorului</b>.</p>
+<div class="tip"><strong>Recomandare</strong>Faceți prima instalare pe un server de test, cu aceeași versiune de Windows, înainte de serverul de producție.</div>
+<h3>Cerințe</h3>
+<table>
+  <tr><th style="width:30%">Componentă</th><th>Cerință</th></tr>
+  <tr><td>Sistem de operare</td><td>Windows Server 2019, 2022 sau 2025, pe 64 de biți. Pentru teste merge și Windows 10/11.</td></tr>
+  <tr><td>Server web</td><td>IIS 10 (rolul Web Server din Windows).</td></tr>
+  <tr><td>Rulare</td><td>ASP.NET Core 10 Hosting Bundle.</td></tr>
+  <tr><td>Bază de date</td><td>PostgreSQL 16 sau mai nou, pe același server sau pe altul.</td></tr>
+  <tr><td>Compilare</td><td>.NET 10 SDK și Node.js 22. Pot fi pe server sau pe alt calculator, de unde copiați rezultatul.</td></tr>
+  <tr><td>Resurse</td><td>Pentru câteva zeci de utilizatori: 2 procesoare, 4 GB memorie, plus spațiul pentru fișierele atașate.</td></tr>
+  <tr><td>Certificat</td><td>Un certificat TLS pentru numele aplicației (de exemplu <code>taskel.firma.ro</code>), ca fișier <code>.pfx</code>.</td></tr>
+</table>
+
+<h2>Pregătirea, pe un calculator cu internet</h2>
+<h3>Codul sursă</h3>
+<pre><code>git clone https://github.com/Hummingbird005/Taskel.git C:\src\Taskel</code></pre>
+<p>Clona conține folderul <code>offline</code>, cu toate pachetele NuGet (pentru serviciul API, teste și unealta de migrări) și cache-ul npm (pentru interfață, cu componentele native pentru Windows și Linux). Nu mai e nevoie de nimic de pe internet pentru compilare.</p>
+<div class="note"><strong>Cale scurtă</strong>Păstrați codul într-o cale scurtă, cum ar fi <code>C:\src\Taskel</code>. Cache-ul npm are nume de fișiere lungi, iar Windows refuză căile mai lungi de 260 de caractere dacă acestea nu sunt activate explicit.</div>
+<h3>Kiturile de instalare</h3>
+<p>Descărcați versiunea pentru Windows x64 a fiecărui program:</p>
+<table>
+  <tr><th style="width:32%">Program</th><th>De unde</th><th style="width:22%">Necesar pentru</th></tr>
+  <tr><td>ASP.NET Core 10 Hosting Bundle</td><td><code>dotnet.microsoft.com/download/dotnet/10.0</code>, secțiunea ASP.NET Core Runtime → <b>Hosting Bundle</b></td><td>rulare</td></tr>
+  <tr><td>PostgreSQL 17</td><td><code>www.postgresql.org/download/windows</code> (instalatorul EDB)</td><td>rulare</td></tr>
+  <tr><td>.NET 10 SDK</td><td><code>dotnet.microsoft.com/download/dotnet/10.0</code>, secțiunea SDK, <b>Windows x64 Installer</b></td><td>compilare</td></tr>
+  <tr><td>Node.js 22 LTS</td><td><code>nodejs.org/en/download</code>, <b>Windows Installer (.msi)</b>, x64</td><td>compilare</td></tr>
+  <tr><td>Git</td><td><code>git-scm.com/downloads</code></td><td>doar pentru dezvoltare</td></tr>
+</table>
+<p>Pe un Windows 10/11 cu <code>winget</code>, aceleași kituri se pot descărca dintr-o fereastră PowerShell:</p>
+<pre><code>$d = "C:\TaskelKituri"
+winget download --id Microsoft.DotNet.HostingBundle.10 -d $d
+winget download --id PostgreSQL.PostgreSQL.17 -d $d
+winget download --id Microsoft.DotNet.SDK.10 -d $d
+winget download --id OpenJS.NodeJS.22 -d $d</code></pre>
+<p>Copiați pe server, pe un mediu de stocare, folderul <code>C:\src\Taskel</code> și kiturile.</p>
+
+<h2>Instalarea pe server</h2>
+<p>Comenzile se rulează în <b>PowerShell, ca administrator</b>. Exemplele folosesc adresa <code>taskel.firma.ro</code>, folderele <code>C:\Taskel</code> (aplicația) și <code>C:\TaskelData</code> (datele). Înlocuiți-le cu ale voastre.</p>
+
+<h3>Pasul 1 · IIS</h3>
+<p>Pe Windows Server:</p>
+<pre><code>Install-WindowsFeature Web-Server, Web-Static-Content, Web-Default-Doc, Web-Http-Errors, `
+  Web-Http-Logging, Web-Stat-Compression, Web-Filtering, Web-Http-Redirect, Web-Mgmt-Console</code></pre>
+<p>Pe Windows 10/11 (doar pentru teste):</p>
+<pre><code>Enable-WindowsOptionalFeature -Online -All -FeatureName IIS-WebServerRole, IIS-StaticContent, `
+  IIS-DefaultDocument, IIS-HttpErrors, IIS-HttpLogging, IIS-HttpCompressionStatic, `
+  IIS-RequestFiltering, IIS-HttpRedirect, IIS-ManagementConsole</code></pre>
+
+<h3>Pasul 2 · ASP.NET Core Hosting Bundle</h3>
+<p>Instalați-l <b>după</b> IIS: așa își înregistrează modulul în IIS. Apoi reporniți IIS.</p>
+<pre><code>C:\TaskelKituri\dotnet-hosting-10.0.x-win.exe /quiet /norestart
+net stop was /y
+net start w3svc</code></pre>
+<div class="warn"><strong>Ordinea contează</strong>Dacă Hosting Bundle a fost instalat înaintea IIS, rulați din nou instalatorul și alegeți <b>Repair</b>. Altfel IIS nu cunoaște modulul și site-ul răspunde cu eroarea 500.19.</div>
+
+<h3>Pasul 3 · PostgreSQL</h3>
+<ol class="steps">
+  <li>Rulați instalatorul PostgreSQL. Păstrați portul 5432 și notați parola utilizatorului <code>postgres</code>. Stack Builder nu este necesar.</li>
+  <li>Creați baza de date și utilizatorul aplicației:
+<pre><code>&amp; "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c `
+  "CREATE ROLE taskel LOGIN PASSWORD 'o-parola-lunga-si-unica';"
+&amp; "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c `
+  "CREATE DATABASE taskel OWNER taskel;"</code></pre></li>
+</ol>
+<p>Tabelele le creează aplicația la prima pornire.</p>
+
+<h3>Pasul 4 · Compilarea, fără internet</h3>
+<p>Pe server sau pe alt calculator cu .NET 10 SDK și Node.js 22 instalate (kiturile din capitolul 2):</p>
+<pre><code>cd C:\src\Taskel\backend
+dotnet restore Taskel.slnx --configfile ..\offline\NuGet.Config
+dotnet publish src\Taskel.Api -c Release --no-restore -o C:\Taskel\api
+
+cd ..\frontend
+npm ci --offline --cache ..\offline\npm
+npm run build
+New-Item -ItemType Directory -Force C:\Taskel\www | Out-Null
+Copy-Item dist\* C:\Taskel\www -Recurse -Force</code></pre>
+<p>Rezultatul: serviciul API în <code>C:\Taskel\api</code> (cu <code>Taskel.Api.exe</code>) și interfața în <code>C:\Taskel\www</code>. Dacă ați compilat pe alt calculator, copiați cele două foldere pe server, în aceleași locuri.</p>
+<div class="note"><strong>Fișierul web.config din C:\Taskel\api</strong>Publicarea pune un <code>web.config</code> și în folderul API-ului. În această schemă el nu este folosit: site-ul IIS este folderul interfeței, iar configurația lui vine la pasul 6.</div>
+
+<h3>Pasul 5 · Folderele de date și drepturile</h3>
+<pre><code>New-Item -ItemType Directory -Force C:\TaskelData\attachments, C:\TaskelData\logs | Out-Null
+icacls C:\Taskel /grant "IIS AppPool\Taskel:(OI)(CI)RX"
+icacls C:\TaskelData /grant "IIS AppPool\Taskel:(OI)(CI)M"</code></pre>
+<p>Contul <code>IIS AppPool\Taskel</code> apare la pasul 7, odată cu grupul de aplicații. Dacă <code>icacls</code> spune că nu îl găsește, rulați aceste comenzi după pasul 7.</p>
+
+<h3>Pasul 6 · Configurația (web.config)</h3>
+<ol class="steps">
+  <li>Copiați modelul în folderul site-ului:
+<pre><code>Copy-Item C:\src\Taskel\offline\windows\web.config C:\Taskel\www\web.config</code></pre></li>
+  <li>Deschideți <code>C:\Taskel\www\web.config</code> în Notepad și schimbați valorile marcate <code>CHANGE</code>: parola bazei de date, adresa primului administrator și adresa aplicației.</li>
+  <li>Restrângeți accesul la fișier, care conține parola bazei de date:
+<pre><code>icacls C:\Taskel\www\web.config /inheritance:r /grant "Administrators:F" "SYSTEM:F" "IIS AppPool\Taskel:R"</code></pre></li>
+</ol>
+<p>Ce face fișierul:</p>
+<ul>
+  <li>Cererile către <code>/api</code> merg la modulul ASP.NET Core. Acesta pornește <code>C:\Taskel\api\Taskel.Api.exe</code> ca proces separat, îi transmite cererile și îl repornește dacă se oprește.</li>
+  <li>Toate celelalte cereri sunt fișierele interfeței, servite direct de IIS.</li>
+  <li>Setările aplicației se dau ca variabile de mediu, în elementele <code>environmentVariable</code>. Sunt aceleași nume ca în ghidul pentru Linux (de exemplu <code>Auth__AllowLocalRegistration</code>).</li>
+  <li>Limita cererilor ridicată la 110 MB, pentru fișierele atașate. Implicit, IIS refuză tot ce trece de 30 MB.</li>
+</ul>
+
+<h3>Pasul 7 · Grupul de aplicații și site-ul</h3>
+<p>Importați certificatul, apoi creați grupul de aplicații și site-ul:</p>
+<pre><code>Import-PfxCertificate -FilePath C:\TaskelKituri\taskel.pfx `
+  -CertStoreLocation Cert:\LocalMachine\My -Password (Read-Host -AsSecureString "Parola .pfx")
+
+Import-Module WebAdministration
+New-WebAppPool -Name Taskel
+Set-ItemProperty IIS:\AppPools\Taskel -Name managedRuntimeVersion -Value ''
+Set-ItemProperty IIS:\AppPools\Taskel -Name startMode -Value AlwaysRunning
+Set-ItemProperty IIS:\AppPools\Taskel -Name processModel.idleTimeout -Value ([TimeSpan]::Zero)
+Set-ItemProperty IIS:\AppPools\Taskel -Name recycling.periodicRestart.time -Value ([TimeSpan]::Zero)
+
+New-Website -Name Taskel -PhysicalPath C:\Taskel\www -ApplicationPool Taskel `
+  -Port 443 -Ssl -SslFlags 1 -HostHeader taskel.firma.ro
+$cert = Get-ChildItem Cert:\LocalMachine\My |
+  Where-Object { $_.Subject -like "*taskel.firma.ro*" } | Select-Object -First 1
+(Get-WebBinding -Name Taskel -Protocol https).AddSslCertificate($cert.Thumbprint, "My")
+Set-ItemProperty IIS:\Sites\Taskel -Name applicationDefaults.preloadEnabled -Value $true
+
+# Fișierele interfeței se citesc cu identitatea grupului de aplicații
+Set-WebConfigurationProperty -PSPath IIS:\ -Location Taskel `
+  -Filter system.webServer/security/authentication/anonymousAuthentication -Name userName -Value ""</code></pre>
+<table>
+  <tr><th style="width:38%">Setare</th><th>De ce</th></tr>
+  <tr><td>.NET CLR version: No Managed Code</td><td>API-ul rulează în propriul proces, nu în IIS.</td></tr>
+  <tr><td>Start Mode: AlwaysRunning, Idle Time-out: 0</td><td>Aplicația are activități în fundal (notificările pe email, reîncărcarea setărilor), care s-ar opri dacă IIS ar închide procesul în lipsa traficului.</td></tr>
+  <tr><td>Fără reciclare periodică</td><td>Notificările așteaptă în memorie; o reciclare le pierde pe cele netrimise.</td></tr>
+</table>
+<h4>Redirecționarea HTTP către HTTPS (opțional)</h4>
+<pre><code>New-Item -ItemType Directory -Force C:\Taskel\redirect | Out-Null
+New-Website -Name Taskel-http -PhysicalPath C:\Taskel\redirect -Port 80 -HostHeader taskel.firma.ro
+Set-WebConfigurationProperty -PSPath "IIS:\Sites\Taskel-http" `
+  -Filter system.webServer/httpRedirect -Name enabled -Value $true
+Set-WebConfigurationProperty -PSPath "IIS:\Sites\Taskel-http" `
+  -Filter system.webServer/httpRedirect -Name destination -Value "https://taskel.firma.ro"</code></pre>
+<div class="warn"><strong>HTTPS este obligatoriu</strong>În modul Production, sesiunea este ținută într-un cookie marcat „Secure”, pe care browserul îl trimite doar prin HTTPS. Prin HTTP simplu, conectarea pare să reușească, dar utilizatorul este întors la ecranul de conectare.</div>
+
+<h3>Pasul 8 · Verificarea și primul administrator</h3>
+<ol class="steps">
+  <li>Deschideți <code>https://taskel.firma.ro/api/health</code> în browser. Răspunsul trebuie să fie <code>{"status":"ok"}</code>. Prima cerere poate dura câteva secunde: IIS pornește API-ul, care își creează tabelele.</li>
+  <li>Deschideți <code>https://taskel.firma.ro</code>. Pe ecranul de conectare apăsați <b class="ui">Creează unul</b> și înregistrați contul cu adresa pusă la <code>Auth__AdminEmails__0</code>.</li>
+  <li>În meniu apare <b class="ui">Organizare</b>, cu <b class="ui">Utilizatori</b> și <b class="ui">Setări sistem</b>. De aici configurați emailul, Active Directory sau Keycloak.</li>
+</ol>
+<figure>
+  <img src="../../screenshots/signin.png" alt="Ecranul de conectare">
+  <figcaption>Ecranul de conectare. Butonul Keycloak și fila „Cont de domeniu” apar după configurarea lor.</figcaption>
+</figure>
+<div class="tip"><strong>După ce conturile necesare există</strong>Activați în <code>web.config</code> linia <code>Auth__AllowLocalRegistration</code> cu valoarea <code>false</code>. IIS repornește singur API-ul când fișierul se schimbă.</div>
+
+<h2>Setări, actualizare, copii de siguranță</h2>
+<h3>Setările principale</h3>
+<p>Se dau în <code>C:\Taskel\www\web.config</code>, ca <code>&lt;environmentVariable name="…" value="…" /&gt;</code>. Lista completă este în ghidul de instalare pentru Linux, capitolul <i>Referința setărilor</i>; numele sunt identice.</p>
+<table>
+  <tr><th style="width:42%">Variabilă</th><th>Rol</th></tr>
+  <tr><td><code>ConnectionStrings__Taskel</code></td><td>Conexiunea la PostgreSQL. Obligatorie.</td></tr>
+  <tr><td><code>Auth__AdminEmails__0</code></td><td>Adresa contului care este întotdeauna administrator.</td></tr>
+  <tr><td><code>Auth__AllowLocalRegistration</code></td><td><code>false</code> oprește crearea de conturi locale.</td></tr>
+  <tr><td><code>Attachments__Path</code></td><td>Folderul fișierelor atașate.</td></tr>
+  <tr><td><code>Email__Notifications__PublicUrl</code></td><td>Adresa la care oamenii deschid aplicația.</td></tr>
+  <tr><td><code>DataProtection__KeysPath</code></td><td>Opțional: cheile de criptare într-un folder (de exemplu <code>C:\TaskelData\keys</code>), în loc de baza de date.</td></tr>
+</table>
+<p>Nu setați <code>ASPNETCORE_URLS</code>: portul îl alege modulul ASP.NET Core. Nici <code>ASPNETCORE_FORWARDEDHEADERS_ENABLED</code> nu este necesar: legătura cu IIS transmite deja adresa clientului și faptul că cererea a venit prin HTTPS.</p>
+<p>Dacă ridicați limita fișierelor atașate peste 100 MB, ridicați și <code>maxAllowedContentLength</code> din <code>web.config</code> (în octeți).</p>
+
+<h3>Actualizarea</h3>
+<ol class="steps">
+  <li>Faceți o copie de siguranță.</li>
+  <li>Aduceți codul nou (o clonă nouă, pregătită ca în capitolul 2) și compilați ca la pasul 4, într-un folder temporar:
+<pre><code>dotnet publish src\Taskel.Api -c Release --no-restore -o C:\TaskelNou\api</code></pre></li>
+  <li>Opriți aplicația, înlocuiți fișierele și porniți-o din nou:
+<pre><code>Stop-WebAppPool Taskel
+robocopy C:\TaskelNou\api C:\Taskel\api /MIR
+robocopy C:\src\Taskel\frontend\dist C:\Taskel\www /MIR /XF web.config
+Start-WebAppPool Taskel</code></pre></li>
+</ol>
+<p><code>/XF web.config</code> păstrează configurația site-ului. Structura bazei de date se actualizează singură la pornire.</p>
+
+<h3>Copiile de siguranță</h3>
+<p>De salvat împreună: baza de date, folderul <code>C:\TaskelData</code> și <code>C:\Taskel\www\web.config</code>.</p>
+<pre><code>$pg  = "C:\Program Files\PostgreSQL\17\bin"
+$zi  = Get-Date -Format yyyy-MM-dd
+&amp; "$pg\pg_dump.exe" -U taskel -h localhost -Fc -f "D:\Backup\taskel-$zi.dump" taskel
+Compress-Archive C:\TaskelData\attachments "D:\Backup\taskel-fisiere-$zi.zip"</code></pre>
+<p>Ca să ruleze fără să ceară parola, puneți-o în fișierul <code>%APPDATA%\postgresql\pgpass.conf</code> al contului care rulează copia (o linie: <code>localhost:5432:taskel:taskel:parola</code>) și programați scriptul în Task Scheduler.</p>
+<p>Restaurarea:</p>
+<pre><code>Stop-WebAppPool Taskel
+&amp; "$pg\dropdb.exe" -U postgres -h localhost taskel
+&amp; "$pg\createdb.exe" -U postgres -h localhost -O taskel taskel
+&amp; "$pg\pg_restore.exe" -U postgres -h localhost -d taskel "D:\Backup\taskel-2026-11-17.dump"
+Expand-Archive "D:\Backup\taskel-fisiere-2026-11-17.zip" C:\TaskelData -Force
+Start-WebAppPool Taskel</code></pre>
+
+<h2>Dezvoltare offline pe Windows</h2>
+<p>Pentru un calculator de dezvoltare fără internet: instalați .NET 10 SDK, Node.js 22, PostgreSQL și Git din kiturile din capitolul 2, apoi copiați clona <code>C:\src\Taskel</code>.</p>
+<h3>Baza de date de dezvoltare</h3>
+<p>Setările de dezvoltare (<code>appsettings.Development.json</code>) se așteaptă la utilizatorul <code>taskel</code> cu parola <code>taskel</code>. Testele își creează și își șterg singure baza <code>taskel_test</code>, deci utilizatorul are nevoie de dreptul <code>CREATEDB</code>:</p>
+<pre><code>&amp; "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c `
+  "CREATE ROLE taskel LOGIN CREATEDB PASSWORD 'taskel';"
+&amp; "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h localhost -c `
+  "CREATE DATABASE taskel OWNER taskel;"</code></pre>
+<h3>Pachetele, o singură dată</h3>
+<pre><code>cd C:\src\Taskel\backend
+dotnet tool restore --configfile ..\offline\NuGet.Config
+dotnet restore Taskel.slnx --configfile ..\offline\NuGet.Config
+
+cd ..\frontend
+npm ci --offline --cache ..\offline\npm</code></pre>
+<p>Pachetele ajung în cache-ul NuGet al calculatorului. După aceea, <code>dotnet build</code>, <code>dotnet run</code> și <code>dotnet test</code> funcționează ca de obicei. Restaurați din nou cu <code>--configfile</code> când se adaugă un pachet.</p>
+<h3>Pornirea aplicației</h3>
+<p>În două ferestre PowerShell:</p>
+<pre><code># 1 · API-ul, pe http://localhost:5000
+cd C:\src\Taskel\backend
+dotnet run --project src\Taskel.Api
+
+# 2 · Interfața, pe http://localhost:5173
+cd C:\src\Taskel\frontend
+npm run dev</code></pre>
+<p>Deschideți <code>http://localhost:5173</code>. La prima pornire pe o bază goală, aplicația adaugă conturile și task-urile demonstrative (de exemplu <code>admin@taskel.example</code> / <code>Admin-Demo-2026</code>; lista completă este în <code>docs\DEMO-ACCOUNTS.md</code>).</p>
+<h3>Verificări</h3>
+<pre><code>cd C:\src\Taskel\backend;  dotnet test
+cd C:\src\Taskel\frontend; npm run lint; npm run build</code></pre>
+<p>Instrumentele de dezvoltare (Visual Studio 2022 sau mai nou, Visual Studio Code) funcționează offline; extensiile lor se instalează din fișiere <code>.vsix</code> aduse de pe un calculator conectat.</p>
+<h3>Când se schimbă pachetele</h3>
+<p>După adăugarea sau actualizarea unei dependențe, pe un calculator cu internet rulați în Git Bash <code>offline/actualizeaza-pachete.sh</code> și salvați rezultatul în repository. Verificarea automată (CI) semnalează un folder <code>offline</code> incomplet.</p>
+
+<h2>Depanare</h2>
+<table>
+  <tr><th style="width:40%">Simptom</th><th>Cauză probabilă și rezolvare</th></tr>
+  <tr><td>HTTP 500.19, „configuration data for the page is invalid”</td><td>IIS nu cunoaște modulul ASP.NET Core. Rulați instalatorul Hosting Bundle cu <b>Repair</b> și reporniți IIS (<code>net stop was /y</code>, <code>net start w3svc</code>).</td></tr>
+  <tr><td>HTTP 502.5 sau 500.30 la <code>/api/health</code></td><td>API-ul nu pornește. Puneți temporar <code>stdoutLogEnabled="true"</code> în <code>web.config</code> și citiți fișierul din <code>C:\TaskelData\logs</code>. Cauze dese: parola bazei de date, PostgreSQL oprit, lipsa drepturilor pe <code>C:\Taskel\api</code>.</td></tr>
+  <tr><td>HTTP 404 la <code>/api/...</code></td><td>Lipsește blocul <code>&lt;location path="api"&gt;</code> din <code>web.config</code>.</td></tr>
+  <tr><td>Pagina principală dă 401 sau 403</td><td>Identitatea anonimă nu poate citi <code>C:\Taskel\www</code>. Repetați ultima comandă de la pasul 7 și <code>icacls</code> de la pasul 5.</td></tr>
+  <tr><td>Fișierele mari nu se încarcă (404.13)</td><td>Cererea depășește <code>maxAllowedContentLength</code>. Ridicați valoarea din <code>web.config</code>.</td></tr>
+  <tr><td>Încărcarea fișierelor eșuează cu eroare de server</td><td>Grupul de aplicații nu poate scrie în <code>C:\TaskelData\attachments</code>.</td></tr>
+  <tr><td>Conectarea „reușește”, dar revine ecranul de conectare</td><td>Aplicația este deschisă prin HTTP. Folosiți adresa <code>https://</code>.</td></tr>
+  <tr><td>Notificările nu pleacă după o perioadă fără trafic</td><td>Grupul de aplicații are încă Idle Time-out. Verificați setările de la pasul 7.</td></tr>
+  <tr><td>Dezvoltare: <code>npm ci --offline</code> spune că lipsește un pachet</td><td>Folderul <code>offline</code> nu corespunde fișierului <code>package-lock.json</code>; actualizați-l pe un calculator conectat. Dacă eroarea vorbește de o cale prea lungă, mutați codul într-o cale mai scurtă.</td></tr>
+  <tr><td>Dezvoltare: <code>dotnet restore</code> încearcă să acceseze internetul</td><td>Lipsește <code>--configfile ..\offline\NuGet.Config</code>.</td></tr>
+</table>
+<h3>Unde vă uitați</h3>
+<ul>
+  <li><b>Event Viewer → Windows Logs → Application</b>: mesajele modulului ASP.NET Core („IIS AspNetCore Module V2”).</li>
+  <li><b>C:\TaskelData\logs</b>: jurnalul API-ului, cât timp <code>stdoutLogEnabled</code> este <code>true</code>. Opriți-l după depanare: fișierele cresc fără limită.</li>
+  <li><b>C:\inetpub\logs\LogFiles</b>: cererile primite de IIS.</li>
+</ul>
+
+<h2>Lista de verificare la punerea în funcțiune</h2>
+<table>
+  <tr><th style="width:6%">✓</th><th>Verificare</th></tr>
+  <tr><td>☐</td><td><code>https://taskel.firma.ro/api/health</code> răspunde <code>{"status":"ok"}</code>.</td></tr>
+  <tr><td>☐</td><td>Interfața se deschide prin HTTPS; adresa <code>http://</code> redirecționează (dacă ați configurat-o).</td></tr>
+  <tr><td>☐</td><td>Contul din <code>Auth__AdminEmails__0</code> vede <b class="ui">Setări sistem</b>.</td></tr>
+  <tr><td>☐</td><td>Un fișier atașat de mărime apropiată de limită se încarcă și se descarcă.</td></tr>
+  <tr><td>☐</td><td><code>web.config</code> este citibil doar de administratori, SYSTEM și grupul de aplicații.</td></tr>
+  <tr><td>☐</td><td>Înregistrarea liberă este oprită după crearea conturilor necesare.</td></tr>
+  <tr><td>☐</td><td>Există cel puțin doi administratori, dintre care unul cu cont local.</td></tr>
+  <tr><td>☐</td><td>Copia de siguranță rulează programat și a fost încercată o restaurare.</td></tr>
+  <tr><td>☐</td><td>Kiturile de instalare și o clonă a codului sunt păstrate pentru reinstalare.</td></tr>
+</table>

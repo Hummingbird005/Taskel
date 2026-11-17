@@ -76,3 +76,31 @@ jobs:
       - name: npm packages
         working-directory: frontend
         run: npm audit --audit-level=high
+
+  # The offline/ folder must hold every package the solution needs, so it can be built without the
+  # internet. Restores only from it, into empty caches, for Linux and for Windows.
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: .NET packages from offline/nuget only
+        working-directory: backend
+        env:
+          NUGET_PACKAGES: ${{ runner.temp }}/nuget-empty
+        run: |
+          dotnet restore Taskel.slnx --configfile ../offline/NuGet.Config
+          dotnet tool restore --configfile ../offline/NuGet.Config
+          dotnet build Taskel.slnx --no-restore
+      - name: npm packages from offline/npm only, for Linux and Windows
+        working-directory: frontend
+        run: |
+          for os in linux win32; do
+            rm -rf node_modules
+            npm ci --offline --cache ../offline/npm --os=$os --cpu=x64 --ignore-scripts --no-audit --no-fund
+          done
