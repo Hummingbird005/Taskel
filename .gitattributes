@@ -6,3 +6,6 @@
 # ending changed by git on Windows would make the cache unusable.
 offline/nuget/** -text -diff
 offline/npm/** -text -diff
+
+# Shell scripts keep Unix line endings, so they run in Git Bash on Windows too.
+*.sh text eol=lf
