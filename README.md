@@ -31,7 +31,8 @@ The interface is in Romanian; code, API and documentation are in English.
 Screenshots use the [demo accounts and tasks](docs/DEMO-ACCOUNTS.md).
 
 **Manuals (PDF, in Romanian):** [user](docs/manuale/1-manual-utilizator.pdf), [manager](docs/manuale/2-manual-manager.pdf),
-[administrator](docs/manuale/3-manual-administrator.pdf) and the [installation guide](docs/manuale/4-ghid-instalare.pdf).
+[administrator](docs/manuale/3-manual-administrator.pdf), and the installation guides for [Linux](docs/manuale/4-ghid-instalare.pdf)
+and [Windows with IIS](docs/manuale/5-ghid-instalare-windows.pdf).
 Their sources are in `docs/manuale/src`; rebuild them with `node docs/manuale/build.mjs` after changing the text or the
 screenshots.
 
@@ -96,11 +97,14 @@ Taskel/
 ├── frontend/                    # React + Vite + TypeScript
 ├── integrations/outlook/        # Outlook macro: turn emails into tasks
 ├── deploy/keycloak/             # Development Keycloak realm (docker compose profile "keycloak")
+├── offline/                     # Every NuGet and npm package, to build without the internet; IIS web.config
 ├── docs/                        # Developer guide, demo accounts, Keycloak setup, screenshots
 └── .github/workflows/ci.yml     # Build + test both projects
 ```
 
 ## Prerequisites
+
+Without internet access, restore from the packages in `offline/` instead: see [offline/README.md](offline/README.md).
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Node.js](https://nodejs.org/) 22+

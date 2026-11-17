@@ -1,3 +1,8 @@
 # VBA modules must keep Windows (CRLF) line endings, also when downloaded straight from GitHub,
 # or the Outlook VBA editor imports them as a single line. Store them exactly as committed.
 *.bas -text
+
+# The offline packages are used byte for byte: npm checks every cache entry against its hash, so a line
+# ending changed by git on Windows would make the cache unusable.
+offline/nuget/** -text -diff
+offline/npm/** -text -diff
