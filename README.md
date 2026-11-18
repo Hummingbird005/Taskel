@@ -199,6 +199,7 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | POST   | `/api/tasks/from-email` | ✓ | Create a task from an email                   |
 | POST   | `/api/tasks/from-email/distribute` | ✓ | Give an email to people or groups: one task each, with instructions |
 | GET    | `/api/outlook/recipients` | ✓ | People and groups an email can go to, as tab-separated lines (for the Outlook macro) |
+| GET    | `/api/outlook/manifest.xml` | – | The Outlook add-in's manifest, pointing at this Taskel |
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
 | PUT    | `/api/tasks/{id}/assignee` | ✓ | Assign a task to a user or a group (creator only) |
 | POST   | `/api/tasks/{id}/forward` | ✓ | Pass a received task on to a user or a group (assignee only) |
@@ -263,18 +264,27 @@ Authorization: Bearer tsk_…
 
 ## Outlook integration
 
-`integrations/outlook` contains a VBA macro for classic Outlook on Windows that sends the selected emails to
-`POST /api/tasks/from-email`; each becomes a task tagged `email`, with the subject as title and the sender,
-date and body as notes. See [integrations/outlook/README.md](integrations/outlook/README.md) for setup.
+Emails become tasks tagged `email`, with the subject as title and the sender, date and body as notes, in one of
+two ways (setup and comparison in [integrations/outlook/README.md](integrations/outlook/README.md)):
 
-With the optional `TaskelSendForm` window installed, the macro first asks who gets the emails and for
-instructions, then calls `POST /api/tasks/from-email/distribute` with `recipients` (user ids, or `group:` and a
+- **Outlook add-in** (recommended): a pane next to the email, in Taskel's design, in every Outlook (Windows classic
+  and new, web, Mac). It is the page `outlook.html` of the interface; Taskel serves its manifest at
+  `/api/outlook/manifest.xml` (button **Descarcă manifestul** in **Integrări**), with the public address set for
+  emails, otherwise the address it was downloaded from. Outlook needs Taskel on HTTPS with a trusted certificate.
+- **VBA macro** in `integrations/outlook`, for classic Outlook on Windows: sends the selected emails to
+  `POST /api/tasks/from-email`.
+
+Both call the API with a personal API token.
+
+The add-in, and the macro with its optional `TaskelSendForm` window installed, ask who gets the email and for
+instructions, then call `POST /api/tasks/from-email/distribute` with `recipients` (user ids, or `group:` and a
 group id; at most 50) and `instructions` (up to 2000 characters):
 
 - Each recipient gets a task of their own, created by the Outlook user, titled with the subject, with the
   instructions shown above its notes and emailed to them. A group gets one task, which a member takes.
   No recipient: the task is the Outlook user's own.
-- The answer is `201` with `{ "taskIds": [ … ] }`, one id per recipient; the macro uploads the attachments to each.
+- The answer is `201` with `{ "taskIds": [ … ] }`, one id per recipient; the add-in or the macro uploads the
+  attachments to each.
 - When a recipient completes their task, their message is emailed to the Outlook user (not to the original
   sender), as a reply to the original email, so it lands in that conversation in Outlook. Each recipient's
   completion sends its own reply. The Outlook user answers the sender from Outlook, or completes a task of

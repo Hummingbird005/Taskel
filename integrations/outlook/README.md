@@ -1,7 +1,70 @@
 # Taskel for Outlook
 
-Turn emails into Taskel tasks from **classic Outlook for Windows**. Select one or more emails,
-click **Send to Taskel**, and each email becomes a task:
+Turn emails into Taskel tasks, for yourself, for colleagues or for a group, with instructions. There are two ways:
+
+| | **Outlook add-in** (recommended) | **VBA macro** (this folder) |
+|---|---|---|
+| Works in | Classic and new Outlook for Windows, Outlook on the web, Outlook for Mac | Classic Outlook for Windows only |
+| Looks like | A pane next to the email, in Taskel's design (light and dark) | A window opened from a ribbon button |
+| Emails at once | The one being read (the pane can be pinned and follows the selection) | Every selected email |
+| Install | Add one manifest file; an administrator can deploy it to everyone | Import the macro, paste the window's code, allow macros |
+| Needs | Taskel on HTTPS with a valid certificate; Outlook must reach Microsoft's Office.js | Nothing beyond Outlook |
+
+Both send the same thing to the same API, with a personal API token, and both work with the reply on completion.
+
+## Outlook add-in
+
+The add-in is part of Taskel itself: its pane is the page `outlook.html` of the interface, and Taskel serves the
+manifest that points Outlook at it, at `/api/outlook/manifest.xml` (also the **Descarcă manifestul** button in
+**Integrări**). The addresses in the manifest are the public address set for emails, otherwise the address the
+manifest was downloaded from, so download it from the address people use.
+
+### Install, for yourself
+
+1. In Taskel, open **Integrări** and click **Descarcă manifestul** (`taskel-outlook.xml`).
+2. In Outlook: **Get Add-ins** (in new Outlook and on the web: **Apps** → **Add apps**) → **My add-ins** →
+   **Custom add-ins** → **Add a custom add-in** → **Add from file**, and pick the file. In Outlook on the web the
+   same page is at `https://aka.ms/olksideload`.
+3. Open an email. Click **Trimite în Taskel** on the ribbon (in new Outlook and on the web: in the **…** / **Apps**
+   menu of the message). The pane asks for an API token once: create one in **Integrări → Token nou**.
+
+### Install, for everyone (administrator)
+
+- **Microsoft 365**: Microsoft 365 admin center → **Settings → Integrated apps → Upload custom apps** →
+  **Office Add-in**, upload the manifest, and choose who gets it. It can take up to a day to appear in Outlook.
+- **Exchange Server**: Exchange admin center → **Organization → Add-ins** → **+ → Add from file**, then make it
+  available or mandatory for users.
+
+When Taskel's address changes, download the manifest again and replace the add-in.
+
+### Use
+
+Open an email and click **Trimite în Taskel**. The pane shows the email (subject, sender, importance, files), then:
+
+- **Cui trimiți**: type part of a name or email; pick people and groups from the suggestions (arrow keys and Enter
+  work too). They appear as chips; Backspace removes the last one. With nobody chosen, the task is yours.
+- **Indicații** (optional, up to 2000 characters): shown to each recipient above the email.
+- **Atașează fișierele**: on by default. Files shown inside the message (signature logos) are left out. A file
+  shared as a link (OneDrive) cannot be sent and is listed at the end.
+- **Trimite**: one task per recipient. The pane confirms how many, and **Deschide Taskel** opens Taskel in the browser.
+
+Pin the pane (the pin at its top) to keep it open while moving between emails; it resets for each email.
+
+### Notes
+
+- The token is kept in the pane's storage on that computer or browser. **Deconectează** (top right) forgets it.
+  Revoke it in Taskel if the device is lost.
+- The add-in only reads the email you open (permission `ReadItem`); it never changes or sends mail.
+- Importance is read from the email's headers; attachments need Outlook with Mailbox 1.8 (Outlook 2021, Microsoft 365,
+  new Outlook, web). On older versions the task is created without the files, and the pane says so.
+- Outlook loads add-ins only from HTTPS addresses with a trusted certificate (`http://localhost` is allowed for
+  testing). Office.js comes from `appsforoffice.microsoft.com`, so Outlook needs internet access to that address.
+- The API is called with the token, not the browser session: in Outlook on the web the pane is a frame of another
+  site, where browsers do not send Taskel's cookie.
+
+## VBA macro
+
+Select one or more emails in **classic Outlook for Windows**, click **Send to Taskel**, and each email becomes a task:
 
 | Email            | Task                                                        |
 |------------------|-------------------------------------------------------------|
@@ -15,7 +78,7 @@ click **Send to Taskel**, and each email becomes a task:
 It is a VBA macro, so it works with any account type (Gmail, IMAP, POP, Exchange). It does **not**
 work in the new Outlook for Windows, Outlook on the web or Outlook for Mac, which cannot run VBA.
 
-## Install
+### Install
 
 1. **Create an API token.** In Taskel, open **Integrări**, click **Token nou** and copy the
    token (it starts with `tsk_`). It is shown only once.
@@ -39,12 +102,13 @@ work in the new Outlook for Windows, Outlook on the web or Outlook for Mac, whic
 
 When Outlook asks about macros at startup, choose **Enable Macros**.
 
-## Use
+### Use
 
 Select one or more emails in the list (or open one) and click **Send to Taskel**. With the recipients window
 installed, it opens first (once for all the selected emails):
 
-- **Caută** narrows the list of people and groups; tick one or more of them. Ticks are kept while you search.
+- **Caută** narrows the list of people and groups; tick one or more of them. Ticks are kept while you search,
+  and the line under the list names everyone ticked. Enter ticks the first match; the down arrow moves into the list.
 - **Indicații** (optional, up to 2000 characters) is shown to each recipient above the email and sent to them in
   the notification.
 - **Trimite** creates one task for each recipient, per email, with the subject as the title and the attachments
@@ -83,7 +147,7 @@ Tasks sent by the old macro still get a reply, but it may not be threaded with t
 | The recipients window does not open   | The form is missing or not named `TaskelSendForm` (step 5); each email then becomes your own task. |
 | Compile error in the form             | Only part of `TaskelSendForm.txt` was pasted, or the form's old code was not deleted first. Paste the whole file again. |
 
-## Notes
+## Notes on the macro
 
 - The address and token are stored for your Windows user in the registry, under
   `HKEY_CURRENT_USER\Software\VB and VBA Program Settings\Taskel\Outlook`, in plain text. Revoke

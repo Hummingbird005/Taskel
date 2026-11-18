@@ -76,9 +76,35 @@ export default function Integrations({ onSessionExpired }: { onSessionExpired: (
   return (
     <Panel title="Outlook">
       <p className="muted">
-        Trimite emailuri din Outlook în Taskel, ca task-uri. Instalează macro-ul din{' '}
-        <code>integrations/outlook</code> din repository-ul Taskel, apoi dă-i un token API creat aici.
+        Trimite emailuri din Outlook în Taskel, ca task-uri: pentru tine, pentru colegi sau pentru un grup, cu
+        indicații. Ai două variante; amândouă folosesc un token API creat mai jos.
       </p>
+      <div className="outlook-options">
+        <div className="outlook-option">
+          <h3>Add-in Outlook (recomandat)</h3>
+          <p className="muted">
+            Un panou lângă email, în Outlook pentru Windows (clasic și nou), pe web și pe Mac. Fără macro-uri.
+          </p>
+          <ol>
+            <li>Descarcă manifestul de mai jos.</li>
+            <li>
+              În Outlook: <b>Get Add-ins</b> (sau <b>Apps</b>) → <b>My add-ins</b> → <b>Add a custom add-in</b> →{' '}
+              <b>Add from file</b> și alege fișierul. Administratorul îl poate instala pentru toată firma.
+            </li>
+            <li>Deschide un email, apasă <b>Trimite în Taskel</b> și lipește token-ul API la prima folosire.</li>
+          </ol>
+          <a className="button primary" href="/api/outlook/manifest.xml" download="taskel-outlook.xml">
+            Descarcă manifestul
+          </a>
+        </div>
+        <div className="outlook-option">
+          <h3>Macro VBA</h3>
+          <p className="muted">
+            Doar pentru Outlook clasic pe Windows. Fișierele sunt în <code>integrations/outlook</code> din
+            repository-ul Taskel; macro-ul îți cere token-ul la configurare.
+          </p>
+        </div>
+      </div>
       <h3>Token-uri API</h3>
 
       <form onSubmit={create} className="token-form">

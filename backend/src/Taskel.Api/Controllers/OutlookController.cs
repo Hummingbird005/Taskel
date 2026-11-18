@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Taskel.Api.Data;
+using Taskel.Api.Integrations;
 
 namespace Taskel.Api.Controllers;
 
@@ -13,8 +14,21 @@ namespace Taskel.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/outlook")]
-public class OutlookController(TaskelDbContext db) : ControllerBase
+public class OutlookController(TaskelDbContext db, IntegrationSettings settings) : ControllerBase
 {
+    /// <summary>
+    /// The Outlook add-in's manifest, pointing at this Taskel: an administrator downloads it and deploys it, or a
+    /// user adds it from a file. Anonymous, as it holds nothing but addresses. The addresses come from the public
+    /// address set for emails, otherwise from the address this request came to.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("manifest.xml")]
+    public ContentResult Manifest()
+    {
+        Response.Headers.ContentDisposition = "attachment; filename=\"taskel-outlook.xml\"";
+        return Content(OutlookManifest.For(PublicAddress.Of(Request, settings)), "application/xml", Encoding.UTF8);
+    }
+
     /// <summary>
     /// Who an email can be given to: every person, then every group, as
     /// <c>person|group TAB value TAB name TAB detail</c>, where value is what

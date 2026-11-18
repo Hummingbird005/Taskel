@@ -1411,3 +1411,10 @@ fieldset.state-bar { border: 0; margin: 0; padding: 0; min-width: 0; }
 .sso-button { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .auth-divider { display: flex; align-items: center; gap: var(--s3); color: var(--muted); font-size: var(--fs-xs); }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+
+/* Integrări: the two ways to connect Outlook, side by side when there is room. */
+.outlook-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s3); margin: var(--s3) 0 var(--s4); }
+.outlook-option { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border: 1px solid var(--border); border-radius: var(--radius); }
+.outlook-option h3 { margin-top: 0; }
+.outlook-option ol { margin: 0; padding-left: 1.2em; font-size: var(--fs-sm); }
+.outlook-option .button { align-self: flex-start; margin-top: auto; }

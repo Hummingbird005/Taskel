@@ -10,6 +10,10 @@
 ' RecipientsJson and Instructions. Without this form, every email becomes a
 ' task of your own, as before.
 '
+' The look follows Taskel: Segoe UI, white surfaces, thin grey borders and
+' one blue accent. VBA forms have no rounded corners or shadows; flat
+' controls with single-pixel borders come closest.
+'
 ' Plain ASCII on purpose: Romanian letters are written as \uXXXX and turned
 ' into characters by U() when the form opens.
 
@@ -18,12 +22,32 @@ Option Explicit
 Private Const MAX_RECIPIENTS As Long = 50
 Private Const MAX_INSTRUCTIONS As Long = 2000
 
+' Layout, in points.
+Private Const FORM_WIDTH As Single = 400
+Private Const PAD As Single = 16
+Private Const HEADER_HEIGHT As Single = 58
+Private Const FOOTER_TOP As Single = 410
+Private Const FOOTER_HEIGHT As Single = 50
+
+' MSForms values, written out so the code does not depend on their names.
+Private Const FLAT As Long = 0              ' fmSpecialEffectFlat
+Private Const SINGLE_BORDER As Long = 1     ' fmBorderStyleSingle
+Private Const NO_BORDER As Long = 0         ' fmBorderStyleNone
+Private Const OPAQUE As Long = 1            ' fmBackStyleOpaque
+Private Const TRANSPARENT As Long = 0       ' fmBackStyleTransparent
+Private Const MULTI_SELECT As Long = 1      ' fmMultiSelectMulti
+Private Const CHECK_LIST As Long = 1        ' fmListStyleOption
+Private Const VERTICAL_BAR As Long = 2      ' fmScrollBarsVertical
+
 Private WithEvents txtSearch As MSForms.TextBox
+Private WithEvents lblPlaceholder As MSForms.Label
 Private WithEvents lstPeople As MSForms.ListBox
 Private WithEvents btnSend As MSForms.CommandButton
 Private WithEvents btnCancel As MSForms.CommandButton
+Private WithEvents lblFooter As MSForms.Label
 Private txtNotes As MSForms.TextBox
-Private lblCount As MSForms.Label
+Private lblSubtitle As MSForms.Label
+Private lblChosen As MSForms.Label
 
 ' Everyone who can get the email, as Taskel listed them, and who is ticked.
 Private entryValues() As String
@@ -66,12 +90,12 @@ Public Sub Prepare(ByVal recipients As String, ByVal mailCount As Long)
     Next i
 
     If mailCount = 1 Then
-        Me.Caption = U("Trimite \u00een Taskel")
+        lblSubtitle.Caption = U("1 email selectat \u00b7 fiecare destinatar prime\u0219te task-ul lui")
     Else
-        Me.Caption = U("Trimite \u00een Taskel (") & mailCount & " emailuri)"
+        lblSubtitle.Caption = mailCount & U(" emailuri selectate \u00b7 fiecare destinatar prime\u0219te task-urile lui")
     End If
     ShowMatches
-    UpdateCount
+    UpdateChosen
 End Sub
 
 ' True when the user clicked Trimite, False when they gave up.
@@ -105,49 +129,86 @@ End Property
 
 Private Sub UserForm_Initialize()
     Dim lbl As MSForms.Label
+    Dim inner As Single
 
-    Me.Width = 372
-    Me.Height = 392
-    Me.Caption = U("Trimite \u00een Taskel")
+    inner = FORM_WIDTH - 2 * PAD
+    Me.Caption = "Taskel"
+    Me.BackColor = ColorWhite()
+    Me.Font.Name = "Segoe UI"
+    Me.Font.Size = 9
+    Me.Width = FORM_WIDTH + 6
+    Me.Height = FOOTER_TOP + FOOTER_HEIGHT + 26
 
-    Set lbl = AddLabel("lblTo", U("Cui trimi\u021bi emailul (unul sau mai mul\u021bi):"), 12, 8, 340)
+    ' Header: title and what is being sent.
+    Set lbl = AddLabel("lblTitle", U("Trimite \u00een Taskel"), PAD, 12, inner, 22)
+    lbl.Font.Size = 13
     lbl.Font.Bold = True
+    lbl.ForeColor = ColorText()
+    Set lblSubtitle = AddLabel("lblSubtitle", "", PAD, 34, inner, 14)
+    lblSubtitle.ForeColor = ColorMuted()
+    AddLine "lineHeader", HEADER_HEIGHT
 
-    AddLabel "lblSearch", U("Caut\u0103:"), 12, 31, 40
+    ' Who gets it.
+    AddSectionTitle "lblTo", U("CUI TRIMI\u021aI"), 72
     Set txtSearch = Me.Controls.Add("Forms.TextBox.1", "txtSearch")
-    Place txtSearch, 54, 28, 298, 18
+    Place txtSearch, PAD, 88, inner, 24
+    StyleField txtSearch
+    Set lblPlaceholder = AddLabel("lblPlaceholder", U("Caut\u0103 o persoan\u0103 sau un grup"), PAD + 7, 93, inner - 14, 14)
+    lblPlaceholder.ForeColor = ColorMuted()
+    lblPlaceholder.BackStyle = TRANSPARENT
 
     Set lstPeople = Me.Controls.Add("Forms.ListBox.1", "lstPeople")
-    Place lstPeople, 12, 52, 340, 150
+    Place lstPeople, PAD, 118, inner, 150
     With lstPeople
+        .Font.Name = "Segoe UI"
+        .Font.Size = 10
+        .ForeColor = ColorText()
+        .BackColor = ColorWhite()
+        .SpecialEffect = FLAT
+        .BorderStyle = SINGLE_BORDER
+        .BorderColor = ColorBorder()
         .ColumnCount = 2
-        .ColumnWidths = "170 pt;150 pt"
-        .MultiSelect = fmMultiSelectMulti
-        .ListStyle = fmListStyleOption
+        .ColumnWidths = "190 pt;160 pt"
+        .MultiSelect = MULTI_SELECT
+        .ListStyle = CHECK_LIST
         .IntegralHeight = False
     End With
 
-    Set lblCount = AddLabel("lblCount", "", 12, 206, 340)
+    Set lblChosen = AddLabel("lblChosen", "", PAD, 274, inner, 28)
+    lblChosen.WordWrap = True
 
-    AddLabel "lblNotes", U("Indica\u021bii pentru cei care primesc task-ul (op\u021bional):"), 12, 228, 340
+    ' What they should do.
+    Set lbl = AddSectionTitle("lblNotes", U("INDICA\u021aII"), 310)
+    Set lbl = AddLabel("lblOptional", U("op\u021bional, le vede fiecare destinatar"), PAD + 54, 310, inner - 54, 14)
+    lbl.ForeColor = ColorMuted()
     Set txtNotes = Me.Controls.Add("Forms.TextBox.1", "txtNotes")
-    Place txtNotes, 12, 244, 340, 76
+    Place txtNotes, PAD, 326, inner, 70
+    StyleField txtNotes
     With txtNotes
         .MultiLine = True
         .WordWrap = True
         .EnterKeyBehavior = True
-        .ScrollBars = fmScrollBarsVertical
+        .ScrollBars = VERTICAL_BAR
         .MaxLength = MAX_INSTRUCTIONS
     End With
 
-    Set btnSend = Me.Controls.Add("Forms.CommandButton.1", "btnSend")
-    Place btnSend, 180, 330, 82, 24
-    btnSend.Caption = "Trimite"
+    ' Footer: a grey band with the two buttons on the right.
+    Set lblFooter = AddLabel("lblFooter", "", 0, FOOTER_TOP, FORM_WIDTH + 6, FOOTER_HEIGHT)
+    lblFooter.BackStyle = OPAQUE
+    lblFooter.BackColor = ColorSurface()
+    AddLine "lineFooter", FOOTER_TOP
 
     Set btnCancel = Me.Controls.Add("Forms.CommandButton.1", "btnCancel")
-    Place btnCancel, 270, 330, 82, 24
+    Place btnCancel, FORM_WIDTH - PAD - 96 - 8 - 80, FOOTER_TOP + 11, 80, 28
+    StyleButton btnCancel, False
     btnCancel.Caption = U("Renun\u021b\u0103")
     btnCancel.Cancel = True
+
+    Set btnSend = Me.Controls.Add("Forms.CommandButton.1", "btnSend")
+    Place btnSend, FORM_WIDTH - PAD - 96, FOOTER_TOP + 11, 96, 28
+    StyleButton btnSend, True
+    btnSend.Caption = "Trimite"
+    ' Not the default button: Enter in the search box ticks a person instead of sending.
 
     txtSearch.TabIndex = 0
     lstPeople.TabIndex = 1
@@ -167,7 +228,25 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
 End Sub
 
 Private Sub txtSearch_Change()
+    lblPlaceholder.Visible = (Len(txtSearch.Text) = 0)
     ShowMatches
+End Sub
+
+' Enter ticks the first person found; the down arrow moves into the list.
+Private Sub txtSearch_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    If KeyCode = vbKeyReturn And lstPeople.ListCount > 0 And Len(txtSearch.Text) > 0 Then
+        lstPeople.Selected(0) = Not lstPeople.Selected(0)
+        txtSearch.Text = ""
+        KeyCode = 0
+    ElseIf KeyCode = vbKeyDown And lstPeople.ListCount > 0 Then
+        lstPeople.SetFocus
+        lstPeople.ListIndex = 0
+        KeyCode = 0
+    End If
+End Sub
+
+Private Sub lblPlaceholder_Click()
+    txtSearch.SetFocus
 End Sub
 
 Private Sub lstPeople_Change()
@@ -177,7 +256,7 @@ Private Sub lstPeople_Change()
     For row = 0 To lstPeople.ListCount - 1
         entryChosen(rowEntry(row)) = lstPeople.Selected(row)
     Next row
-    UpdateCount
+    UpdateChosen
 End Sub
 
 Private Sub btnSend_Click()
@@ -193,6 +272,26 @@ End Sub
 Private Sub btnCancel_Click()
     wasSent = False
     Me.Hide
+End Sub
+
+' A darker blue while the mouse is over Trimite, as on a web page.
+Private Sub btnSend_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If btnSend.BackColor <> ColorAccentHover() Then btnSend.BackColor = ColorAccentHover()
+End Sub
+
+Private Sub btnCancel_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If btnCancel.BackColor <> ColorSurface() Then btnCancel.BackColor = ColorSurface()
+    ResetHover btnSend, ColorAccent()
+End Sub
+
+Private Sub lblFooter_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    ResetHover btnSend, ColorAccent()
+    ResetHover btnCancel, ColorWhite()
+End Sub
+
+Private Sub UserForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    ResetHover btnSend, ColorAccent()
+    ResetHover btnCancel, ColorWhite()
 End Sub
 
 ' ---------------------------------------------------------------------------
@@ -222,16 +321,35 @@ Private Sub ShowMatches()
     filling = False
 End Sub
 
-Private Sub UpdateCount()
+' Says who is ticked, also those the search hides, and names the button after it.
+Private Sub UpdateChosen()
     Dim chosen As Long
+    Dim names As String
+    Dim i As Long
 
-    chosen = ChosenCount()
+    For i = 0 To entryCount - 1
+        If entryChosen(i) Then
+            chosen = chosen + 1
+            If Len(names) < 160 Then
+                If Len(names) > 0 Then names = names & ", "
+                names = names & entryNames(i)
+            End If
+        End If
+    Next i
+
     If chosen = 0 Then
-        lblCount.Caption = U("Niciun destinatar ales: task-ul r\u0103m\u00e2ne la tine.")
-    ElseIf chosen = 1 Then
-        lblCount.Caption = U("1 destinatar: prime\u0219te task-ul, iar r\u0103spunsul vine la tine.")
+        lblChosen.ForeColor = ColorMuted()
+        lblChosen.Caption = U("Niciun destinatar ales: task-ul r\u0103m\u00e2ne la tine.")
+        btnSend.Caption = "Trimite"
     Else
-        lblCount.Caption = chosen & U(" destinatari: fiecare prime\u0219te task-ul lui, iar r\u0103spunsurile vin la tine.")
+        If Len(names) >= 160 Then names = names & ", ..."
+        lblChosen.ForeColor = ColorAccent()
+        lblChosen.Caption = U("Ale\u0219i (") & chosen & "): " & names & U(". R\u0103spunsurile vin la tine.")
+        If chosen = 1 Then
+            btnSend.Caption = "Trimite"
+        Else
+            btnSend.Caption = "Trimite (" & chosen & ")"
+        End If
     End If
 End Sub
 
@@ -243,16 +361,68 @@ Private Function ChosenCount() As Long
     Next i
 End Function
 
-Private Function AddLabel(ByVal controlName As String, ByVal text As String, _
-                          ByVal leftPos As Single, ByVal topPos As Single, ByVal widthPts As Single) As MSForms.Label
+Private Function AddLabel(ByVal controlName As String, ByVal text As String, ByVal leftPos As Single, _
+                          ByVal topPos As Single, ByVal widthPts As Single, ByVal heightPts As Single) As MSForms.Label
     Dim lbl As MSForms.Label
 
     Set lbl = Me.Controls.Add("Forms.Label.1", controlName)
-    Place lbl, leftPos, topPos, widthPts, 14
-    lbl.Caption = text
+    Place lbl, leftPos, topPos, widthPts, heightPts
+    lbl.Font.Name = "Segoe UI"
+    lbl.Font.Size = 9
+    lbl.BackStyle = TRANSPARENT
+    lbl.ForeColor = ColorText()
     lbl.WordWrap = False
+    lbl.Caption = text
     Set AddLabel = lbl
 End Function
+
+' A small grey title in capitals above a part of the form.
+Private Function AddSectionTitle(ByVal controlName As String, ByVal text As String, ByVal topPos As Single) As MSForms.Label
+    Dim lbl As MSForms.Label
+
+    Set lbl = AddLabel(controlName, text, PAD, topPos, 120, 14)
+    lbl.Font.Size = 8
+    lbl.Font.Bold = True
+    lbl.ForeColor = ColorMuted()
+    Set AddSectionTitle = lbl
+End Function
+
+' A one-pixel line across the window.
+Private Sub AddLine(ByVal controlName As String, ByVal topPos As Single)
+    Dim lbl As MSForms.Label
+
+    Set lbl = AddLabel(controlName, "", 0, topPos, FORM_WIDTH + 6, 0.75)
+    lbl.BackStyle = OPAQUE
+    lbl.BackColor = ColorBorder()
+End Sub
+
+Private Sub StyleField(ByVal box As MSForms.TextBox)
+    box.Font.Name = "Segoe UI"
+    box.Font.Size = 10
+    box.ForeColor = ColorText()
+    box.BackColor = ColorWhite()
+    box.SpecialEffect = FLAT
+    box.BorderStyle = SINGLE_BORDER
+    box.BorderColor = ColorField()
+End Sub
+
+Private Sub StyleButton(ByVal button As MSForms.CommandButton, ByVal primary As Boolean)
+    button.Font.Name = "Segoe UI"
+    button.Font.Size = 9
+    button.Font.Bold = primary
+    button.TakeFocusOnClick = False
+    If primary Then
+        button.BackColor = ColorAccent()
+        button.ForeColor = ColorWhite()
+    Else
+        button.BackColor = ColorWhite()
+        button.ForeColor = ColorText()
+    End If
+End Sub
+
+Private Sub ResetHover(ByVal button As MSForms.CommandButton, ByVal color As Long)
+    If button.BackColor <> color Then button.BackColor = color
+End Sub
 
 Private Sub Place(ByVal ctl As Object, ByVal leftPos As Single, ByVal topPos As Single, _
                   ByVal widthPts As Single, ByVal heightPts As Single)
@@ -261,6 +431,39 @@ Private Sub Place(ByVal ctl As Object, ByVal leftPos As Single, ByVal topPos As 
     ctl.Width = widthPts
     ctl.Height = heightPts
 End Sub
+
+' Taskel's colours.
+Private Function ColorAccent() As Long
+    ColorAccent = RGB(29, 78, 216)
+End Function
+
+Private Function ColorAccentHover() As Long
+    ColorAccentHover = RGB(22, 61, 173)
+End Function
+
+Private Function ColorText() As Long
+    ColorText = RGB(11, 11, 12)
+End Function
+
+Private Function ColorMuted() As Long
+    ColorMuted = RGB(91, 91, 99)
+End Function
+
+Private Function ColorBorder() As Long
+    ColorBorder = RGB(228, 228, 232)
+End Function
+
+Private Function ColorField() As Long
+    ColorField = RGB(201, 201, 209)
+End Function
+
+Private Function ColorSurface() As Long
+    ColorSurface = RGB(246, 246, 248)
+End Function
+
+Private Function ColorWhite() As Long
+    ColorWhite = RGB(255, 255, 255)
+End Function
 
 ' Lower case, without Romanian diacritics, so "stefan" finds a name written with the letter s-comma.
 Private Function Plain(ByVal value As String) As String
