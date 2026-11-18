@@ -25,4 +25,11 @@ public record CreateTaskFromEmailRequest(
     /// <summary>The sender's plain email address; the reply on completion is sent here.</summary>
     [StringLength(320)] string? SenderEmail = null,
     /// <summary>The email's Message-ID header, e.g. <c>&lt;abc@mail.example.com&gt;</c>.</summary>
-    [StringLength(998)] string? MessageId = null);
+    [StringLength(998)] string? MessageId = null,
+    /// <summary>Who to give the email to, for <c>from-email/distribute</c>: user ids, or <c>group:</c> and a group id.</summary>
+    [MaxLength(50)] List<string>? Recipients = null,
+    /// <summary>Guidance for the people who receive the task.</summary>
+    [StringLength(2000), SafeText(Multiline = true)] string? Instructions = null);
+
+/// <param name="TaskIds">The tasks created, one per recipient, in the order given.</param>
+public record DistributedEmailResponse(IReadOnlyList<Guid> TaskIds);

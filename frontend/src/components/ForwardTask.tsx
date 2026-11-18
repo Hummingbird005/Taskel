@@ -15,7 +15,7 @@ interface Props {
   people: UserSummary[]
   groups: GroupListItem[]
   /** Forwards the task. Resolves to an error message, or null on success. */
-  onSubmit: (target: TaskTarget, note: string | null) => Promise<string | null>
+  onSubmit: (target: TaskTarget, note: string | null, returnToMe: boolean) => Promise<string | null>
   onCancel: () => void
 }
 
@@ -23,6 +23,7 @@ interface Props {
 export default function ForwardTask({ task, people, groups, onSubmit, onCancel }: Props) {
   const [target, setTarget] = useState('')
   const [note, setNote] = useState('')
+  const [returnToMe, setReturnToMe] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [busy, setBusy] = useState<{ userId: string; count: number } | null>(null)
@@ -67,6 +68,7 @@ export default function ForwardTask({ task, people, groups, onSubmit, onCancel }
         ? { assigneeId: null, groupId: target.slice(GROUP_PREFIX.length) }
         : { assigneeId: target, groupId: null },
       note.trim() || null,
+      returnToMe,
     )
     // On success the parent removes this form.
     if (failure) {
@@ -108,6 +110,15 @@ export default function ForwardTask({ task, people, groups, onSubmit, onCancel }
         rows={3}
         aria-label="Mesaj pentru cine primește task-ul"
       />
+      <label className="toggle">
+        <input type="checkbox" checked={returnToMe} onChange={(e) => setReturnToMe(e.target.checked)} />
+        <span>
+          Revine la mine după finalizare
+          <small className="muted">
+            Când e rezolvat, task-ul se întoarce la tine cu mesajul de rezolvare, iar tu îl închizi.
+          </small>
+        </span>
+      </label>
       {error && (
         <p className="error" role="alert">
           {error}

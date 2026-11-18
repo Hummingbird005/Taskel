@@ -104,7 +104,7 @@ export function StateCallout({ task }: { task: TaskItem }) {
       </h3>
       {task.completionResponse ? (
         <>
-          {task.sourceEmailAddress && <p className="muted">Răspuns trimis către {task.sourceEmailAddress}:</p>}
+          {task.sourceEmailAddress && <p className="muted">Mesaj trimis pe email la finalizare:</p>}
           <p>{task.completionResponse}</p>
         </>
       ) : (
@@ -114,12 +114,66 @@ export function StateCallout({ task }: { task: TaskItem }) {
   )
 }
 
+/** What completing does, said on its button: send the task back, email the message, or just complete it. */
+function completeLabel(task: TaskItem): string {
+  if (task.returnsTo) return `Rezolvat, înapoi la ${task.returnsTo.displayName}`
+  return task.replyTo ? 'Trimite și finalizează' : 'Finalizat'
+}
+
+/** The message field's label and hint, which say where the message goes. */
+function messageField(task: TaskItem): { label: string; placeholder: string } {
+  if (task.returnsTo) {
+    return {
+      label: `Rezolvare pentru ${task.returnsTo.displayName}`,
+      placeholder: task.sourceEmailAddress
+        ? 'Obligatorie: task-ul se întoarce cu ea la cine ți l-a trimis.'
+        : 'Ce s-a rezolvat; task-ul se întoarce cu acest mesaj.',
+    }
+  }
+  if (task.replyTo) {
+    return {
+      label: `Răspuns către ${task.replyTo}`,
+      placeholder: 'Obligatoriu la finalizare: se trimite pe email ca răspuns.',
+    }
+  }
+  return { label: 'Mesaj de rezolvare', placeholder: 'Ce s-a rezolvat, sau ce aștepți (obligatoriu pentru „În așteptare”).' }
+}
+
+/** Guidance from whoever sent the task, shown above its message. */
+export function Instructions({ task }: { task: TaskItem }) {
+  if (!task.instructions) return null
+  return (
+    <section className="detail-callout instructions" role="note">
+      <h3>
+        <Icon name="flag" size={15} />
+        Indicații de la {task.createdBy.displayName}
+      </h3>
+      <p>{task.instructions}</p>
+    </section>
+  )
+}
+
+/** The resolution a forwarded task came back with, while it waits to be closed. */
+export function ReturnedResolution({ task }: { task: TaskItem }) {
+  const last = task.forwards.at(-1)
+  if (task.state === 'completed' || !last?.isReturn || !last.note) return null
+  return (
+    <section className="detail-callout done" role="note">
+      <h3>
+        <Icon name="check" size={15} />
+        Rezolvat de {last.from.displayName}, întors la tine
+      </h3>
+      <p>{last.note}</p>
+    </section>
+  )
+}
+
 /** The label of each state button, which depends on where the task stands now. */
 function buttonLabels(task: TaskItem): Record<TaskState, string> {
   const labels: Record<TaskState, string> = {
     open: 'Deschis',
     waiting: 'În așteptare',
-    completed: task.sourceEmailAddress ? 'Trimite și finalizează' : 'Finalizat',
+    completed: completeLabel(task),
   }
   if (task.state === 'completed') labels.open = 'Redeschide'
   if (task.state === 'waiting') {
@@ -147,24 +201,20 @@ export function WorkFooter({
   onMessage: (message: string) => void
   onState: (state: TaskState) => void
 }) {
-  const reply = task.sourceEmailAddress
+  const field = messageField(task)
   const labels = buttonLabels(task)
   const states: TaskState[] = task.state === 'completed' ? ['open'] : ['open', 'waiting', 'completed']
   return (
     <form className="detail-footer" onSubmit={(e) => e.preventDefault()} noValidate>
       {task.state !== 'completed' && (
         <label className="field">
-          <span>{reply ? `Răspuns către ${reply}` : 'Mesaj de rezolvare'}</span>
+          <span>{field.label}</span>
           <textarea
             value={message}
             onChange={(e) => onMessage(e.target.value)}
             rows={3}
             maxLength={LIMITS.response}
-            placeholder={
-              reply
-                ? 'Obligatoriu la finalizare: se trimite pe email ca răspuns.'
-                : 'Ce s-a rezolvat, sau ce aștepți (obligatoriu pentru „În așteptare”).'
-            }
+            placeholder={field.placeholder}
           />
         </label>
       )}

@@ -66,7 +66,8 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             forward.HasKey(f => f.Id);
             // The id is set in code; a forward added to a loaded task must be seen as new.
             forward.Property(f => f.Id).ValueGeneratedNever();
-            forward.Property(f => f.Note).HasMaxLength(500);
+            // A return carries the resolution, which can be as long as a completion response.
+            forward.Property(f => f.Note).HasMaxLength(4000);
             forward.HasOne<TaskItem>().WithMany(t => t.Forwards).HasForeignKey(f => f.TaskId).OnDelete(DeleteBehavior.Cascade);
             forward.HasOne(f => f.From).WithMany().HasForeignKey(f => f.FromUserId).OnDelete(DeleteBehavior.Cascade);
             forward.HasOne(f => f.ToUser).WithMany().HasForeignKey(f => f.ToUserId).OnDelete(DeleteBehavior.SetNull);
@@ -130,6 +131,7 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             task.Property(t => t.SourceEmailSubject).HasMaxLength(500);
             task.Property(t => t.SourceEmailMessageId).HasMaxLength(998);
             task.Property(t => t.CompletionResponse).HasMaxLength(4000);
+            task.Property(t => t.Instructions).HasMaxLength(2000);
             task.Ignore(t => t.RequiresCompletionReply);
             task.HasOne(t => t.Owner).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
             task.HasOne(t => t.Assignee).WithMany().HasForeignKey(t => t.AssigneeId).OnDelete(DeleteBehavior.SetNull);

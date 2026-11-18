@@ -220,9 +220,15 @@ namespace Taskel.Api.Data.Migrations
                     b.Property<Guid>("FromUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsReturn")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Note")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<bool>("ReturnPending")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uuid");
@@ -274,6 +280,10 @@ namespace Taskel.Api.Data.Migrations
 
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean");

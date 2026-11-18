@@ -54,13 +54,76 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         return CreatedAtAction(nameof(Get), new { id = task.Id }, TaskResponse.From(task, TaskAccess.Creator));
     }
 
-    /// <summary>Creates a task from an email, e.g. sent by the Outlook macro.</summary>
+    /// <summary>Creates a task from an email for the caller, e.g. sent by the Outlook macro.</summary>
     [HttpPost("from-email")]
     public async Task<ActionResult<TaskResponse>> CreateFromEmail(CreateTaskFromEmailRequest request, CancellationToken ct)
     {
-        var task = await repository.AddAsync(EmailTaskFactory.Create(User.GetUserId(), request), ct);
+        if (request.Recipients is { Count: > 0 })
+        {
+            ModelState.AddModelError(nameof(request.Recipients), "To give the email to other people, use from-email/distribute.");
+            return ValidationProblem(ModelState);
+        }
+        var task = EmailTaskFactory.Create(User.GetUserId(), request);
+        task.Instructions = InstructionsOf(request);
+        task = await repository.AddAsync(task, ct);
         return CreatedAtAction(nameof(Get), new { id = task.Id }, TaskResponse.From(task, TaskAccess.Creator));
     }
+
+    /// <summary>
+    /// Gives an email to one or more people or groups: each gets a task of their own, created by the
+    /// caller, with the instructions, and is told by email. With no recipient, the task is the caller's.
+    /// When one of them completes their task, the completion message is emailed to the caller.
+    /// </summary>
+    [HttpPost("from-email/distribute")]
+    public async Task<ActionResult<DistributedEmailResponse>> DistributeEmail(CreateTaskFromEmailRequest request, CancellationToken ct)
+    {
+        var userId = User.GetUserId();
+        var targets = new List<(Guid? AssigneeId, Guid? GroupId)>();
+        foreach (var recipient in request.Recipients ?? [])
+        {
+            if (!TryParseRecipient(recipient, out var assigneeId, out var groupId))
+            {
+                ModelState.AddModelError(nameof(request.Recipients), "Each recipient is a user id, or group: and a group id.");
+                continue;
+            }
+            var target = await ResolveTargetAsync(userId, assigneeId, groupId, ct);
+            if (!targets.Contains(target)) targets.Add(target);
+        }
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        if (targets.Count == 0) targets.Add((null, null));
+
+        var instructions = InstructionsOf(request);
+        var ids = new List<Guid>();
+        foreach (var (assigneeId, groupId) in targets)
+        {
+            var task = EmailTaskFactory.Create(userId, request);
+            task.AssigneeId = assigneeId;
+            task.GroupId = groupId;
+            task.Instructions = instructions;
+            task = await repository.AddAsync(task, ct);
+            await notifier.TaskReceivedAsync(task, userId, TaskNotificationReason.Assigned, instructions, ct);
+            ids.Add(task.Id);
+        }
+        return StatusCode(StatusCodes.Status201Created, new DistributedEmailResponse(ids));
+    }
+
+    private static bool TryParseRecipient(string? value, out Guid? assigneeId, out Guid? groupId)
+    {
+        assigneeId = null;
+        groupId = null;
+        var text = value?.Trim() ?? string.Empty;
+        if (text.StartsWith(GroupPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Guid.TryParse(text[GroupPrefix.Length..], out var group)) return false;
+            groupId = group;
+            return true;
+        }
+        if (!Guid.TryParse(text, out var user)) return false;
+        assigneeId = user;
+        return true;
+    }
+
+    private const string GroupPrefix = "group:";
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<TaskResponse>> Update(Guid id, UpdateTaskRequest request, CancellationToken ct)
@@ -74,6 +137,11 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         {
             return Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: "This task came from an email. Complete it with a response, which is sent to the sender.");
+        }
+        if (request.IsCompleted && !task.IsCompleted && access == TaskAccess.Assignee && task.PendingReturn() is not null)
+        {
+            return Problem(statusCode: StatusCodes.Status400BadRequest,
+                title: "This task goes back to whoever forwarded it when it is completed. Complete it with complete.");
         }
 
         task.Title = request.Title.Trim();
@@ -111,6 +179,11 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         var changed = task.AssigneeId != target.AssigneeId || task.GroupId != target.GroupId;
         task.AssigneeId = target.AssigneeId;
         task.GroupId = target.GroupId;
+        // The creator takes the task's course into their own hands: nobody is waiting for it back any more.
+        if (changed)
+        {
+            foreach (var forward in task.Forwards) forward.ReturnPending = false;
+        }
         await repository.SaveAsync(task, ct);
         // Saving it again with the same person is not news to them.
         if (changed) await notifier.TaskReceivedAsync(task, task.UserId, TaskNotificationReason.Assigned, ct: ct);
@@ -148,7 +221,8 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
             FromUserId = userId,
             ToUserId = request.AssigneeId,
             ToGroupId = request.GroupId,
-            Note = NullIfBlank(request.Note)
+            Note = NullIfBlank(request.Note),
+            ReturnPending = request.ReturnToMe
         });
         task.AssigneeId = target.AssigneeId;
         task.GroupId = target.GroupId;
@@ -196,12 +270,14 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
     }
 
     /// <summary>
-    /// Marks a task as completed. For a task created from an email the response is required and is
-    /// emailed to the sender as a reply; if the email cannot be sent, the task stays open.
+    /// Completes a task. When someone who forwarded it asked for it back, it goes back to them instead,
+    /// with the message, and stays open. For a task created from an email the message is required and
+    /// is emailed (see <see cref="TaskItem.ReplyAddressFor"/>); if the email cannot be sent, the task stays open.
     /// </summary>
     [HttpPost("{id:guid}/complete")]
     public async Task<ActionResult<TaskResponse>> Complete(Guid id, CompleteTaskRequest request, CancellationToken ct)
     {
+        var userId = User.GetUserId();
         var found = await LoadAsync(id, ct);
         if (found is null) return NotFound();
         var (task, access) = found.Value;
@@ -210,39 +286,80 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
             return Problem(statusCode: StatusCodes.Status409Conflict, title: "This task is already completed.");
 
         var response = NullIfBlank(request.Response);
-
-        if (task.RequiresCompletionReply)
+        var pending = access == TaskAccess.Assignee ? task.PendingReturn() : null;
+        var replyTo = pending is null ? task.ReplyAddressFor(access) : null;
+        if (task.RequiresCompletionReply && response is null)
         {
-            if (response is null)
-            {
-                ModelState.AddModelError(nameof(request.Response),
-                    $"A response is required. It is sent to {task.SourceEmailAddress}.");
-                return ValidationProblem(ModelState);
-            }
-
-            try
-            {
-                await emailSender.SendReplyAsync(
-                    new ReplyEmail(task.SourceEmailAddress!, task.SourceEmailSubject, response, task.SourceEmailMessageId), ct);
-            }
-            catch (EmailNotConfiguredException)
-            {
-                return Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
-                    title: "Email sending is not set up on the Taskel server, so the reply cannot be sent. The task was not completed.");
-            }
-            catch (EmailSendException)
-            {
-                return Problem(statusCode: StatusCodes.Status502BadGateway,
-                    title: "The reply email could not be sent. The task was not completed. Try again.");
-            }
+            ModelState.AddModelError(nameof(request.Response), replyTo is null
+                ? "A message is required: it goes back with the task."
+                : $"A response is required. It is sent to {replyTo}.");
+            return ValidationProblem(ModelState);
         }
+
+        if (pending is not null) return await ReturnAsync(task, pending, userId, response, ct);
+
+        if (replyTo is not null && await SendCompletionReplyAsync(task, access, replyTo, response!, ct) is { } failure)
+            return failure;
 
         task.IsCompleted = true;
         task.CompletedAt = DateTime.UtcNow;
         task.CompletionResponse = response;
         ClearWaiting(task);
+        foreach (var forward in task.Forwards) forward.ReturnPending = false;
         await repository.SaveAsync(task, ct);
         return Ok(TaskResponse.From(task, access));
+    }
+
+    /// <summary>Sends the task back to whoever forwarded it and asked for it back, with the resolution.</summary>
+    private async Task<ActionResult<TaskResponse>> ReturnAsync(
+        TaskItem task, TaskForward pending, Guid userId, string? response, CancellationToken ct)
+    {
+        pending.ReturnPending = false;
+        task.Forwards.Add(new TaskForward
+        {
+            TaskId = task.Id,
+            FromUserId = userId,
+            ToUserId = pending.FromUserId,
+            Note = response,
+            IsReturn = true
+        });
+        task.AssigneeId = pending.FromUserId == task.UserId ? null : pending.FromUserId;
+        task.GroupId = null;
+        ClearWaiting(task);
+        await repository.SaveAsync(task, ct);
+        await notifier.TaskReceivedAsync(task, userId, TaskNotificationReason.Returned, response, ct);
+        return Ok(TaskResponse.From(task, AccessOf(task, userId, await repository.GetGroupIdsAsync(userId, ct))));
+    }
+
+    /// <summary>
+    /// Emails the completion message of an email task: to the email's sender, or to the task's creator
+    /// with a line saying who completed it. Null when it was sent; otherwise the answer to give.
+    /// </summary>
+    private async Task<ObjectResult?> SendCompletionReplyAsync(
+        TaskItem task, TaskAccess access, string to, string response, CancellationToken ct)
+    {
+        var body = response;
+        if (access != TaskAccess.Creator)
+        {
+            var me = task.Assignee ?? throw new InvalidOperationException("Task assignee is not loaded.");
+            var name = string.IsNullOrWhiteSpace(me.DisplayName) ? me.Email : me.DisplayName;
+            body = $"{name} a finalizat în Taskel task-ul „{task.Title}”:\n\n{response}";
+        }
+        try
+        {
+            await emailSender.SendReplyAsync(new ReplyEmail(to, task.SourceEmailSubject, body, task.SourceEmailMessageId), ct);
+            return null;
+        }
+        catch (EmailNotConfiguredException)
+        {
+            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
+                title: "Email sending is not set up on the Taskel server, so the reply cannot be sent. The task was not completed.");
+        }
+        catch (EmailSendException)
+        {
+            return Problem(statusCode: StatusCodes.Status502BadGateway,
+                title: "The reply email could not be sent. The task was not completed. Try again.");
+        }
     }
 
     /// <summary>
@@ -361,6 +478,10 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
 
     private ObjectResult CreatorOnly(string action) =>
         Problem(statusCode: StatusCodes.Status403Forbidden, title: $"Only the person who created this task can {action} it.");
+
+    /// <summary>The instructions with Unix line endings (Outlook sends Windows ones), or null when there are none.</summary>
+    private static string? InstructionsOf(CreateTaskFromEmailRequest request) =>
+        NullIfBlank(request.Instructions?.Replace("\r\n", "\n").Replace('\r', '\n'));
 
     private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

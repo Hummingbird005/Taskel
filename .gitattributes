@@ -9,3 +9,6 @@ offline/npm/** -text -diff
 
 # Shell scripts keep Unix line endings, so they run in Git Bash on Windows too.
 *.sh text eol=lf
+
+# Pasted into the Outlook VBA editor; kept with Windows line endings like the module.
+integrations/outlook/*.txt -text

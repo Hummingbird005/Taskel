@@ -67,7 +67,9 @@ public class NotificationWorker(NotificationQueue queue, IEmailSender sender, IL
 public enum TaskNotificationReason
 {
     Assigned,
-    Forwarded
+    Forwarded,
+    /// <summary>Completed by someone it was forwarded to, and sent back to whoever asked for it back.</summary>
+    Returned
 }
 
 /// <summary>Tells people by email that a task reached them, directly or through one of their groups.</summary>
@@ -134,7 +136,8 @@ public class TaskNotifier(
             return (members, group);
         }
 
-        return reason == TaskNotificationReason.Forwarded
+        // Forwarded or sent back to the person who created it.
+        return reason is TaskNotificationReason.Forwarded or TaskNotificationReason.Returned
             ? (await db.Users.AsNoTracking().Where(u => u.Id == task.UserId).ToListAsync(ct), null)
             : ([], null);
     }
@@ -149,7 +152,8 @@ public class TaskNotifier(
         body.Append(actorName).Append(' ').Append(WhatHappened(group, reason)).Append("\n\n");
         AppendFacts(body, task);
         if (!string.IsNullOrWhiteSpace(note))
-            body.Append("Mesaj de la ").Append(actorName).Append(": ").Append(note.Trim()).Append('\n');
+            body.Append(reason == TaskNotificationReason.Returned ? "Rezolvarea lui " : "Mesaj de la ")
+                .Append(actorName).Append(": ").Append(note.Trim()).Append('\n');
 
         var url = publicUrl?.Trim();
         if (!string.IsNullOrEmpty(url)) body.Append("\nDeschide Taskel: ").Append(url).Append('\n');
@@ -157,12 +161,20 @@ public class TaskNotifier(
         body.Append("\n--\nPrimești acest email pentru că ai un cont în Taskel. ")
             .Append("Poți opri notificările din Taskel, la Integrări → Notificări pe email.\n");
 
-        var subject = group is not null ? $"Task pentru grupul {group.Name}: {task.Title}" : $"Task nou: {task.Title}";
+        var subject = SubjectOf(task, group, reason);
         return new EmailMessage(recipient.Email, subject, body.ToString());
+    }
+
+    private static string SubjectOf(TaskItem task, Group? group, TaskNotificationReason reason)
+    {
+        if (reason == TaskNotificationReason.Returned) return $"Task rezolvat, înapoi la tine: {task.Title}";
+        return group is not null ? $"Task pentru grupul {group.Name}: {task.Title}" : $"Task nou: {task.Title}";
     }
 
     private static string WhatHappened(Group? group, TaskNotificationReason reason)
     {
+        if (reason == TaskNotificationReason.Returned)
+            return "a rezolvat un task pe care l-ai direcționat și ți l-a trimis înapoi. Îl poți închide sau duce mai departe.";
         var forwarded = reason == TaskNotificationReason.Forwarded;
         if (group is null) return forwarded ? "ți-a direcționat un task în Taskel." : "ți-a alocat un task în Taskel.";
         return (forwarded ? "a direcționat un task către grupul " : "a dat un task grupului ") + group.Name

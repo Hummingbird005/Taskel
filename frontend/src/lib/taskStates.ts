@@ -11,7 +11,7 @@ export const STATE_ICON: Record<TaskState, IconName> = { open: 'inbox', waiting:
  */
 export function stateChangeProblem(task: TaskItem, next: TaskState, text: string): string | null {
   if (next === 'waiting' && !text) return 'Scrie în câmpul de mai jos motivul pentru care task-ul este în așteptare.'
-  if (next === 'completed' && task.sourceEmailAddress && !text)
-    return `Scrie răspunsul: se trimite pe email către ${task.sourceEmailAddress}, apoi task-ul se finalizează.`
-  return null
+  if (next !== 'completed' || !task.sourceEmailAddress || text) return null
+  if (task.returnsTo) return `Scrie rezolvarea: task-ul se întoarce cu ea la ${task.returnsTo.displayName}.`
+  return `Scrie răspunsul: se trimite pe email către ${task.replyTo ?? task.sourceEmailAddress}, apoi task-ul se finalizează.`
 }

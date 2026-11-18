@@ -197,6 +197,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/tasks/{id}`    | ✓    | Get a task                                    |
 | POST   | `/api/tasks`         | ✓    | Create a task                                 |
 | POST   | `/api/tasks/from-email` | ✓ | Create a task from an email                   |
+| POST   | `/api/tasks/from-email/distribute` | ✓ | Give an email to people or groups: one task each, with instructions |
+| GET    | `/api/outlook/recipients` | ✓ | People and groups an email can go to, as tab-separated lines (for the Outlook macro) |
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
 | PUT    | `/api/tasks/{id}/assignee` | ✓ | Assign a task to a user or a group (creator only) |
 | POST   | `/api/tasks/{id}/forward` | ✓ | Pass a received task on to a user or a group (assignee only) |
@@ -264,6 +266,19 @@ Authorization: Bearer tsk_…
 `integrations/outlook` contains a VBA macro for classic Outlook on Windows that sends the selected emails to
 `POST /api/tasks/from-email`; each becomes a task tagged `email`, with the subject as title and the sender,
 date and body as notes. See [integrations/outlook/README.md](integrations/outlook/README.md) for setup.
+
+With the optional `TaskelSendForm` window installed, the macro first asks who gets the emails and for
+instructions, then calls `POST /api/tasks/from-email/distribute` with `recipients` (user ids, or `group:` and a
+group id; at most 50) and `instructions` (up to 2000 characters):
+
+- Each recipient gets a task of their own, created by the Outlook user, titled with the subject, with the
+  instructions shown above its notes and emailed to them. A group gets one task, which a member takes.
+  No recipient: the task is the Outlook user's own.
+- The answer is `201` with `{ "taskIds": [ … ] }`, one id per recipient; the macro uploads the attachments to each.
+- When a recipient completes their task, their message is emailed to the Outlook user (not to the original
+  sender), as a reply to the original email, so it lands in that conversation in Outlook. Each recipient's
+  completion sends its own reply. The Outlook user answers the sender from Outlook, or completes a task of
+  their own in Taskel, which replies to the sender.
 
 ## Input validation
 
@@ -365,13 +380,20 @@ There are two kinds of groups, offered together in the assignee picker:
 ### Forwarding
 
 Someone who received a task can pass it on to another user or to a group (`POST /api/tasks/{id}/forward` with
-`assigneeId` or `groupId`, and an optional `note` of up to 500 characters).
+`assigneeId` or `groupId`, an optional `note` of up to 500 characters, and `returnToMe`).
 
 - The new assignee gets every right the previous one had, including forwarding it again.
 - The person who forwarded keeps the task under **Direcționate**, read only, and sees how it ends.
 - Every step is kept and returned in the task's `forwards` (from, to, note, time); the interface shows it as
   **Traseu** to everyone who can see the task.
 - Only the current assignee can forward. The creator reassigns instead.
+- With `returnToMe: true` (the interface's **Revine la mine după finalizare**, checked by default), the task comes
+  back when the new assignee completes it: their message (required) is kept as a return step in the path, the
+  task is assigned to the forwarder again (or back to the creator, unassigned, when the creator forwarded it)
+  and stays open, and the forwarder is emailed. The forwarder then closes it, or forwards it again. Returns
+  unwind a chain one step at a time. `PUT` with `isCompleted: true` is refused while a return is pending, and
+  the creator reassigning the task cancels every pending return. Tasks expose it as `returnsTo` (who completing
+  sends it to) and each forward step as `returnPending` / `isReturn`.
 
 Each task in the API carries `access`, what the caller may do with it: `creator` (everything), `assignee`
 (edit, complete, forward), `group` (read and take) or `viewer` (read).
@@ -597,8 +619,12 @@ response:
 
 - `POST /api/tasks/{id}/complete` with `{ "response": "…" }` (up to 4000 characters). In the app, open the task,
   write the response at the bottom and press **Trimite și finalizează**.
-- Taskel emails the response to the sender as a reply to the original email (`Re:` subject, `In-Reply-To` and
-  `References` headers), so it shows up in the same conversation.
+- Taskel emails the response as a reply to the original email (`Re:` subject, `In-Reply-To` and
+  `References` headers), so it shows up in the same conversation. The task's creator replies to the email's
+  sender; anyone else who completes it (an assignee) replies to the creator, who brought the email into Taskel.
+  Tasks expose the address as `replyTo`.
+- A task that returns to whoever forwarded it (see [Forwarding](#forwarding)) sends no email on the way back;
+  the reply goes out when it is finally completed.
 - The task is marked as completed only after the SMTP server has accepted the reply. If sending fails
   (`502`) or email is not configured (`503`), the task stays open.
 - Setting `isCompleted: true` through `PUT` is rejected for these tasks. Reopening through `PUT` is allowed;
@@ -688,6 +714,8 @@ An email goes out when:
 
 - a task is created for, or reassigned to, another user: to that user;
 - a task is forwarded: to the new assignee, with the forwarder's message;
+- a forwarded task comes back: to the forwarder, with the resolution;
+- an email is given to people from Outlook: to each of them, with the instructions;
 - a task is given or forwarded to a group: to every member of the group.
 
 The person who did it is never emailed, and neither is anyone for a task they keep for themselves. Taking a

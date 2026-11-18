@@ -19,8 +19,13 @@ export interface TaskForward {
   from: UserSummary
   toUser: UserSummary | null
   toGroup: GroupSummary | null
+  /** For a return, the resolution of whoever completed the task. */
   note: string | null
   at: string
+  /** The task coming back to someone who asked for it back, rather than being passed on. */
+  isReturn: boolean
+  /** The sender asked for the task back and has not had it back yet. */
+  returnPending: boolean
 }
 
 /** Who a task goes to: a user, a group, or nobody else (both null). */
@@ -67,6 +72,15 @@ export interface TaskItem {
   /** Files attached to the task, oldest first. */
   attachments: Attachment[]
   access: TaskAccess
+  /** Guidance from whoever sent the task, e.g. when an email was given to several people from Outlook. */
+  instructions: string | null
+  /**
+   * For the person asking: where the completion message of this email task is emailed (the email's
+   * sender when the creator completes it, otherwise the creator). Null when nothing is emailed.
+   */
+  replyTo: string | null
+  /** For the person asking: who the task goes back to when they complete it, instead of being completed. */
+  returnsTo: UserSummary | null
 }
 
 /** The editable fields of a task. */
@@ -98,8 +112,9 @@ export const tasksApi = {
   assign: (id: string, target: TaskTarget) =>
     request<TaskItem>(`/tasks/${id}/assignee`, { method: 'PUT', body: JSON.stringify(target) }),
   /** Passes a received task on to a user or a group. The sender can still read it afterwards. */
-  forward: (id: string, target: TaskTarget, note: string | null) =>
-    request<TaskItem>(`/tasks/${id}/forward`, { method: 'POST', body: JSON.stringify({ ...target, note }) }),
+  /** Passes a received task on. With `returnToMe`, it comes back to the caller once completed. */
+  forward: (id: string, target: TaskTarget, note: string | null, returnToMe: boolean) =>
+    request<TaskItem>(`/tasks/${id}/forward`, { method: 'POST', body: JSON.stringify({ ...target, note, returnToMe }) }),
   /** Puts a task on hold. The reason is required. */
   wait: (id: string, reason: string) =>
     request<TaskItem>(`/tasks/${id}/wait`, { method: 'POST', body: JSON.stringify({ reason }) }),

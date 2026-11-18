@@ -22,7 +22,10 @@ Outlook ──► ASP.NET Core API (backend/src/Taskel.Api) ──► PostgreSQL
 - **Frontend**: React 19 + TypeScript, built with Vite. No router and no state library: one `Workspace`
   component holds the signed-in state and switches views.
 - **Outlook macro**: `integrations/outlook/TaskelOutlook.bas`, VBA that calls the same API with a personal
-  API token.
+  API token, and `TaskelSendForm.txt`, the code of an optional UserForm that asks who gets the emails. VBA cannot
+  import a form without its binary `.frx`, so the user creates an empty form and pastes the code; its controls
+  are built at run time, and the macro opens it late bound (`VBA.UserForms.Add`), falling back to the old
+  behaviour when it is missing. Both files stay ASCII: Romanian text is written as `\uXXXX` and decoded by `U()`.
 
 ## Running and testing
 
@@ -97,6 +100,15 @@ returns them as `Viewer`. Their own tasks follow the table above like anyone els
   `POST /api/tasks/{id}/forward`. They are no longer the user's; each step is kept as a `TaskForward` row and
   shown as the task's path.
 
+**Returns.** A forward made with `returnToMe` has `ReturnPending`. `TaskItem.PendingReturn()` is the latest such
+step not yet answered; when the assignee completes, `TasksController.Complete` hands the task back to that step's
+sender instead (`ReturnAsync`): it adds a step with `IsReturn` and the message as its note, clears the pending
+flag and notifies with `TaskNotificationReason.Returned`. Nested forwards unwind one step per completion.
+
+**Who a completion reply goes to**: `TaskItem.ReplyAddressFor(access)`: the email's sender when the creator
+completes, the creator's own address otherwise (an assignee's answer goes to whoever brought the email in).
+`TaskResponse` carries it as `replyTo`, and `returnsTo` when completing sends the task back instead.
+
 ### Data model
 
 - `users`: local and directory accounts. Local accounts have a password hash; directory accounts have a
@@ -105,7 +117,8 @@ returns them as `Viewer`. Their own tasks follow the table above like anyone els
   while on hold, give the task's state (`TaskItem.State`). `AssigneeId` and `GroupId` say who has it: neither (the
   creator), a user, a group (waiting to be taken), or both (taken from a group, and can be handed back).
 - `groups`, `group_members`: application groups, and Active Directory groups recorded at sign-in.
-- `task_forwards`: each time a task was passed on.
+- `task_forwards`: each time a task was passed on (`ReturnPending` when its sender wants it back), and each
+  return (`IsReturn`, with the resolution as the note).
 - `task_attachments`: file metadata; the content is on disk under a generated name.
 - `api_tokens`: hashed personal tokens for the Outlook macro and other clients.
 - `app_settings`: single values an administrator changes from the interface (the attachment size limit).

@@ -67,6 +67,11 @@ public class TaskItem
     /// <summary>Message-ID of the source email, so the reply lands in the same thread.</summary>
     [JsonIgnore]
     public string? SourceEmailMessageId { get; set; }
+    /// <summary>
+    /// What the person who sent the task gave as guidance, e.g. when distributing an email from Outlook
+    /// to several people. Shown above the task's message.
+    /// </summary>
+    public string? Instructions { get; set; }
 
     /// <summary>The response written when the task was completed.</summary>
     public string? CompletionResponse { get; set; }
@@ -91,6 +96,24 @@ public class TaskItem
     /// <summary>True when completing this task must go through a response that is emailed back.</summary>
     [JsonIgnore]
     public bool RequiresCompletionReply => !string.IsNullOrEmpty(SourceEmailAddress);
+
+    /// <summary>
+    /// The forward the task must go back along when it is completed: the latest one whose sender asked
+    /// for it back and has not had it back yet. Null when completing really completes it.
+    /// </summary>
+    public TaskForward? PendingReturn() =>
+        Forwards.Where(f => f.ReturnPending && !f.IsReturn).OrderByDescending(f => f.At).FirstOrDefault();
+
+    /// <summary>
+    /// Where the completion message of an email task is sent, for someone with <paramref name="access"/>:
+    /// the email's sender when the task's creator completes it, otherwise the creator, who sent the email
+    /// to Taskel. Null for a task that did not come from an email.
+    /// </summary>
+    public string? ReplyAddressFor(TaskAccess access)
+    {
+        if (!RequiresCompletionReply) return null;
+        return access == TaskAccess.Creator ? SourceEmailAddress : Owner?.Email;
+    }
 }
 
 public record CreateTaskRequest(
@@ -160,10 +183,15 @@ public record WaitTaskRequest([Required, StringLength(1000, MinimumLength = 1), 
 public record AssignTaskRequest(Guid? AssigneeId = null, Guid? GroupId = null);
 
 /// <summary>Passes a received task on to another user or to a group: exactly one of the two.</summary>
+/// <param name="ReturnToMe">
+/// When the person (or group member) who gets the task completes it, it comes back to whoever forwarded
+/// it, with their message, instead of being completed.
+/// </param>
 public record ForwardTaskRequest(
     Guid? AssigneeId = null,
     Guid? GroupId = null,
-    [StringLength(500), SafeText(Multiline = true)] string? Note = null);
+    [StringLength(500), SafeText(Multiline = true)] string? Note = null,
+    bool ReturnToMe = false);
 
 /// <summary>What the person asking may do with a task.</summary>
 public enum TaskAccess
@@ -206,10 +234,24 @@ public record TaskResponse(
     GroupSummary? Group,
     IReadOnlyList<ForwardResponse> Forwards,
     IReadOnlyList<AttachmentResponse> Attachments,
-    TaskAccess Access)
+    TaskAccess Access,
+    string? Instructions = null,
+    string? ReplyTo = null,
+    UserSummary? ReturnsTo = null)
 {
     /// <summary>The task's people, group and forwards must be loaded.</summary>
-    public static TaskResponse From(TaskItem task, TaskAccess access) => new(
+    /// <remarks>
+    /// <see cref="ReturnsTo"/> and <see cref="ReplyTo"/> are for the person asking: whether completing
+    /// the task sends it back to someone, and where the completion message is emailed.
+    /// </remarks>
+    public static TaskResponse From(TaskItem task, TaskAccess access)
+    {
+        var returnsTo = access == TaskAccess.Assignee && !task.IsCompleted ? task.PendingReturn()?.From : null;
+        return Create(task, access, returnsTo is null ? null : UserSummary.From(returnsTo),
+            returnsTo is null ? task.ReplyAddressFor(access) : null);
+    }
+
+    private static TaskResponse Create(TaskItem task, TaskAccess access, UserSummary? returnsTo, string? replyTo) => new(
         task.Id, task.Title, task.Description, task.IsCompleted, task.StartDate, task.DueDate, task.Priority, task.Tags,
         task.CreatedAt, task.SourceEmailAddress, task.CompletionResponse, task.CompletedAt,
         task.State, task.WaitingReason, task.WaitingSince,
@@ -223,8 +265,13 @@ public record TaskResponse(
                 f.ToUser is null ? null : UserSummary.From(f.ToUser),
                 f.ToGroup is null ? null : GroupSummary.From(f.ToGroup),
                 f.Note,
-                f.At))
+                f.At,
+                f.IsReturn,
+                f.ReturnPending))
             .ToList(),
         task.Attachments.OrderBy(a => a.UploadedAt).Select(AttachmentResponse.From).ToList(),
-        access);
+        access,
+        task.Instructions,
+        replyTo,
+        returnsTo);
 }

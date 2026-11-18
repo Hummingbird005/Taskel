@@ -202,6 +202,7 @@
   <li>Deschide task-ul primit și apasă butonul <b class="ui">Direcționează</b> din antet.</li>
   <li>Caută persoana sau grupul la <b class="ui">Direcționează către</b>.</li>
   <li>Scrie, opțional, un mesaj pentru cine îl primește (cel mult 500 de caractere).</li>
+  <li>Lasă bifat <b class="ui">Revine la mine după finalizare</b> dacă vrei ca task-ul să se întoarcă la tine când e rezolvat; debifează-l ca să îl dai de tot.</li>
   <li>Apasă <b class="ui">Direcționează</b>.</li>
 </ol>
 <figure>
@@ -209,6 +210,14 @@
   <figcaption>Formularul de direcționare.</figcaption>
 </figure>
 <p>Task-ul nu mai este la tine. Îl găsești la <b class="ui">Direcționate</b>, unde îl poți doar citi: vezi la cine a ajuns, în ce stare este și tot traseul.</p>
+<h3>Task-ul care revine la tine</h3>
+<p>Cu <b class="ui">Revine la mine după finalizare</b> bifat, cel care primește task-ul nu îl poate închide de tot. Când apasă <b class="ui">Rezolvat, înapoi la …</b>, scrie obligatoriu ce a rezolvat, iar task-ul:</p>
+<ul>
+  <li>se întoarce la tine, deschis, cu mesajul lui în <b class="ui">Traseu</b>;</li>
+  <li>îți este anunțat pe email („Task rezolvat, înapoi la tine”);</li>
+  <li>poate fi închis de tine cu un mesaj al tău, sau direcționat din nou.</li>
+</ul>
+<p>Dacă task-ul a trecut prin mai multe persoane, fiecare întoarcere urcă un singur pas, până la cel care l-a trimis primul.</p>
 <figure>
   <img src="../../screenshots/forwarded.png" alt="Vederea Direcționate">
   <figcaption>Vederea <b>Direcționate</b>.</figcaption>
@@ -231,19 +240,32 @@
 
 <h2>Task-uri din email</h2>
 <p>Cu macro-ul Taskel pentru Outlook, un email devine task dintr-un clic. Titlul este subiectul emailului, mesajul conține expeditorul, data și textul, iar fișierele atașate emailului se atașează task-ului. Task-ul primește eticheta <code>email</code>.</p>
+<h3>Trimiterea emailului către colegi</h3>
+<p>Dacă ai instalată și fereastra <b>Trimite în Taskel</b> (pasul 4 de la instalare), la apăsarea butonului din Outlook se deschide o fereastră:</p>
+<ol class="steps">
+  <li>La <b class="ui">Caută</b> scrii o parte din nume; bifezi o persoană, mai multe sau un grup.</li>
+  <li>La <b class="ui">Indicații</b> scrii, opțional, ce aștepți de la ei.</li>
+  <li>Apeși <b class="ui">Trimite</b>. Fiecare destinatar primește task-ul lui, cu subiectul ca titlu, cu atașamentele și cu indicațiile tale afișate deasupra mesajului. Fără nicio bifă, task-ul rămâne la tine.</li>
+</ol>
+<p>Task-urile apar la tine în <b class="ui">Delegate</b>. Destinatarii le pot rezolva sau le pot direcționa mai departe, cu întoarcere (vezi „Task-ul care revine la tine”).</p>
 <h3>Finalizarea cu răspuns</h3>
-<p>Un task venit din email se finalizează doar scriind un răspuns. La apăsarea butonului <b class="ui">Trimite și finalizează</b>, Taskel trimite textul pe email expeditorului, ca răspuns la mesajul inițial, apoi marchează task-ul finalizat.</p>
+<p>Un task venit din email se finalizează doar scriind un răspuns. La apăsarea butonului <b class="ui">Trimite și finalizează</b>, Taskel trimite textul pe email, ca răspuns la mesajul inițial, apoi marchează task-ul finalizat. Câmpul arată mereu unde pleacă răspunsul:</p>
+<ul>
+  <li>dacă task-ul este al tău (l-ai adus tu din Outlook), răspunsul merge la <b>expeditorul emailului</b>;</li>
+  <li>dacă l-ai primit de la colegul care l-a adus din Outlook, răspunsul merge la <b>acel coleg</b>, în aceeași conversație din Outlook. Fiecare destinatar trimite răspunsul lui.</li>
+</ul>
 <figure>
   <img src="../../screenshots/reply.png" alt="Răspunsul la un task din email">
   <figcaption>Un task din email: câmpul de jos este răspunsul către expeditor.</figcaption>
 </figure>
 <div class="warn"><strong>Atenție</strong>Răspunsul pleacă de pe adresa de email a aplicației, nu de pe adresa ta. Dacă trimiterea eșuează, task-ul rămâne deschis și primești un mesaj de eroare; încearcă din nou sau anunță administratorul.</div>
 <h3>Instalarea macro-ului în Outlook</h3>
-<p>Macro-ul funcționează în <b>Outlook clasic pentru Windows</b>. Nu funcționează în „noul Outlook”, în Outlook pe web sau pe Mac. Fișierul <code>TaskelOutlook.bas</code> îl primești de la administrator.</p>
+<p>Macro-ul funcționează în <b>Outlook clasic pentru Windows</b>. Nu funcționează în „noul Outlook”, în Outlook pe web sau pe Mac. Fișierele <code>TaskelOutlook.bas</code> și <code>TaskelSendForm.txt</code> le primești de la administrator.</p>
 <ol class="steps">
   <li>În Taskel, deschide <b class="ui">Integrări</b>, apasă <b class="ui">Token nou</b> și copiază tokenul afișat (începe cu <code>tsk_</code>). Este afișat o singură dată.</li>
   <li>În Outlook: <b>File → Options → Trust Center → Trust Center Settings → Macro Settings</b>, alege <b>Notifications for all macros</b>, apoi repornește Outlook.</li>
   <li>Apasă <b>Alt+F11</b>, apoi <b>File → Import File…</b> și alege <code>TaskelOutlook.bas</code>. Apasă <b>Ctrl+S</b> și închide editorul.</li>
+  <li>Opțional, pentru alegerea destinatarilor: <b>Insert → UserForm</b>, în fereastra <b>Properties</b> (F4) schimbă <b>(Name)</b> în <code>TaskelSendForm</code>, apasă <b>F7</b>, șterge codul existent și lipește tot conținutul fișierului <code>TaskelSendForm.txt</code>. Formularul rămâne gol în designer. Apasă <b>Ctrl+S</b>.</li>
   <li>Apasă <b>Alt+F8</b>, rulează <b>ConfigureTaskel</b>, introdu adresa aplicației (aceeași ca în browser) și lipește tokenul. Trebuie să apară „Connected to Taskel.”</li>
   <li>Clic dreapta pe panglică → <b>Customize the Ribbon…</b>, creează un grup nou în fila <b>Home (Mail)</b> și adaugă macro-ul <code>Project1.TaskelOutlook.SendToTaskel</code>. Redenumește-l „Send to Taskel”.</li>
 </ol>
@@ -257,7 +279,8 @@
 <h2>Notificări pe email</h2>
 <p>Primești un email când:</p>
 <ul>
-  <li>cineva îți alocă sau îți direcționează un task;</li>
+  <li>cineva îți alocă sau îți direcționează un task, sau îți trimite un email din Outlook;</li>
+  <li>un task direcționat de tine cu întoarcere a fost rezolvat și revine la tine;</li>
   <li>un task este dat unui grup din care faci parte.</li>
 </ul>
 <p>Emailul conține titlul, termenul, prioritatea, mesajul celui care ți l-a trimis și un link către aplicație. Nu primești email pentru propriile acțiuni.</p>

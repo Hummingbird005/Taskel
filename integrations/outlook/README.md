@@ -26,7 +26,13 @@ work in the new Outlook for Windows, Outlook on the web or Outlook for Mac, whic
 4. **Connect it.** Press **Alt+F8**, run **ConfigureTaskel**, enter the address of your Taskel API
    (for a local setup: `http://localhost:5000`) and paste the token. You should see
    "Connected to Taskel."
-5. **Add a button.** Right-click the ribbon → **Customize the Ribbon…**. On the right, select the
+5. **Add the recipients window (optional, recommended).** It lets you choose who gets the emails. In the VBA
+   editor (**Alt+F11**): **Insert → UserForm**. In the **Properties** window (**F4**), set **(Name)** to
+   `TaskelSendForm`. Press **F7** to open the form's code, select everything there and delete it, then paste the
+   whole content of `TaskelSendForm.txt` from this folder. Leave the form empty in the designer: its fields are
+   created when it opens. Press **Ctrl+S**.
+   Without this form the macro still works: each email becomes a task of your own.
+6. **Add a button.** Right-click the ribbon → **Customize the Ribbon…**. On the right, select the
    **Home (Mail)** tab and click **New Group**. In **Choose commands from**, pick **Macros**, select
    `Project1.TaskelOutlook.SendToTaskel` and click **Add >>**. Use **Rename…** to call it
    "Send to Taskel" and pick an icon.
@@ -35,8 +41,16 @@ When Outlook asks about macros at startup, choose **Enable Macros**.
 
 ## Use
 
-Select one or more emails in the list (or open one) and click **Send to Taskel**. A message
-confirms how many tasks were added. Switch to Taskel in the browser; the list refreshes when the
+Select one or more emails in the list (or open one) and click **Send to Taskel**. With the recipients window
+installed, it opens first (once for all the selected emails):
+
+- **Caută** narrows the list of people and groups; tick one or more of them. Ticks are kept while you search.
+- **Indicații** (optional, up to 2000 characters) is shown to each recipient above the email and sent to them in
+  the notification.
+- **Trimite** creates one task for each recipient, per email, with the subject as the title and the attachments
+  on each. With nobody ticked, the task is yours. **Renunță** sends nothing.
+
+A message confirms how many tasks were added. Switch to Taskel in the browser; the list refreshes when the
 window gets focus.
 
 Sending the same email twice creates two tasks.
@@ -44,11 +58,19 @@ Sending the same email twice creates two tasks.
 ## Reply on completion
 
 A task created from an email can only be completed in Taskel by writing a response. Taskel emails that
-response to the sender as a reply to the original email, then marks the task as completed. This needs an SMTP
+response as a reply to the original email, then marks the task as completed:
+
+- When you complete a task of your own, the reply goes to the email's sender.
+- When someone you sent the email to completes their task, the reply comes to you, in the same Outlook
+  conversation, with their name and message. Each recipient's completion sends its own reply.
+- A recipient can forward the task in Taskel and tick **Revine la mine după finalizare**: when the next person
+  completes it, it comes back to the recipient with that person's message, and the recipient closes it, which
+  sends the reply to you. This needs an SMTP
 mailbox configured on the Taskel server; see "Email (SMTP) configuration" in the main README.
 
 If you installed the macro before this feature existed, import `TaskelOutlook.bas` again (remove the old
-`TaskelOutlook` module first: right-click it in the VBA editor → **Remove**, answer **No** to exporting).
+`TaskelOutlook` module first: right-click it in the VBA editor → **Remove**, answer **No** to exporting), and add
+the recipients window (step 5).
 Tasks sent by the old macro still get a reply, but it may not be threaded with the original email.
 
 ## Troubleshooting
@@ -58,6 +80,8 @@ Tasks sent by the old macro still get a reply, but it may not be threaded with t
 | Could not reach Taskel                | Check that the Taskel API is running and the address is right; run **ConfigureTaskel** again. |
 | Taskel rejected the API token         | The token was revoked or mistyped. Create a new one and run **ConfigureTaskel**. |
 | Nothing happens when clicking the button | Macros are disabled. Repeat step 2 and restart Outlook.                  |
+| The recipients window does not open   | The form is missing or not named `TaskelSendForm` (step 5); each email then becomes your own task. |
+| Compile error in the form             | Only part of `TaskelSendForm.txt` was pasted, or the form's old code was not deleted first. Paste the whole file again. |
 
 ## Notes
 
