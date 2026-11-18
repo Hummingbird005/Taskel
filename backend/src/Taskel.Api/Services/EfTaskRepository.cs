@@ -56,8 +56,11 @@ public class EfTaskRepository(TaskelDbContext db) : ITaskRepository
     public Task<bool> GroupExistsAsync(Guid groupId, CancellationToken ct = default) =>
         db.Groups.AnyAsync(g => g.Id == groupId, ct);
 
-    public async Task<IReadOnlySet<Guid>> GetGroupIdsAsync(Guid userId, CancellationToken ct = default) =>
-        (await db.GroupMembers.Where(m => m.UserId == userId).Select(m => m.GroupId).ToListAsync(ct)).ToHashSet();
+    public async Task<IReadOnlySet<Guid>> GetGroupIdsAsync(Guid userId, CancellationToken ct = default)
+    {
+        // A block body on purpose: some compilers and IDEs reject the expression-bodied form here.
+        return (await db.GroupMembers.Where(m => m.UserId == userId).Select(m => m.GroupId).ToListAsync(ct)).ToHashSet();
+    }
 
     private Task<TaskItem> ReloadAsync(Guid id, CancellationToken ct) => WithDetails().FirstAsync(t => t.Id == id, ct);
 
