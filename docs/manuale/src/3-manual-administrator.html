@@ -230,6 +230,17 @@
   <li>Fișierele nu sunt scanate antivirus. Ele se descarcă întotdeauna, nu se deschid în aplicație.</li>
 </ul>
 
+<h2>Add-in-ul Outlook pentru toată firma</h2>
+<p>Add-in-ul Outlook pune un panou Taskel lângă email, în orice Outlook: clasic și nou pe Windows, pe web și pe Mac. Utilizatorii și-l pot adăuga singuri, dar îl poți instala tu pentru toți.</p>
+<ol class="steps">
+  <li>Verifică întâi că <b class="ui">Adresa aplicației</b> din <b class="ui">Setări sistem</b>, la setările de email, este adresa la care utilizatorii deschid Taskel. Manifestul o folosește; dacă lipsește, folosește adresa de la care l-ai descărcat.</li>
+  <li>În Taskel, <b class="ui">Integrări → Descarcă manifestul</b> (fișierul <code>taskel-outlook.xml</code>).</li>
+  <li><b>Microsoft 365:</b> centrul de administrare Microsoft 365 → <b>Settings → Integrated apps → Upload custom apps</b> → <b>Office Add-in</b>, încarci manifestul și alegi cine îl primește. Poate dura până la o zi să apară în Outlook.</li>
+  <li><b>Exchange Server:</b> centrul de administrare Exchange → <b>Organization → Add-ins</b> → <b>+ → Add from file</b>, apoi îl faci disponibil sau obligatoriu.</li>
+</ol>
+<div class="warn"><strong>Condiții</strong>Outlook încarcă add-in-uri doar de la adrese <b>HTTPS cu certificat valid</b>. Calculatoarele trebuie să poată accesa și <code>appsforoffice.microsoft.com</code>, de unde Outlook ia biblioteca Office.js. Dacă schimbi adresa Taskel, descarcă manifestul din nou și înlocuiește add-in-ul.</div>
+<p>Fiecare utilizator se conectează o dată, cu un token API creat în <b class="ui">Integrări</b>. Pentru utilizatorii care rămân pe Outlook clasic și nu pot folosi add-in-ul există în continuare macro-ul VBA.</p>
+
 <h2>Sarcini curente</h2>
 <h3>Un angajat nou</h3>
 <ol class="steps">
@@ -259,7 +270,7 @@
   <li><b>Lasă bifate</b> „Cere conexiune criptată (TLS)”, LDAPS și „Cere HTTPS pentru Keycloak”.</li>
   <li><b>Restrânge accesul</b> cu „Grup obligatoriu” (Active Directory) sau „Rol obligatoriu” (Keycloak), dacă nu toți angajații trebuie să folosească aplicația.</li>
   <li><b>Dă rolul de administrator</b> cât mai puținor persoane, dar nu uneia singure.</li>
-  <li><b>Token-urile de Outlook</b> le revocă fiecare utilizator din Integrări; amintește-le să o facă la schimbarea calculatorului.</li>
+  <li><b>Token-urile de Outlook</b> (add-in sau macro) le revocă fiecare utilizator din Integrări; amintește-le să o facă la schimbarea calculatorului.</li>
 </ul>
 
 <h2>Întrebări frecvente</h2>
