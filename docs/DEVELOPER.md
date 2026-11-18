@@ -38,6 +38,10 @@ database and adds the [demo data](DEMO-ACCOUNTS.md) on an empty database.
 - `cd frontend && npm run lint && npm run build`: oxlint and the TypeScript build. There are no frontend unit
   tests; the interface was checked in a browser.
 - CI (`.github/workflows/ci.yml`) runs both on every push and pull request.
+- CI also checks for vulnerable packages: `dotnet list package --vulnerable` for NuGet, and
+  `node scripts/audit.mjs` in `frontend/` for npm (fails on high or critical advisories). The script lists the
+  temporary exceptions, for advisories with no fixed release that do not reach the served application, and says
+  when one is no longer needed. Remove an exception as soon as a fix exists.
 
 ## Backend
 
