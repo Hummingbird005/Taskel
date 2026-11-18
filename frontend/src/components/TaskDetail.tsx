@@ -10,7 +10,7 @@ import Icon from './Icon'
 import TaskAttachments from './TaskAttachments'
 import TaskForm from './TaskForm'
 import { STATE_ICON, STATE_LABEL, stateChangeProblem } from '../lib/taskStates'
-import { DetailFacts, StateCallout, WorkFooter } from './TaskDetailParts'
+import { DetailFacts, Instructions, ReturnedResolution, StateCallout, WorkFooter } from './TaskDetailParts'
 import TaskTrail from './TaskTrail'
 
 /**
@@ -23,7 +23,7 @@ export interface TaskActions {
   wait: (reason: string) => Promise<string | null>
   resume: () => Promise<string | null>
   reopen: () => Promise<string | null>
-  forward: (target: TaskTarget, note: string | null) => Promise<string | null>
+  forward: (target: TaskTarget, note: string | null, returnToMe: boolean) => Promise<string | null>
   claim: () => Promise<string | null>
   release: () => Promise<string | null>
   remove: () => Promise<string | null>
@@ -164,8 +164,8 @@ export default function TaskDetail({
             people={people}
             groups={groups}
             onCancel={() => setMode('view')}
-            onSubmit={async (target, note) => {
-              const failure = await actions.forward(target, note)
+            onSubmit={async (target, note, returnToMe) => {
+              const failure = await actions.forward(target, note, returnToMe)
               if (!failure) close()
               return failure
             }}
@@ -295,6 +295,8 @@ function DetailView({
           {task.title}
         </h2>
         <DetailFacts task={task} today={today} onTagClick={onTagClick} />
+        <Instructions task={task} />
+        <ReturnedResolution task={task} />
         <section className="detail-section">
           <h3>Mesaj</h3>
           {task.description ? <p className="detail-message">{task.description}</p> : <p className="muted">Fără mesaj.</p>}

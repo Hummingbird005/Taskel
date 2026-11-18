@@ -75,7 +75,8 @@ jobs:
           if grep -q "has the following vulnerable packages" vulnerable.txt; then exit 1; fi
       - name: npm packages
         working-directory: frontend
-        run: npm audit --audit-level=high
+        # Fails on high or critical advisories; temporary exceptions are listed in the script.
+        run: node scripts/audit.mjs
 
   # The offline/ folder must hold every package the solution needs, so it can be built without the
   # internet. Restores only from it, into empty caches, for Linux and for Windows.

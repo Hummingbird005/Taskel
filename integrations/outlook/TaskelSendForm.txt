@@ -1,0 +1,304 @@
+' Taskel for Outlook: the window that asks who gets the email.
+'
+' This is the code of a UserForm named TaskelSendForm. In the VBA editor:
+' Insert > UserForm, set its (Name) to TaskelSendForm in the Properties
+' window, open its code (F7), delete what is there and paste this file.
+' The controls are created by the code, so the form stays empty in the
+' designer. README.md next to this file has the full steps.
+'
+' The macro (TaskelOutlook) calls Prepare, shows the form, then reads Sent,
+' RecipientsJson and Instructions. Without this form, every email becomes a
+' task of your own, as before.
+'
+' Plain ASCII on purpose: Romanian letters are written as \uXXXX and turned
+' into characters by U() when the form opens.
+
+Option Explicit
+
+Private Const MAX_RECIPIENTS As Long = 50
+Private Const MAX_INSTRUCTIONS As Long = 2000
+
+Private WithEvents txtSearch As MSForms.TextBox
+Private WithEvents lstPeople As MSForms.ListBox
+Private WithEvents btnSend As MSForms.CommandButton
+Private WithEvents btnCancel As MSForms.CommandButton
+Private txtNotes As MSForms.TextBox
+Private lblCount As MSForms.Label
+
+' Everyone who can get the email, as Taskel listed them, and who is ticked.
+Private entryValues() As String
+Private entryNames() As String
+Private entryDetails() As String
+Private entryChosen() As Boolean
+Private entryCount As Long
+' Which entry each row of the list shows, as the search narrows it.
+Private rowEntry() As Long
+Private filling As Boolean
+Private wasSent As Boolean
+
+' ---------------------------------------------------------------------------
+' What the macro uses
+' ---------------------------------------------------------------------------
+
+' recipients: Taskel's answer to GET /api/outlook/recipients, one line per
+' person or group: kind TAB value TAB name TAB detail.
+Public Sub Prepare(ByVal recipients As String, ByVal mailCount As Long)
+    Dim lines() As String
+    Dim fields() As String
+    Dim i As Long
+
+    lines = Split(Replace(recipients, vbCr, ""), vbLf)
+    entryCount = 0
+    ReDim entryValues(0 To UBound(lines) + 1)
+    ReDim entryNames(0 To UBound(lines) + 1)
+    ReDim entryDetails(0 To UBound(lines) + 1)
+    ReDim entryChosen(0 To UBound(lines) + 1)
+    ReDim rowEntry(0 To UBound(lines) + 1)
+
+    For i = 0 To UBound(lines)
+        fields = Split(lines(i), vbTab)
+        If UBound(fields) >= 3 Then
+            entryValues(entryCount) = fields(1)
+            entryNames(entryCount) = fields(2)
+            entryDetails(entryCount) = fields(3)
+            entryCount = entryCount + 1
+        End If
+    Next i
+
+    If mailCount = 1 Then
+        Me.Caption = U("Trimite \u00een Taskel")
+    Else
+        Me.Caption = U("Trimite \u00een Taskel (") & mailCount & " emailuri)"
+    End If
+    ShowMatches
+    UpdateCount
+End Sub
+
+' True when the user clicked Trimite, False when they gave up.
+Public Property Get Sent() As Boolean
+    Sent = wasSent
+End Property
+
+' The ticked people and groups, as the JSON array Taskel takes: ["id","group:id"].
+' Empty ([]) when nobody was ticked: the task is then the user's own.
+Public Property Get RecipientsJson() As String
+    Dim result As String
+    Dim i As Long
+
+    For i = 0 To entryCount - 1
+        If entryChosen(i) Then
+            If Len(result) > 0 Then result = result & ","
+            ' Ids and "group:" ids only: nothing in them needs escaping.
+            result = result & Chr$(34) & entryValues(i) & Chr$(34)
+        End If
+    Next i
+    RecipientsJson = "[" & result & "]"
+End Property
+
+Public Property Get Instructions() As String
+    Instructions = Trim$(txtNotes.Text)
+End Property
+
+' ---------------------------------------------------------------------------
+' The window
+' ---------------------------------------------------------------------------
+
+Private Sub UserForm_Initialize()
+    Dim lbl As MSForms.Label
+
+    Me.Width = 372
+    Me.Height = 392
+    Me.Caption = U("Trimite \u00een Taskel")
+
+    Set lbl = AddLabel("lblTo", U("Cui trimi\u021bi emailul (unul sau mai mul\u021bi):"), 12, 8, 340)
+    lbl.Font.Bold = True
+
+    AddLabel "lblSearch", U("Caut\u0103:"), 12, 31, 40
+    Set txtSearch = Me.Controls.Add("Forms.TextBox.1", "txtSearch")
+    Place txtSearch, 54, 28, 298, 18
+
+    Set lstPeople = Me.Controls.Add("Forms.ListBox.1", "lstPeople")
+    Place lstPeople, 12, 52, 340, 150
+    With lstPeople
+        .ColumnCount = 2
+        .ColumnWidths = "170 pt;150 pt"
+        .MultiSelect = fmMultiSelectMulti
+        .ListStyle = fmListStyleOption
+        .IntegralHeight = False
+    End With
+
+    Set lblCount = AddLabel("lblCount", "", 12, 206, 340)
+
+    AddLabel "lblNotes", U("Indica\u021bii pentru cei care primesc task-ul (op\u021bional):"), 12, 228, 340
+    Set txtNotes = Me.Controls.Add("Forms.TextBox.1", "txtNotes")
+    Place txtNotes, 12, 244, 340, 76
+    With txtNotes
+        .MultiLine = True
+        .WordWrap = True
+        .EnterKeyBehavior = True
+        .ScrollBars = fmScrollBarsVertical
+        .MaxLength = MAX_INSTRUCTIONS
+    End With
+
+    Set btnSend = Me.Controls.Add("Forms.CommandButton.1", "btnSend")
+    Place btnSend, 180, 330, 82, 24
+    btnSend.Caption = "Trimite"
+
+    Set btnCancel = Me.Controls.Add("Forms.CommandButton.1", "btnCancel")
+    Place btnCancel, 270, 330, 82, 24
+    btnCancel.Caption = U("Renun\u021b\u0103")
+    btnCancel.Cancel = True
+
+    txtSearch.TabIndex = 0
+    lstPeople.TabIndex = 1
+    txtNotes.TabIndex = 2
+    btnSend.TabIndex = 3
+    btnCancel.TabIndex = 4
+End Sub
+
+' Closing the window with X counts as Renunta. The form is hidden, not
+' unloaded, so the macro can still read that nothing was sent.
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = vbFormControlMenu Then
+        Cancel = True
+        wasSent = False
+        Me.Hide
+    End If
+End Sub
+
+Private Sub txtSearch_Change()
+    ShowMatches
+End Sub
+
+Private Sub lstPeople_Change()
+    Dim row As Long
+
+    If filling Then Exit Sub
+    For row = 0 To lstPeople.ListCount - 1
+        entryChosen(rowEntry(row)) = lstPeople.Selected(row)
+    Next row
+    UpdateCount
+End Sub
+
+Private Sub btnSend_Click()
+    If ChosenCount() > MAX_RECIPIENTS Then
+        MsgBox U("Po\u021bi trimite la cel mult ") & MAX_RECIPIENTS & U(" destinatari odat\u0103."), _
+            vbExclamation, "Taskel"
+        Exit Sub
+    End If
+    wasSent = True
+    Me.Hide
+End Sub
+
+Private Sub btnCancel_Click()
+    wasSent = False
+    Me.Hide
+End Sub
+
+' ---------------------------------------------------------------------------
+' Helpers
+' ---------------------------------------------------------------------------
+
+' Fills the list with the entries whose name or detail contains the search
+' text, ignoring case and Romanian diacritics, and keeps what was ticked.
+Private Sub ShowMatches()
+    Dim search As String
+    Dim i As Long
+    Dim row As Long
+
+    search = Plain(Trim$(txtSearch.Text))
+    filling = True
+    lstPeople.Clear
+    row = 0
+    For i = 0 To entryCount - 1
+        If Len(search) = 0 Or InStr(1, Plain(entryNames(i) & " " & entryDetails(i)), search, vbBinaryCompare) > 0 Then
+            lstPeople.AddItem entryNames(i)
+            lstPeople.List(row, 1) = entryDetails(i)
+            lstPeople.Selected(row) = entryChosen(i)
+            rowEntry(row) = i
+            row = row + 1
+        End If
+    Next i
+    filling = False
+End Sub
+
+Private Sub UpdateCount()
+    Dim chosen As Long
+
+    chosen = ChosenCount()
+    If chosen = 0 Then
+        lblCount.Caption = U("Niciun destinatar ales: task-ul r\u0103m\u00e2ne la tine.")
+    ElseIf chosen = 1 Then
+        lblCount.Caption = U("1 destinatar: prime\u0219te task-ul, iar r\u0103spunsul vine la tine.")
+    Else
+        lblCount.Caption = chosen & U(" destinatari: fiecare prime\u0219te task-ul lui, iar r\u0103spunsurile vin la tine.")
+    End If
+End Sub
+
+Private Function ChosenCount() As Long
+    Dim i As Long
+
+    For i = 0 To entryCount - 1
+        If entryChosen(i) Then ChosenCount = ChosenCount + 1
+    Next i
+End Function
+
+Private Function AddLabel(ByVal controlName As String, ByVal text As String, _
+                          ByVal leftPos As Single, ByVal topPos As Single, ByVal widthPts As Single) As MSForms.Label
+    Dim lbl As MSForms.Label
+
+    Set lbl = Me.Controls.Add("Forms.Label.1", controlName)
+    Place lbl, leftPos, topPos, widthPts, 14
+    lbl.Caption = text
+    lbl.WordWrap = False
+    Set AddLabel = lbl
+End Function
+
+Private Sub Place(ByVal ctl As Object, ByVal leftPos As Single, ByVal topPos As Single, _
+                  ByVal widthPts As Single, ByVal heightPts As Single)
+    ctl.Left = leftPos
+    ctl.Top = topPos
+    ctl.Width = widthPts
+    ctl.Height = heightPts
+End Sub
+
+' Lower case, without Romanian diacritics, so "stefan" finds a name written with the letter s-comma.
+Private Function Plain(ByVal value As String) As String
+    Dim result As String
+
+    result = value
+    result = Replace(result, ChrW(&H102), "a")
+    result = Replace(result, ChrW(&HC2), "a")
+    result = Replace(result, ChrW(&HCE), "i")
+    result = Replace(result, ChrW(&H218), "s")
+    result = Replace(result, ChrW(&H15E), "s")
+    result = Replace(result, ChrW(&H21A), "t")
+    result = Replace(result, ChrW(&H162), "t")
+    result = LCase$(result)
+    result = Replace(result, ChrW(&H103), "a")
+    result = Replace(result, ChrW(&HE2), "a")
+    result = Replace(result, ChrW(&HEE), "i")
+    result = Replace(result, ChrW(&H219), "s")
+    result = Replace(result, ChrW(&H15F), "s")
+    result = Replace(result, ChrW(&H21B), "t")
+    result = Replace(result, ChrW(&H163), "t")
+    Plain = result
+End Function
+
+' Turns each \uXXXX in text into the character it names.
+Private Function U(ByVal text As String) As String
+    Dim result As String
+    Dim i As Long
+
+    i = 1
+    Do While i <= Len(text)
+        If Mid$(text, i, 2) = "\u" And i + 5 <= Len(text) Then
+            result = result & ChrW(CLng("&H" & Mid$(text, i + 2, 4)))
+            i = i + 6
+        Else
+            result = result & Mid$(text, i, 1)
+            i = i + 1
+        End If
+    Loop
+    U = result
+End Function

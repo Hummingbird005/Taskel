@@ -96,6 +96,11 @@ async function completeTask(context: TaskActionContext, task: TaskItem, response
   try {
     replaceIn(context, await tasksApi.complete(task.id, response))
     context.setError(null)
+    if (task.returnsTo) {
+      // The task is no longer the caller's: it went back to whoever asked for it back.
+      context.closeTask()
+      context.setNotice(`Task trimis înapoi la ${task.returnsTo.displayName}. Îl poți urmări la „Direcționate”.`)
+    }
     return null
   } catch (err) {
     if (!(err instanceof ApiError && err.status === 401)) return replyErrorText(err)
@@ -114,10 +119,16 @@ function forwardRefusal(err: ApiError): string | null {
   return err.status === 403 || err.status === 404 ? 'Task-ul nu mai este la tine, deci nu îl mai poți direcționa.' : null
 }
 
-async function forwardTask(context: TaskActionContext, task: TaskItem, target: TaskTarget, note: string | null) {
+async function forwardTask(
+  context: TaskActionContext,
+  task: TaskItem,
+  target: TaskTarget,
+  note: string | null,
+  returnToMe: boolean,
+) {
   const failure = await attempt(
     context,
-    () => tasksApi.forward(task.id, target, note),
+    () => tasksApi.forward(task.id, target, note, returnToMe),
     'Nu am putut direcționa task-ul. Încearcă din nou.',
     forwardRefusal,
   )
@@ -170,7 +181,7 @@ export function taskActions(context: TaskActionContext, task: TaskItem): TaskAct
     wait: (reason) => attempt(context, () => tasksApi.wait(task.id, reason), 'Nu am putut pune task-ul în așteptare.', waitRefusal),
     resume: () => attempt(context, () => tasksApi.resume(task.id), 'Nu am putut relua task-ul.'),
     reopen: () => attempt(context, () => tasksApi.update({ ...task, isCompleted: false }), 'Nu am putut redeschide task-ul.'),
-    forward: (target, note) => forwardTask(context, task, target, note),
+    forward: (target, note, returnToMe) => forwardTask(context, task, target, note, returnToMe),
     claim: () => claimTask(context, task),
     release: () => releaseTask(context, task),
     remove: () => removeTask(context, task),

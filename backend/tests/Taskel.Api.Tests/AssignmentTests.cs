@@ -127,9 +127,9 @@ public class AssignmentTests(TaskelApiFactory factory)
     }
 
     [Fact]
-    public async Task Assignee_Completes_An_Email_Task_With_A_Reply()
+    public async Task Assignee_Completes_An_Email_Task_With_A_Reply_To_Its_Creator()
     {
-        var (alice, _) = await factory.CreateUserAsync();
+        var (alice, aliceUser) = await factory.CreateUserAsync();
         var (bob, bobUser) = await factory.CreateUserAsync();
         var sender = $"sender-{Guid.NewGuid():N}@example.com";
         var created = await alice.PostApiAsync("/api/tasks/from-email", new { subject = "Help", senderEmail = sender });
@@ -140,7 +140,9 @@ public class AssignmentTests(TaskelApiFactory factory)
         Assert.Equal(HttpStatusCode.OK,
             (await bob.PostApiAsync($"/api/tasks/{task.Id}/complete", new { response = "Rezolvat." })).StatusCode);
 
-        Assert.Equal("Rezolvat.", Assert.Single(factory.Emails.SentTo(sender)).Body);
+        // The person who sent the email to Taskel gets the message, not the email's sender.
+        Assert.Contains("Rezolvat.", Assert.Single(factory.Emails.SentTo(aliceUser.Email)).Body);
+        Assert.Empty(factory.Emails.SentTo(sender));
     }
 
     [Fact]

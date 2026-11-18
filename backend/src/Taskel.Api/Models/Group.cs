@@ -51,8 +51,13 @@ public class TaskForward
     public User? ToUser { get; set; }
     public Guid? ToGroupId { get; set; }
     public Group? ToGroup { get; set; }
+    /// <summary>The message passed along; for a return, the resolution of whoever completed the task.</summary>
     public string? Note { get; set; }
     public DateTime At { get; set; } = DateTime.UtcNow;
+    /// <summary>The sender wants the task back once it is completed, and has not had it back yet.</summary>
+    public bool ReturnPending { get; set; }
+    /// <summary>This step is the task coming back to someone who asked for it, not a forward.</summary>
+    public bool IsReturn { get; set; }
 }
 
 /// <summary>A group as shown in pickers and on tasks.</summary>
@@ -71,4 +76,8 @@ public record SaveGroupRequest(
     [Required, StringLength(Group.MaxNameLength, MinimumLength = 1), SafeText] string Name,
     [Required, MaxLength(Group.MaxMembers)] List<Guid> MemberIds);
 
-public record ForwardResponse(UserSummary From, UserSummary? ToUser, GroupSummary? ToGroup, string? Note, DateTime At);
+/// <param name="IsReturn">The task coming back to whoever forwarded it, with <paramref name="Note"/> as the resolution.</param>
+/// <param name="ReturnPending">The sender asked for the task back and is still waiting for it.</param>
+public record ForwardResponse(
+    UserSummary From, UserSummary? ToUser, GroupSummary? ToGroup, string? Note, DateTime At,
+    bool IsReturn = false, bool ReturnPending = false);

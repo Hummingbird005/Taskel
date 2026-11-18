@@ -1310,6 +1310,8 @@ dialog::backdrop { background: rgb(11 11 12 / 0.6); }
 .detail-callout p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .detail-callout.waiting { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); }
 .detail-callout.waiting h3 { color: var(--warn); }
+.detail-callout.instructions { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.detail-callout.instructions h3 { color: var(--accent); }
 .detail-callout.done { border-color: var(--go); background: color-mix(in srgb, var(--go) 8%, transparent); }
 .detail-callout.done h3 { color: var(--go); }
 .detail-body .attachments > summary { font-size: 0.7333rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }

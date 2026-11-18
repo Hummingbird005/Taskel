@@ -8,7 +8,10 @@ Option Explicit
 '
 ' Macros:
 '   SendToTaskel     - create a task from each selected (or open) email,
-'                      with the files attached to it
+'                      with the files attached to it. With the
+'                      TaskelSendForm window installed, it first asks who
+'                      gets the emails (one task for each) and for
+'                      instructions for them
 '   ConfigureTaskel  - set the Taskel address and API token
 '
 ' This file is plain ASCII on purpose: the VBA editor imports .bas files
@@ -21,6 +24,7 @@ Private Const MAX_SUBJECT_CHARS As Long = 1000
 Private Const MAX_SENDER_CHARS As Long = 320
 Private Const MAX_BODY_CHARS As Long = 4000
 Private Const MAX_MESSAGE_ID_CHARS As Long = 998
+Private Const MAX_INSTRUCTIONS_CHARS As Long = 2000
 Private Const OL_MAIL As Long = 43
 Private Const PR_INTERNET_MESSAGE_ID As String = "http://schemas.microsoft.com/mapi/proptag/0x1035001F"
 Private Const PR_ATTACH_CONTENT_ID As String = "http://schemas.microsoft.com/mapi/proptag/0x3712001F"
@@ -28,6 +32,13 @@ Private Const OL_BY_VALUE As Long = 1
 Private Const OL_EMBEDDED_ITEM As Long = 5
 Private Const OL_FORMAT_HTML As Long = 2
 Private Const UPLOAD_TIMEOUT_MS As Long = 600000
+
+' Who gets the emails during one run of SendToTaskel, as chosen in the
+' TaskelSendForm window. Without the window, each email is a task of your own.
+Private distributing As Boolean
+Private recipientsJson As String
+Private instructionsText As String
+Private tasksCreated As Long
 
 ' What happened to the attachments during one run of SendToTaskel.
 Private attachmentsAdded As Long
@@ -56,6 +67,9 @@ Public Sub SendToTaskel()
     Dim status As Long
     Dim detail As String
 
+    If Not AskRecipients(mails.Count) Then Exit Sub
+
+    tasksCreated = 0
     attachmentsAdded = 0
     attachmentProblems = ""
     maxAttachmentBytes = AttachmentLimitBytes()
@@ -70,15 +84,15 @@ Public Sub SendToTaskel()
 
     If added = mails.Count Then
         If Len(attachmentProblems) = 0 Then
-            MsgBox TaskCountText(added) & " added to Taskel." & AttachmentCountText(), vbInformation, APP_NAME
+            MsgBox TaskCountText(tasksCreated) & " added to Taskel." & AttachmentCountText(), vbInformation, APP_NAME
         Else
-            MsgBox TaskCountText(added) & " added to Taskel." & AttachmentCountText() & vbCrLf & vbCrLf & _
+            MsgBox TaskCountText(tasksCreated) & " added to Taskel." & AttachmentCountText() & vbCrLf & vbCrLf & _
                 "Some attachments were not added:" & vbCrLf & attachmentProblems, vbExclamation, APP_NAME
         End If
     Else
         MsgBox FailureText(status, detail) & vbCrLf & vbCrLf & _
-            TaskCountText(added) & " added before the problem (" & mails.Count & " selected).", _
-            vbExclamation, APP_NAME
+            added & " of " & mails.Count & " emails sent before the problem (" & _
+            TaskCountText(tasksCreated) & " added).", vbExclamation, APP_NAME
     End If
 End Sub
 
@@ -157,23 +171,91 @@ NotMail:
 End Function
 
 ' ---------------------------------------------------------------------------
+' Who gets the emails
+' ---------------------------------------------------------------------------
+
+' Shows the TaskelSendForm window, once for all the selected emails, and
+' keeps what was chosen there. Returns False when the user gave up.
+' Without the window (it is installed separately), or with a Taskel too old
+' to list recipients, the emails become tasks of your own as before.
+Private Function AskRecipients(ByVal mailCount As Long) As Boolean
+    Dim form As Object
+    Dim status As Long
+    Dim detail As String
+    Dim response As String
+
+    distributing = False
+    recipientsJson = "[]"
+    instructionsText = ""
+    AskRecipients = True
+
+    On Error Resume Next
+    Set form = VBA.UserForms.Add("TaskelSendForm")
+    On Error GoTo 0
+    If form Is Nothing Then Exit Function
+
+    If Not SendRequest("GET", "/api/outlook/recipients", "", status, detail, response) Then
+        MsgBox FailureText(status, detail), vbExclamation, APP_NAME
+        AskRecipients = False
+    ElseIf status = 404 Then
+        ' Taskel before recipients could be chosen: keep the old behaviour.
+    ElseIf status <> 200 Then
+        MsgBox FailureText(status, detail), vbExclamation, APP_NAME
+        AskRecipients = False
+    Else
+        form.Prepare response, mailCount
+        form.Show
+        If form.Sent Then
+            distributing = True
+            recipientsJson = form.RecipientsJson
+            instructionsText = SafeLeft(form.Instructions, MAX_INSTRUCTIONS_CHARS)
+        Else
+            AskRecipients = False
+        End If
+    End If
+
+    Unload form
+End Function
+
+' ---------------------------------------------------------------------------
 ' Taskel API
 ' ---------------------------------------------------------------------------
 
 Private Function PostEmail(ByVal mail As Object, ByRef status As Long, ByRef detail As String) As Boolean
     Dim payload As String
+    Dim path As String
+    Dim taskIds As Collection
 
     On Error GoTo BuildFailed
     payload = EmailJson(mail)
     On Error GoTo 0
 
+    path = "/api/tasks/from-email"
+    If distributing Then
+        ' One task for each recipient, with the instructions; none means your own.
+        payload = Left$(payload, Len(payload) - 1) & ",""recipients"":" & recipientsJson
+        If Len(instructionsText) > 0 Then payload = payload & ",""instructions"":" & JsonString(instructionsText)
+        payload = payload & "}"
+        path = "/api/tasks/from-email/distribute"
+    End If
+
     Dim response As String
-    If SendRequest("POST", "/api/tasks/from-email", payload, status, detail, response) Then
+    If SendRequest("POST", path, payload, status, detail, response) Then
         PostEmail = (status = 201)
     End If
-    ' The task exists from here on. A problem with an attachment is reported at
-    ' the end and does not undo the task.
-    If PostEmail Then SendAttachments mail, JsonValue(response, "id")
+    If Not PostEmail Then Exit Function
+
+    If distributing Then
+        Set taskIds = JsonStringArray(response, "taskIds")
+    Else
+        Set taskIds = New Collection
+        taskIds.Add JsonValue(response, "id")
+    End If
+    tasksCreated = tasksCreated + taskIds.Count
+
+    ' The tasks exist from here on. A problem with an attachment is reported at
+    ' the end and does not undo them.
+    SendAttachments mail, taskIds
     Exit Function
 
 BuildFailed:
@@ -223,17 +305,21 @@ End Function
 ' Attachments
 ' ---------------------------------------------------------------------------
 
-' Uploads the files attached to an email to the task made from it.
+' Uploads the files attached to an email to each task made from it. Each
+' file is saved once and sent to every task.
 ' Pictures shown inside the message (logos in signatures and the like) are
 ' left out: they are part of how the email looks, not files someone sent.
-Private Sub SendAttachments(ByVal mail As Object, ByVal taskId As String)
+Private Sub SendAttachments(ByVal mail As Object, ByVal taskIds As Collection)
     Dim item As Object
     Dim fileName As String
     Dim tempPath As String
     Dim status As Long
     Dim detail As String
+    Dim taskId As Variant
+    Dim stored As Boolean
+    Dim problem As String
 
-    If Len(taskId) = 0 Then Exit Sub
+    If taskIds.Count = 0 Then Exit Sub
 
     On Error GoTo ListFailed
     If mail.Attachments.Count = 0 Then Exit Sub
@@ -258,10 +344,21 @@ Private Sub SendAttachments(ByVal mail As Object, ByVal taskId As String)
         item.SaveAsFile tempPath
         If FileLen(tempPath) = 0 Then
             NoteAttachmentProblem fileName, "the file is empty"
-        ElseIf UploadFile(taskId, tempPath, fileName, status, detail) Then
-            attachmentsAdded = attachmentsAdded + 1
         Else
-            NoteAttachmentProblem fileName, UploadFailureText(status, detail)
+            stored = False
+            problem = ""
+            For Each taskId In taskIds
+                If UploadFile(CStr(taskId), tempPath, fileName, status, detail) Then
+                    stored = True
+                ElseIf Len(problem) = 0 Then
+                    problem = UploadFailureText(status, detail)
+                End If
+            Next taskId
+            If stored Then attachmentsAdded = attachmentsAdded + 1
+            If Len(problem) > 0 Then
+                If taskIds.Count > 1 Then problem = problem & " (for some recipients)"
+                NoteAttachmentProblem fileName, problem
+            End If
         End If
 
 NextItem:
@@ -433,6 +530,33 @@ Private Function JsonValue(ByVal json As String, ByVal propName As String) As St
         Loop
         JsonValue = Mid$(json, position, finish - position)
     End If
+End Function
+
+' Reads an array of strings from a JSON object by name, such as the
+' "taskIds" Taskel answers with. The values are ids: no quotes or commas
+' inside them.
+Private Function JsonStringArray(ByVal json As String, ByVal propName As String) As Collection
+    Dim result As New Collection
+    Dim quote As String
+    Dim position As Long
+    Dim finish As Long
+    Dim parts() As String
+    Dim i As Long
+    Dim value As String
+
+    Set JsonStringArray = result
+    quote = Chr$(34)
+    position = InStr(1, json, quote & propName & quote & ":[", vbBinaryCompare)
+    If position = 0 Then Exit Function
+    position = position + Len(propName) + 4
+    finish = InStr(position, json, "]", vbBinaryCompare)
+    If finish <= position Then Exit Function
+
+    parts = Split(Mid$(json, position, finish - position), ",")
+    For i = 0 To UBound(parts)
+        value = Replace(Trim$(parts(i)), quote, "")
+        If Len(value) > 0 Then result.Add value
+    Next i
 End Function
 
 Private Sub NoteAttachmentProblem(ByVal fileName As String, ByVal reason As String)
