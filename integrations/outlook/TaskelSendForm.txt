@@ -59,6 +59,9 @@ Private entryCount As Long
 Private rowEntry() As Long
 Private filling As Boolean
 Private wasSent As Boolean
+' False while the window is being built: the controls raise events as soon as
+' they exist, before the others do, and those events must not touch them.
+Private ready As Boolean
 
 ' ---------------------------------------------------------------------------
 ' What the macro uses
@@ -215,6 +218,7 @@ Private Sub UserForm_Initialize()
     txtNotes.TabIndex = 2
     btnSend.TabIndex = 3
     btnCancel.TabIndex = 4
+    ready = True
 End Sub
 
 ' Closing the window with X counts as Renunta. The form is hidden, not
@@ -228,12 +232,14 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
 End Sub
 
 Private Sub txtSearch_Change()
+    If Not ready Then Exit Sub
     lblPlaceholder.Visible = (Len(txtSearch.Text) = 0)
     ShowMatches
 End Sub
 
 ' Enter ticks the first person found; the down arrow moves into the list.
 Private Sub txtSearch_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    If Not ready Then Exit Sub
     If KeyCode = vbKeyReturn And lstPeople.ListCount > 0 And Len(txtSearch.Text) > 0 Then
         lstPeople.Selected(0) = Not lstPeople.Selected(0)
         txtSearch.Text = ""
@@ -246,13 +252,13 @@ Private Sub txtSearch_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shif
 End Sub
 
 Private Sub lblPlaceholder_Click()
-    txtSearch.SetFocus
+    If ready Then txtSearch.SetFocus
 End Sub
 
 Private Sub lstPeople_Change()
     Dim row As Long
 
-    If filling Then Exit Sub
+    If filling Or Not ready Then Exit Sub
     For row = 0 To lstPeople.ListCount - 1
         entryChosen(rowEntry(row)) = lstPeople.Selected(row)
     Next row
@@ -276,20 +282,24 @@ End Sub
 
 ' A darker blue while the mouse is over Trimite, as on a web page.
 Private Sub btnSend_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If Not ready Then Exit Sub
     If btnSend.BackColor <> ColorAccentHover() Then btnSend.BackColor = ColorAccentHover()
 End Sub
 
 Private Sub btnCancel_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If Not ready Then Exit Sub
     If btnCancel.BackColor <> ColorSurface() Then btnCancel.BackColor = ColorSurface()
     ResetHover btnSend, ColorAccent()
 End Sub
 
 Private Sub lblFooter_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If Not ready Then Exit Sub
     ResetHover btnSend, ColorAccent()
     ResetHover btnCancel, ColorWhite()
 End Sub
 
 Private Sub UserForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If Not ready Then Exit Sub
     ResetHover btnSend, ColorAccent()
     ResetHover btnCancel, ColorWhite()
 End Sub
@@ -326,6 +336,8 @@ Private Sub UpdateChosen()
     Dim chosen As Long
     Dim names As String
     Dim i As Long
+
+    If Not ready Then Exit Sub
 
     For i = 0 To entryCount - 1
         If entryChosen(i) Then
