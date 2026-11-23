@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Taskel.Api.Attachments;
 using Taskel.Api.Data;
+using Taskel.Api.Email;
 using Taskel.Api.Models;
 using Taskel.Api.Validation;
 
@@ -17,9 +18,98 @@ namespace Taskel.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/team")]
-public class TeamController(TaskelDbContext db, CurrentUser currentUser, AttachmentStore attachments, ILogger<TeamController> logger)
+public class TeamController(
+    TaskelDbContext db, CurrentUser currentUser, AttachmentStore attachments, TaskNotifier notifier, ILogger<TeamController> logger)
     : ControllerBase
 {
+    /// <summary>How long a completed task stays in the team's list.</summary>
+    private static readonly TimeSpan RecentlyCompleted = TimeSpan.FromDays(14);
+
+    /// <summary>
+    /// Every task the people of a department are responsible for: the open ones, and those completed in the last
+    /// two weeks. For reading, and for moving due dates (<see cref="ChangeDueDate"/>).
+    /// </summary>
+    /// <param name="department">The department to show. Managers may only name their own.</param>
+    [HttpGet("tasks")]
+    public async Task<ActionResult<IEnumerable<TaskResponse>>> GetTeamTasks(
+        [FromQuery, StringLength(Models.User.MaxDepartmentLength), SafeText] string? department, CancellationToken ct)
+    {
+        var me = await currentUser.GetAsync(User, ct);
+        if (me is null) return Unauthorized();
+        var (user, role) = me.Value;
+        if (role == UserRole.User) return NotAManager();
+
+        var named = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+        if (named is not null && role != UserRole.Admin && !SameDepartment(named, user.Department)) return OtherDepartment();
+        var requested = named ?? user.Department;
+        if (requested is null) return Ok(Array.Empty<TaskResponse>());
+
+        var ids = await db.Users.AsNoTracking()
+            .Where(u => u.Department != null && EF.Functions.ILike(u.Department, Like.Exactly(requested)))
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+        var since = DateTime.UtcNow - RecentlyCompleted;
+        var tasks = await WithDetails(db.Tasks.AsNoTracking())
+            .Where(t => (t.AssigneeId != null && ids.Contains(t.AssigneeId.Value))
+                        || (t.AssigneeId == null && t.GroupId == null && ids.Contains(t.UserId)))
+            .Where(t => !t.IsCompleted || t.CompletedAt >= since)
+            .OrderBy(t => t.CreatedAt)
+            .ToListAsync(ct);
+        return Ok(tasks.Select(task => TaskResponse.From(task, TaskAccess.Viewer)));
+    }
+
+    /// <summary>
+    /// Moves the due date of a task someone in the manager's department is responsible for (an administrator: anyone).
+    /// Nothing else about the task changes. The person responsible is told, and the change is kept in the task's
+    /// conversation.
+    /// </summary>
+    [HttpPut("tasks/{taskId:guid}/due-date")]
+    public async Task<ActionResult<TaskResponse>> ChangeDueDate(Guid taskId, ChangeDueDateRequest request, CancellationToken ct)
+    {
+        var me = await currentUser.GetAsync(User, ct);
+        if (me is null) return Unauthorized();
+        var (user, role) = me.Value;
+        if (role == UserRole.User) return NotAManager();
+
+        var task = await WithDetails(db.Tasks).FirstOrDefaultAsync(t => t.Id == taskId, ct);
+        // A task waiting for a group is nobody's yet: it has no one to manage.
+        var responsibleId = task?.AssigneeId ?? (task is { GroupId: null } ? task.UserId : null);
+        if (task is null || responsibleId is null) return NotFound();
+        var responsible = await db.Users.AsNoTracking().FirstAsync(u => u.Id == responsibleId, ct);
+        if (role != UserRole.Admin && (responsible.Department is null || !SameDepartment(responsible.Department, user.Department)))
+            return OtherDepartment();
+        if (task.IsCompleted)
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: "This task is completed; its due date no longer matters.");
+        if (request.DueDate is { } due && task.StartDate is { } start && start > due)
+        {
+            ModelState.AddModelError(nameof(request.DueDate), $"The due date cannot be before the task's start date ({start:yyyy-MM-dd}).");
+            return ValidationProblem(ModelState);
+        }
+        if (request.DueDate == task.DueDate) return Ok(TaskResponse.From(task, TaskAccess.Viewer));
+
+        var change = $"{DateText(task.DueDate)} → {DateText(request.DueDate)}";
+        task.DueDate = request.DueDate;
+        db.TaskMessages.Add(new TaskMessage { TaskId = task.Id, AuthorId = user.Id, Kind = TaskMessageKind.DueDateChanged, Text = change });
+        await db.SaveChangesAsync(ct);
+        await notifier.TellAsync(task, responsible.Id, user.Id, TaskNotificationReason.DueDateChanged, change, ct);
+        return Ok(TaskResponse.From(task, TaskAccess.Viewer));
+    }
+
+    private static readonly System.Globalization.CultureInfo Romanian = System.Globalization.CultureInfo.GetCultureInfo("ro-RO");
+
+    private static string DateText(DateOnly? date) => date is { } d ? d.ToString("d MMMM yyyy", Romanian) : "fără termen";
+
+    private static IQueryable<TaskItem> WithDetails(IQueryable<TaskItem> tasks) =>
+        tasks
+            .Include(t => t.Owner)
+            .Include(t => t.Assignee)
+            .Include(t => t.Group)
+            .Include(t => t.Forwards).ThenInclude(f => f.From)
+            .Include(t => t.Forwards).ThenInclude(f => f.ToUser)
+            .Include(t => t.Forwards).ThenInclude(f => f.ToGroup)
+            .Include(t => t.Attachments).ThenInclude(a => a.UploadedBy)
+            .AsSplitQuery();
+
     /// <param name="department">The department to show. Managers may only name their own.</param>
     /// <param name="today">The caller's local date, so "overdue" and "due today" match what they see. Defaults to the server's date.</param>
     [HttpGet]

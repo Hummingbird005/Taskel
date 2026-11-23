@@ -169,6 +169,8 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/team`          | manager | Workload of the people in a department     |
 | GET    | `/api/team/calendar` | manager | A department's dated open tasks, per person, for a period |
 | GET    | `/api/team/members/{id}/tasks` | manager | A team member's tasks, read only |
+| GET    | `/api/team/tasks`    | manager | Every task of the department's people: open, and completed in the last 14 days |
+| PUT    | `/api/team/tasks/{taskId}/due-date` | manager | Move the due date of a team member's task |
 | GET    | `/api/admin/users`   | admin | Accounts with their role and department      |
 | PUT    | `/api/admin/users/{id}` | admin | Set an account's role and department      |
 | GET    | `/api/attachments/limits` | ✓ | Largest file accepted and files per task     |
@@ -492,6 +494,14 @@ their own that they have not handed to someone else. Pass `today=YYYY-MM-DD` so 
 date; a value more than a day away from the server's is ignored.
 
 `GET /api/team/members/{id}/tasks` returns a member's tasks in full, notes and replies included, for reading.
+
+**Task-urile echipei** (`GET /api/team/tasks`, optional `department` for administrators) lists every task the
+department's people answer for: the open ones and those completed in the last two weeks. The interface groups them
+by day (overdue, each day with tasks, no due date, recently completed) with a filter by person. A manager can **move
+the due date** of such a task (`PUT /api/team/tasks/{taskId}/due-date` with `dueDate`, or `null` for none), from that
+list or from **Echipă**: nothing else about the task changes. Not before the task's start date, not on a completed
+task, and only within the manager's department (administrators: any). The person responsible is emailed ("Termen
+schimbat"), and the change is kept in the task's conversation.
 It does not give the manager access to the tasks themselves: they cannot edit, complete or delete them.
 
 A manager can only name their own department (`403` otherwise) and a manager without a department sees nobody.

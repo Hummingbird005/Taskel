@@ -1581,3 +1581,12 @@ fieldset.state-bar { border: 0; margin: 0; padding: 0; min-width: 0; }
   background: var(--bg); color: var(--text); font: inherit; font-size: var(--fs-xs); text-decoration: none; cursor: pointer;
 }
 .chat-files a:hover, .chat-files button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- Task-urile echipei, and moving a due date as a manager ---------- */
+.team-tasks-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s3) var(--s4); margin-bottom: var(--s4); }
+.team-tasks-hint { flex-basis: 100%; margin: 0; font-size: var(--fs-sm); }
+.detail-callout.due-editor { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.detail-callout.due-editor h3 { color: var(--accent); }
+.due-editor-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
+.due-editor-row input { width: auto; }
+.detail-callout.due-editor p { margin: 0; font-size: var(--fs-sm); }

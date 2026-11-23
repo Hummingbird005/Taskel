@@ -243,7 +243,19 @@ export default function Team({ user, today, onSessionExpired }: Props) {
                     isOpen && (
                       <tr key={`${member.user.id}-tasks`} className="member-tasks">
                         <td colSpan={8}>
-                          <MemberTaskList state={memberTasks} today={today} name={member.user.displayName} memberId={member.user.id} />
+                          <MemberTaskList
+                        state={memberTasks}
+                        today={today}
+                        name={member.user.displayName}
+                        memberId={member.user.id}
+                        onTaskChanged={(updated) =>
+                          setMemberTasks((prev) =>
+                            prev.status === 'ready'
+                              ? { ...prev, tasks: prev.tasks.map((t) => (t.id === updated.id ? updated : t)) }
+                              : prev,
+                          )
+                        }
+                      />
                         </td>
                       </tr>
                     ),
@@ -261,7 +273,20 @@ export default function Team({ user, today, onSessionExpired }: Props) {
   )
 }
 
-function MemberTaskList({ state, today, name, memberId }: { state: MemberTasks; today: string; name: string; memberId: string }) {
+function MemberTaskList({
+  state,
+  today,
+  name,
+  memberId,
+  onTaskChanged,
+}: {
+  state: MemberTasks
+  today: string
+  name: string
+  memberId: string
+  /** A task whose due date the manager moved, to update the list. */
+  onTaskChanged: (task: TaskItem) => void
+}) {
   // The task opened from the list, read only.
   const [openTask, setOpenTask] = useState<TaskItem | null>(null)
 
@@ -312,6 +337,17 @@ function MemberTaskList({ state, today, name, memberId }: { state: MemberTasks; 
           task={openTask}
           today={today}
           attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(memberId, openTask.id, file.id)}
+          onChangeDueDate={async (dueDate) => {
+            try {
+              const updated = await teamApi.changeDueDate(openTask.id, dueDate)
+              setOpenTask(updated)
+              onTaskChanged(updated)
+              return null
+            } catch (err) {
+              if (err instanceof ApiError && err.status === 400) return 'Termenul nu poate fi înaintea datei de început a task-ului.'
+              return 'Nu am putut schimba termenul.'
+            }
+          }}
           onClose={() => setOpenTask(null)}
         />
       )}
