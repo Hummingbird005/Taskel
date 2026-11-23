@@ -239,6 +239,7 @@
   <li><b>Exchange Server:</b> centrul de administrare Exchange → <b>Organization → Add-ins</b> → <b>+ → Add from file</b>, apoi îl faci disponibil sau obligatoriu.</li>
 </ol>
 <div class="warn"><strong>Condiții</strong>Outlook încarcă add-in-uri doar de la adrese <b>HTTPS cu certificat valid</b>. Calculatoarele trebuie să poată accesa și <code>appsforoffice.microsoft.com</code>, de unde Outlook ia biblioteca Office.js. Dacă schimbi adresa Taskel, descarcă manifestul din nou și înlocuiește add-in-ul.</div>
+<p><b>Actualizarea de la versiunea 1.0.</b> Versiunea 1.1 a add-in-ului pune pe email categoria „Taskel” și cere pentru asta permisiunea de a modifica emailul deschis (<code>ReadWriteItem</code>). Outlook folosește vechiul manifest până reinstalezi add-in-ul: șterge-l din centrul de administrare și încarcă manifestul nou. Add-in-ul nu poate crea singur categoria; o creează macro-ul, sau fiecare utilizator o dată, din Outlook.</p>
 <p>Fiecare utilizator se conectează o dată, cu un token API creat în <b class="ui">Integrări</b>. Pentru utilizatorii care rămân pe Outlook clasic și nu pot folosi add-in-ul există în continuare macro-ul VBA.</p>
 
 <h2>Sarcini curente</h2>

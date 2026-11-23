@@ -259,10 +259,12 @@
 <p>În panou vezi emailul (subiect, expeditor, importanță, fișiere), apoi:</p>
 <ul>
   <li>la <b class="ui">Cui trimiți</b> scrii o parte din nume și alegi persoane sau grupuri din sugestii; apar ca etichete, pe care le poți scoate cu ×;</li>
+  <li>la <b class="ui">Termen</b> alegi, opțional, o dată, sau apeși <b class="ui">Azi</b>, <b class="ui">Mâine</b>, <b class="ui">Vineri</b> ori <b class="ui">+1 săpt.</b>; sub câmp apare ziua în cuvinte, cu roșu dacă e în trecut;</li>
   <li>la <b class="ui">Indicații</b> scrii, opțional, ce aștepți de la ei;</li>
   <li><b class="ui">Atașează fișierele</b> este pornit implicit; fișierele partajate ca link (OneDrive) nu se pot trimite și sunt enumerate la final;</li>
   <li>apeși <b class="ui">Trimite</b>: fiecare destinatar primește task-ul lui. Fără destinatari, task-ul rămâne la tine.</li>
 </ul>
+<p>Emailul trimis primește în Outlook categoria <b>Taskel</b> (o etichetă mov), ca să vezi în listă ce emailuri sunt deja în Taskel. Dacă după trimitere panoul spune că emailul nu a putut fi marcat, creează o dată categoria: clic dreapta pe un email → <b>Categorize → All Categories → New</b>, cu numele <code>Taskel</code>.</p>
 <figure>
   <img src="../../screenshots/outlook-addin.png" alt="Panoul Taskel din Outlook">
   <figcaption>Panoul Taskel din Outlook: alegerea destinatarilor, confirmarea și tema întunecată.</figcaption>
@@ -272,10 +274,12 @@
 <h3>Trimiterea emailului către colegi, cu macro-ul</h3>
 <p>Dacă ai instalată și fereastra <b>Trimite în Taskel</b> (pasul 4 de la instalarea macro-ului), la apăsarea butonului din Outlook se deschide o fereastră:</p>
 <ol class="steps">
-  <li>La <b class="ui">Caută</b> scrii o parte din nume; bifezi o persoană, mai multe sau un grup.</li>
+  <li>La <b class="ui">Către</b> scrii o parte din nume, ca la un email, și alegi din sugestii cu mouse-ul sau cu săgețile și Enter. Numele apar unul după altul: <code>Andrei Stan; Ofertare;</code>. Backspace imediat după un nume îl șterge pe tot.</li>
+  <li>La <b class="ui">Termen</b> scrii, opțional, data (zz.ll.aaaa) sau apeși <b class="ui">Azi</b>, <b class="ui">Mâine</b>, <b class="ui">Vineri</b>, <b class="ui">+1 săpt.</b></li>
   <li>La <b class="ui">Indicații</b> scrii, opțional, ce aștepți de la ei.</li>
-  <li>Apeși <b class="ui">Trimite</b>. Fiecare destinatar primește task-ul lui, cu subiectul ca titlu, cu atașamentele și cu indicațiile tale afișate deasupra mesajului. Fără nicio bifă, task-ul rămâne la tine.</li>
+  <li>Apeși <b class="ui">Trimite</b>. Fiecare destinatar primește task-ul lui, cu subiectul ca titlu, cu termenul, cu atașamentele și cu indicațiile tale afișate deasupra mesajului. Cu câmpul <b class="ui">Către</b> gol, task-ul rămâne la tine.</li>
 </ol>
+<p>Sub câmpul <b class="ui">Către</b> vezi câți destinatari ai ales sau ce nume nu e recunoscut; un nume nerecunoscut oprește trimiterea până îl corectezi. Emailul trimis primește în Outlook categoria <b>Taskel</b>, pe care macro-ul o creează singur prima dată.</p>
 <p>Task-urile apar la tine în <b class="ui">Delegate</b>. Destinatarii le pot rezolva sau le pot direcționa mai departe, cu întoarcere (vezi „Task-ul care revine la tine”).</p>
 <h3>Finalizarea cu răspuns</h3>
 <p>Un task venit din email se finalizează doar scriind un răspuns. La apăsarea butonului <b class="ui">Trimite și finalizează</b>, Taskel trimite textul pe email, ca răspuns la mesajul inițial, apoi marchează task-ul finalizat. Câmpul arată mereu unde pleacă răspunsul:</p>
@@ -302,7 +306,7 @@
   <img src="../../screenshots/integrations.png" alt="Ecranul Integrări">
   <figcaption>Ecranul <b>Integrări</b>: notificările pe email, cele două variante pentru Outlook și token-urile API.</figcaption>
 </figure>
-<p><b>Folosire:</b> selectezi unul sau mai multe emailuri și apeși <b>Send to Taskel</b>. În fereastră, Enter bifează prima persoană găsită, iar sub listă vezi pe toți cei bifați, chiar dacă i-a ascuns căutarea. Trimiterea aceluiași email de două ori creează două task-uri.</p>
+<p><b>Folosire:</b> selectezi unul sau mai multe emailuri și apeși <b>Send to Taskel</b>. Trimiterea aceluiași email de două ori creează două task-uri.</p>
 <div class="warn"><strong>Securitate</strong>Tokenul dă acces la task-urile tale. Dacă pierzi calculatorul sau nu mai folosești add-in-ul sau macro-ul, apasă <b class="ui">Revocă</b> în dreptul tokenului, în Integrări. Poți avea cel mult 10 token-uri.</div>
 
 <h2>Notificări pe email</h2>

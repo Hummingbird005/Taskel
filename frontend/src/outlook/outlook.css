@@ -678,3 +678,66 @@ textarea {
     transition: none !important;
   }
 }
+
+/* Due date: a date field and quick choices. */
+.ox-due {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ox-date {
+  flex: 1;
+  min-width: 0;
+}
+.ox-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ox-pill {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ox-pill:hover:not(:disabled) {
+  border-color: var(--field);
+  background: var(--surface);
+}
+.ox-pill.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.ox-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ox-past {
+  color: var(--danger);
+}
+
+/* After sending: the email's new Outlook category. */
+.ox-marked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.ox-category {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: #8b5cf6;
+}
+.ox-warning .ox-plain {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+}

@@ -82,7 +82,7 @@ export const paneApi = {
   groups: (token: string) => call<Group[]>(token, '/groups'),
   limits: (token: string) =>
     call<{ maxFileSizeBytes: number; maxFilesPerTask: number }>(token, '/attachments/limits').catch(() => null),
-  distribute: (token: string, email: OutlookEmail, recipients: string[], instructions: string) =>
+  distribute: (token: string, email: OutlookEmail, recipients: string[], instructions: string, dueDate: string | null) =>
     call<{ taskIds: string[] }>(token, '/tasks/from-email/distribute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -96,6 +96,7 @@ export const paneApi = {
         messageId: email.messageId,
         recipients,
         instructions: instructions || null,
+        dueDate,
       }),
     }),
   upload: (token: string, taskId: string, file: File) => {
