@@ -35,7 +35,7 @@ public class SmtpMessageTests
 
         Assert.Equal("Gata.", message.TextBody);
         Assert.Equal("<p>Gata.</p>", message.HtmlBody);
-        Assert.Equal(["oferta.pdf", "ciudat.bin"], message.Attachments.Select(a => a.ContentDisposition.FileName));
+        Assert.Equal(["oferta.pdf", "ciudat.bin"], message.Attachments.Select(a => a.ContentDisposition?.FileName));
         Assert.Equal("application/pdf", message.Attachments.First().ContentType.MimeType);
         // A type that cannot be read is sent as plain bytes.
         Assert.Equal("application/octet-stream", message.Attachments.Last().ContentType.MimeType);
