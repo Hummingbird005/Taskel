@@ -28,11 +28,13 @@ export const DEFAULT_ATTACHMENT_LIMITS: AttachmentLimits = {
 
 export const attachmentsApi = {
   limits: () => request<AttachmentLimits>('/attachments/limits'),
-  /** Where a file is downloaded from. The browser saves it; it is never shown inside Taskel. */
+  /** Where a file is downloaded from. The browser saves it; to show a PDF or a picture, see {@link viewUrl}. */
   downloadUrl: (taskId: string, id: string) => `${API_BASE}/tasks/${taskId}/attachments/${id}`,
   /** The same file, as a manager reaches it through a team member's tasks. */
   memberDownloadUrl: (memberId: string, taskId: string, id: string) =>
     `${API_BASE}/team/members/${memberId}/tasks/${taskId}/attachments/${id}`,
+  /** The same file shown rather than saved: PDF files and pictures only, recognised by the server from their content. */
+  viewUrl: (downloadUrl: string) => `${downloadUrl}?view=true`,
   remove: (taskId: string, id: string) => request<void>(`/tasks/${taskId}/attachments/${id}`, { method: 'DELETE' }),
   /**
    * Uploads one file. Uses XMLHttpRequest rather than fetch because it reports progress, which
@@ -112,3 +114,10 @@ export function checkFiles(files: File[], alreadyAttached: number, limits: Attac
   return null
 }
 
+
+/** What Taskel can show of a file without downloading it, judged by its name; the server checks the content. */
+export function previewKind(fileName: string): 'pdf' | 'image' | null {
+  const extension = fileName.toLowerCase().split('.').pop() ?? ''
+  if (extension === 'pdf') return 'pdf'
+  return ['png', 'jpg', 'jpeg', 'jfif', 'gif', 'webp'].includes(extension) ? 'image' : null
+}
