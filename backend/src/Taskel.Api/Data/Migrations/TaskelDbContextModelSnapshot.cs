@@ -288,6 +288,9 @@ namespace Taskel.Api.Data.Migrations
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("ParentTaskId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Priority")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -335,9 +338,47 @@ namespace Taskel.Api.Data.Migrations
 
                     b.HasIndex("GroupId");
 
+                    b.HasIndex("ParentTaskId");
+
                     b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("tasks", (string)null);
+                });
+
+            modelBuilder.Entity("Taskel.Api.Models.TaskMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("RelatedTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("RelatedTaskId");
+
+                    b.HasIndex("TaskId", "At");
+
+                    b.ToTable("task_messages", (string)null);
                 });
 
             modelBuilder.Entity("Taskel.Api.Models.User", b =>
@@ -507,6 +548,11 @@ namespace Taskel.Api.Data.Migrations
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Taskel.Api.Models.TaskItem", "ParentTask")
+                        .WithMany("Distributions")
+                        .HasForeignKey("ParentTaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Taskel.Api.Models.User", "Owner")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -518,6 +564,31 @@ namespace Taskel.Api.Data.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("Owner");
+
+                    b.Navigation("ParentTask");
+                });
+
+            modelBuilder.Entity("Taskel.Api.Models.TaskMessage", b =>
+                {
+                    b.HasOne("Taskel.Api.Models.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Taskel.Api.Models.TaskItem", "RelatedTask")
+                        .WithMany()
+                        .HasForeignKey("RelatedTaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Taskel.Api.Models.TaskItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("RelatedTask");
                 });
 
             modelBuilder.Entity("Taskel.Api.Models.Group", b =>
@@ -528,6 +599,8 @@ namespace Taskel.Api.Data.Migrations
             modelBuilder.Entity("Taskel.Api.Models.TaskItem", b =>
                 {
                     b.Navigation("Attachments");
+
+                    b.Navigation("Distributions");
 
                     b.Navigation("Forwards");
                 });

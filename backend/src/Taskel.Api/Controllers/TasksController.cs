@@ -15,7 +15,8 @@ namespace Taskel.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
-public class TasksController(ITaskRepository repository, IEmailSender emailSender, TaskNotifier notifier, AttachmentStore attachments)
+public class TasksController(
+    ITaskRepository repository, IEmailSender emailSender, TaskNotifier notifier, AttachmentStore attachments, Distributions distributions)
     : ControllerBase
 {
     [HttpGet]
@@ -107,7 +108,7 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         return StatusCode(StatusCodes.Status201Created, new DistributedEmailResponse(ids));
     }
 
-    private static bool TryParseRecipient(string? value, out Guid? assigneeId, out Guid? groupId)
+    internal static bool TryParseRecipient(string? value, out Guid? assigneeId, out Guid? groupId)
     {
         assigneeId = null;
         groupId = null;
@@ -143,6 +144,13 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
             return Problem(statusCode: StatusCodes.Status400BadRequest,
                 title: "This task goes back to whoever forwarded it when it is completed. Complete it with complete.");
         }
+        if (request.IsCompleted && !task.IsCompleted && (task.ParentTaskId is not null || task.Distributions.Count > 0))
+        {
+            return Problem(statusCode: StatusCodes.Status400BadRequest, title: task.ParentTaskId is not null
+                ? "This task was distributed to you: complete it with complete and an answer, which goes to whoever distributed it."
+                : "This task was distributed: complete it with complete.");
+        }
+        var reopened = !request.IsCompleted && task.IsCompleted;
 
         task.Title = request.Title.Trim();
         task.Description = NullIfBlank(request.Description);
@@ -158,6 +166,8 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         task.Priority = request.Priority;
         task.Tags = TagList.Normalize(request.Tags);
         await repository.SaveAsync(task, ct);
+        // A reopened copy is open work again: the task it came from waits for it.
+        if (reopened) await distributions.CopyChangedAsync(task, ct);
         return Ok(TaskResponse.From(task, access));
     }
 
@@ -286,6 +296,19 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
             return Problem(statusCode: StatusCodes.Status409Conflict, title: "This task is already completed.");
 
         var response = NullIfBlank(request.Response);
+        var openCopies = task.Distributions.Count(c => !c.IsCompleted);
+        if (openCopies > 0 && !request.CloseDistributions)
+        {
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: openCopies == 1
+                ? "1 person has not answered yet. Complete with closeDistributions to close their task too."
+                : $"{openCopies} people have not answered yet. Complete with closeDistributions to close their tasks too.");
+        }
+        if (task.ParentTaskId is not null && access == TaskAccess.Assignee && response is null)
+        {
+            ModelState.AddModelError(nameof(request.Response),
+                $"An answer is required: it goes to {task.Owner?.DisplayName ?? "whoever distributed the task"}.");
+            return ValidationProblem(ModelState);
+        }
         var pending = access == TaskAccess.Assignee ? task.PendingReturn() : null;
         var replyTo = pending is null ? task.ReplyAddressFor(access) : null;
         if (task.RequiresCompletionReply && response is null)
@@ -301,12 +324,15 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         if (replyTo is not null && await SendCompletionReplyAsync(task, access, replyTo, response!, ct) is { } failure)
             return failure;
 
+        if (openCopies > 0) await distributions.CloseOpenCopiesAsync(task, userId, ct);
         task.IsCompleted = true;
         task.CompletedAt = DateTime.UtcNow;
         task.CompletionResponse = response;
         ClearWaiting(task);
         foreach (var forward in task.Forwards) forward.ReturnPending = false;
         await repository.SaveAsync(task, ct);
+        // A copy's answer goes to the task it was distributed from.
+        await distributions.CopyCompletedAsync(task, userId, response, ct);
         return Ok(TaskResponse.From(task, access));
     }
 
@@ -413,10 +439,17 @@ public class TasksController(ITaskRepository repository, IEmailSender emailSende
         if (found is null) return NotFound();
         if (found.Value.Access != TaskAccess.Creator) return CreatorOnly("delete");
 
-        // The rows go with the task; the files are removed once the task is really gone.
-        var files = found.Value.Task.Attachments.Select(a => a.StoredName).ToList();
-        await repository.DeleteAsync(found.Value.Task, ct);
-        foreach (var file in files) attachments.Delete(file);
+        // The rows go with the task; the files are removed once the task is really gone, unless a distributed copy
+        // or the task it came from still lists them.
+        var task = found.Value.Task;
+        var files = task.Attachments.Select(a => a.StoredName).ToList();
+        await repository.DeleteAsync(task, ct);
+        foreach (var file in files)
+        {
+            if (!await repository.IsFileSharedAsync(file, ct)) attachments.Delete(file);
+        }
+        // A deleted copy no longer holds up the task it came from.
+        await distributions.CopyChangedAsync(task, ct);
         return NoContent();
     }
 

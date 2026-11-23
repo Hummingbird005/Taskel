@@ -104,6 +104,12 @@ returns them as `Viewer`. Their own tasks follow the table above like anyone els
   `POST /api/tasks/{id}/forward`. They are no longer the user's; each step is kept as a `TaskForward` row and
   shown as the task's path.
 
+**Distributing.** `Services/Distributions.cs` holds the rules, called from `DistributionsController` and from
+`TasksController.Complete`/`Update`/`Delete`: creating the copies, recording answers, sending back, closing open
+copies, and `SyncAsync`, which keeps the distributed task on hold (reason starting with `WaitingPrefix`) while any
+copy is open and opens it when none is. A reason written by hand is left alone. Completing a copy (by its
+assignee: an answer; by its creator: a close) goes through `CopyCompletedAsync`.
+
 **Returns.** A forward made with `returnToMe` has `ReturnPending`. `TaskItem.PendingReturn()` is the latest such
 step not yet answered; when the assignee completes, `TasksController.Complete` hands the task back to that step's
 sender instead (`ReturnAsync`): it adds a step with `IsReturn` and the message as its note, clears the pending
@@ -123,7 +129,11 @@ completes, the creator's own address otherwise (an assignee's answer goes to who
 - `groups`, `group_members`: application groups, and Active Directory groups recorded at sign-in.
 - `task_forwards`: each time a task was passed on (`ReturnPending` when its sender wants it back), and each
   return (`IsReturn`, with the resolution as the note).
-- `task_attachments`: file metadata; the content is on disk under a generated name.
+- `tasks.ParentTaskId`: for a distributed copy, the task it came from (set to null if that task is deleted).
+- `task_messages`: a task's conversation. Distribution messages live on the distributed task (`TaskId`), with the
+  copy they concern in `RelatedTaskId`; a copy's conversation is the messages where `RelatedTaskId` is the copy.
+- `task_attachments`: file metadata; the content is on disk under a generated name. Copies list the same stored
+  files as the task they came from: delete a file from disk only when no row names it (`IsFileSharedAsync`).
 - `api_tokens`: hashed personal tokens for the Outlook macro and other clients.
 - `app_settings`: single values an administrator changes from the interface (the attachment size limit).
 - `integration_settings`: one row per integration (`email`, `directory`, `keycloak`) saved in **Setări sistem**:

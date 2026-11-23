@@ -18,6 +18,11 @@ public interface ITaskRepository
     Task DeleteAsync(TaskItem item, CancellationToken ct = default);
     Task<bool> UserExistsAsync(Guid userId, CancellationToken ct = default);
     Task<bool> GroupExistsAsync(Guid groupId, CancellationToken ct = default);
+    /// <summary>
+    /// Whether any task still lists a stored file. Distributed copies share their files with the task they came
+    /// from, so a file is removed from disk only when no task lists it any more.
+    /// </summary>
+    Task<bool> IsFileSharedAsync(string storedName, CancellationToken ct = default);
     /// <summary>The groups a user belongs to.</summary>
     Task<IReadOnlySet<Guid>> GetGroupIdsAsync(Guid userId, CancellationToken ct = default);
 }

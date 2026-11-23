@@ -15,6 +15,9 @@ public class EfTaskRepository(TaskelDbContext db) : ITaskRepository
             .Include(t => t.Forwards).ThenInclude(f => f.ToUser)
             .Include(t => t.Forwards).ThenInclude(f => f.ToGroup)
             .Include(t => t.Attachments).ThenInclude(a => a.UploadedBy)
+            .Include(t => t.ParentTask)
+            .Include(t => t.Distributions).ThenInclude(d => d.Assignee)
+            .Include(t => t.Distributions).ThenInclude(d => d.Group)
             .AsSplitQuery();
 
     private IQueryable<TaskItem> VisibleTo(Guid userId) =>
@@ -77,5 +80,10 @@ public class EfTaskRepository(TaskelDbContext db) : ITaskRepository
             .Include(f => f.From).Include(f => f.ToUser).Include(f => f.ToGroup)
             .LoadAsync(ct);
         await entry.Collection(t => t.Attachments).Query().Include(a => a.UploadedBy).LoadAsync(ct);
+        if (item.ParentTaskId is not null) await entry.Reference(t => t.ParentTask).LoadAsync(ct);
+        await entry.Collection(t => t.Distributions).Query().Include(d => d.Assignee).Include(d => d.Group).LoadAsync(ct);
     }
+
+    public Task<bool> IsFileSharedAsync(string storedName, CancellationToken ct = default) =>
+        db.Attachments.AnyAsync(a => a.StoredName == storedName, ct);
 }

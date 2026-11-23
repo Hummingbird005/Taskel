@@ -203,6 +203,10 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | PUT    | `/api/tasks/{id}`    | ✓    | Update a task                                 |
 | PUT    | `/api/tasks/{id}/assignee` | ✓ | Assign a task to a user or a group (creator only) |
 | POST   | `/api/tasks/{id}/forward` | ✓ | Pass a received task on to a user or a group (assignee only) |
+| POST   | `/api/tasks/{id}/distribute` | ✓ | Give a copy of the task to several people or groups; the task waits for their answers |
+| POST   | `/api/tasks/{id}/distributions/{copyId}/send-back` | ✓ | Reopen one answered copy, with a message |
+| GET    | `/api/tasks/{id}/conversation` | ✓ | The task's conversation: distribution, answers, messages |
+| POST   | `/api/tasks/{id}/messages` | ✓ | Write in the conversation (`relatedTaskId`: to one copy's exchange) |
 | POST   | `/api/tasks/{id}/claim` | ✓ | Take a task that waits on one of your groups   |
 | POST   | `/api/tasks/{id}/release` | ✓ | Hand a task taken from a group back to it    |
 | POST   | `/api/tasks/{id}/complete` | ✓ | Complete a task, with a response (required for email tasks) |
@@ -408,6 +412,41 @@ Someone who received a task can pass it on to another user or to a group (`POST 
   unwind a chain one step at a time. `PUT` with `isCompleted: true` is refused while a return is pending, and
   the creator reassigning the task cancels every pending return. Tasks expose it as `returnsTo` (who completing
   sends it to) and each forward step as `returnPending` / `isReturn`.
+
+### Distributing
+
+The person responsible for a task (its assignee, or its creator while it is with nobody else) can **distribute**
+it: **Distribuie**, next to the state buttons. Unlike forwarding, the task stays theirs.
+
+- `POST /api/tasks/{id}/distribute` with `recipients` (user ids, or `group:` and a group id; at most 50), an
+  optional `message` (up to 2000 characters) and `dueDate` (the task's own by default). Each recipient gets a
+  **copy**: a task of their own, open, created by the distributor, linked to the original (`distributedFrom`), with
+  its message, its files (shared, not copied on disk) and the message as instructions. Nobody can be sent a
+  second copy while their first is open, and the distributor cannot distribute to themselves.
+- The task goes **on hold** ("Distribuit către …: aștept răspunsurile"). Its `distributions` list every copy: who
+  has it, its state, due date and answer.
+- A recipient completes their copy with a **required answer** (`answersTo` says who gets it). The answer joins the
+  task's conversation and the distributor is emailed. Copies never email anyone outside Taskel.
+- When **every** copy is answered, the task opens again by itself, and the distributor is told. A reason the
+  user wrote by hand is never replaced or cleared.
+- **Revino** (`.../distributions/{copyId}/send-back` with a `message`) reopens one answered copy; the task
+  waits again.
+- The distributor **closes** the task with their own message; only then does the email reply leave, by the usual
+  rule (to the sender for whoever brought the email from Outlook, otherwise to that person). Closing with copies
+  still open needs `closeDistributions: true` (the interface asks first): their tasks are closed, and their
+  holders told.
+- Reopening a copy, or deleting an open one, keeps the task's state in step. A file is removed from disk only
+  when no task lists it any more.
+
+**Conversation.** `GET /api/tasks/{id}/conversation` returns the task's messages, oldest first: distribution,
+answers, sending back, closing, and notes (`POST /api/tasks/{id}/messages`). The distributor reads every
+exchange; each recipient reads their own (on their copy). Notes are written by those who work on the task; the
+other side of an exchange is emailed. The interface shows the conversation beside the task, in a wider dialog,
+together with the task's own history (created, forwarded, sent back, completed).
+
+| | |
+|---|---|
+| ![Distributed task: on hold, its copies and the conversation beside it](docs/screenshots/distributed.png) | ![A copy: where it came from, the exchange with the distributor, and the answer to write](docs/screenshots/distributed-copy.png) |
 
 Each task in the API carries `access`, what the caller may do with it: `creator` (everything), `assignee`
 (edit, complete, forward), `group` (read and take) or `viewer` (read).

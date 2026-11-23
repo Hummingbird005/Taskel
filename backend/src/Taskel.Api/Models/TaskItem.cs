@@ -38,6 +38,16 @@ public class TaskItem
     /// <summary>Each time the task was passed on. People who passed it on can still read it.</summary>
     [JsonIgnore]
     public List<TaskForward> Forwards { get; set; } = [];
+    /// <summary>
+    /// The task this one was distributed from: its creator gave a copy of that task to this one's assignee and
+    /// waits for the answer, which completing this task sends back. Null for any other task.
+    /// </summary>
+    public Guid? ParentTaskId { get; set; }
+    [JsonIgnore]
+    public TaskItem? ParentTask { get; set; }
+    /// <summary>The tasks distributed from this one, one per person or group it was given to.</summary>
+    [JsonIgnore]
+    public List<TaskItem> Distributions { get; set; } = [];
     /// <summary>Files attached to the task.</summary>
     [JsonIgnore]
     public List<TaskAttachment> Attachments { get; set; } = [];
@@ -162,7 +172,12 @@ public static class TaskInterval
 }
 
 /// <summary>Completes a task. <see cref="Response"/> is required for tasks created from an email.</summary>
-public record CompleteTaskRequest([StringLength(4000), SafeText(Multiline = true)] string? Response = null);
+/// <param name="CloseDistributions">
+/// Needed to complete a task distributed to people who have not answered yet: their tasks are closed with it.
+/// </param>
+public record CompleteTaskRequest(
+    [StringLength(4000), SafeText(Multiline = true)] string? Response = null,
+    bool CloseDistributions = false);
 
 /// <summary>Where a task stands.</summary>
 public enum TaskState
@@ -237,12 +252,17 @@ public record TaskResponse(
     TaskAccess Access,
     string? Instructions = null,
     string? ReplyTo = null,
-    UserSummary? ReturnsTo = null)
+    UserSummary? ReturnsTo = null,
+    ParentTaskSummary? DistributedFrom = null,
+    IReadOnlyList<DistributionResponse>? Distributions = null,
+    UserSummary? AnswersTo = null)
 {
     /// <summary>The task's people, group and forwards must be loaded.</summary>
     /// <remarks>
-    /// <see cref="ReturnsTo"/> and <see cref="ReplyTo"/> are for the person asking: whether completing
-    /// the task sends it back to someone, and where the completion message is emailed.
+    /// <see cref="ReturnsTo"/>, <see cref="ReplyTo"/> and <see cref="AnswersTo"/> are for the person asking:
+    /// whether completing the task sends it back to someone, where the completion message is emailed, and who
+    /// gets the answer of a distributed task. <see cref="Distributions"/> are the tasks given out from this one,
+    /// when they are loaded.
     /// </remarks>
     public static TaskResponse From(TaskItem task, TaskAccess access)
     {
@@ -273,5 +293,13 @@ public record TaskResponse(
         access,
         task.Instructions,
         replyTo,
-        returnsTo);
+        returnsTo,
+        task.ParentTask is null ? null : new ParentTaskSummary(task.ParentTask.Id, task.ParentTask.Title),
+        task.Distributions.Count == 0
+            ? null
+            : task.Distributions.OrderBy(d => d.CreatedAt).Select(DistributionResponse.From).ToList(),
+        // The person a distributed task's answer goes to: whoever distributed it, its creator.
+        access == TaskAccess.Assignee && task.ParentTaskId is not null && !task.IsCompleted && task.Owner is not null
+            ? UserSummary.From(task.Owner)
+            : null);
 }

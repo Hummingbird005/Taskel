@@ -69,7 +69,19 @@ public enum TaskNotificationReason
     Assigned,
     Forwarded,
     /// <summary>Completed by someone it was forwarded to, and sent back to whoever asked for it back.</summary>
-    Returned
+    Returned,
+    /// <summary>A copy of a task, given to someone by the person responsible for it.</summary>
+    Distributed,
+    /// <summary>Someone answered a task distributed to them; told to the distributor.</summary>
+    Answered,
+    /// <summary>The last person answered a distributed task; told to the distributor.</summary>
+    AllAnswered,
+    /// <summary>The distributor sent someone's answered copy back to them.</summary>
+    SentBack,
+    /// <summary>A message in the conversation of a distributed task.</summary>
+    Message,
+    /// <summary>The distributor closed someone's copy without waiting for the answer.</summary>
+    Closed
 }
 
 /// <summary>Tells people by email that a task reached them, directly or through one of their groups.</summary>
@@ -117,6 +129,29 @@ public class TaskNotifier(
     }
 
     /// <summary>
+    /// Queues an email for one person about a task: the distributor when an answer arrives, a recipient when their
+    /// copy is closed, either side of a conversation. Unlike <see cref="TaskReceivedAsync"/> it is sent for a
+    /// completed task too. Never throws.
+    /// </summary>
+    public async Task TellAsync(TaskItem task, Guid recipientId, Guid actorId, TaskNotificationReason reason, string? note,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (!settings.Notifications.Enabled || !settings.Smtp.IsConfigured || recipientId == actorId) return;
+            var recipient = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == recipientId, ct);
+            var actor = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == actorId, ct);
+            if (recipient is null || actor is null || !recipient.EmailNotifications) return;
+            if (!queue.TryEnqueue(Compose(task, recipient, actor, null, reason, note, settings.Notifications.PublicUrl)))
+                logger.LogWarning("The notification queue is full; a task notification was dropped");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Preparing a notification for task {TaskId} failed", task.Id);
+        }
+    }
+
+    /// <summary>
     /// Who the task now waits on: its assignee; every member of its group while nobody has taken it;
     /// or its creator when it was forwarded back to them. Nobody otherwise.
     /// </summary>
@@ -152,7 +187,12 @@ public class TaskNotifier(
         body.Append(actorName).Append(' ').Append(WhatHappened(group, reason)).Append("\n\n");
         AppendFacts(body, task);
         if (!string.IsNullOrWhiteSpace(note))
-            body.Append(reason == TaskNotificationReason.Returned ? "Rezolvarea lui " : "Mesaj de la ")
+            body.Append(reason switch
+                {
+                    TaskNotificationReason.Returned => "Rezolvarea lui ",
+                    TaskNotificationReason.Answered or TaskNotificationReason.AllAnswered => "Răspunsul lui ",
+                    _ => "Mesaj de la "
+                })
                 .Append(actorName).Append(": ").Append(note.Trim()).Append('\n');
 
         var url = publicUrl?.Trim();
@@ -167,14 +207,40 @@ public class TaskNotifier(
 
     private static string SubjectOf(TaskItem task, Group? group, TaskNotificationReason reason)
     {
-        if (reason == TaskNotificationReason.Returned) return $"Task rezolvat, înapoi la tine: {task.Title}";
+        switch (reason)
+        {
+            case TaskNotificationReason.Returned: return $"Task rezolvat, înapoi la tine: {task.Title}";
+            case TaskNotificationReason.Answered: return $"Răspuns primit: {task.Title}";
+            case TaskNotificationReason.AllAnswered: return $"Toți au răspuns: {task.Title}";
+            case TaskNotificationReason.SentBack: return $"Task trimis înapoi: {task.Title}";
+            case TaskNotificationReason.Message: return $"Mesaj nou: {task.Title}";
+            case TaskNotificationReason.Closed: return $"Task închis: {task.Title}";
+        }
         return group is not null ? $"Task pentru grupul {group.Name}: {task.Title}" : $"Task nou: {task.Title}";
     }
 
     private static string WhatHappened(Group? group, TaskNotificationReason reason)
     {
-        if (reason == TaskNotificationReason.Returned)
-            return "a rezolvat un task pe care l-ai direcționat și ți l-a trimis înapoi. Îl poți închide sau duce mai departe.";
+        switch (reason)
+        {
+            case TaskNotificationReason.Returned:
+                return "a rezolvat un task pe care l-ai direcționat și ți l-a trimis înapoi. Îl poți închide sau duce mai departe.";
+            case TaskNotificationReason.Answered:
+                return "a răspuns la task-ul pe care i l-ai distribuit. Îl vezi în conversația task-ului tău.";
+            case TaskNotificationReason.AllAnswered:
+                return "a răspuns ultimul la task-ul pe care l-ai distribuit. Task-ul tău e din nou deschis: îl poți închide.";
+            case TaskNotificationReason.SentBack:
+                return "ți-a trimis înapoi task-ul la care ai răspuns. E din nou deschis.";
+            case TaskNotificationReason.Message:
+                return "ți-a scris în conversația unui task.";
+            case TaskNotificationReason.Closed:
+                return "a închis task-ul pe care ți-l distribuise. Nu mai e nevoie de răspunsul tău.";
+            case TaskNotificationReason.Distributed:
+                return group is null
+                    ? "ți-a distribuit un task în Taskel. Când îl finalizezi, răspunsul tău ajunge la el."
+                    : "a distribuit un task grupului " + group.Name
+                      + ", din care faci parte. Îl vede tot grupul, până când unul dintre voi îl preia.";
+        }
         var forwarded = reason == TaskNotificationReason.Forwarded;
         if (group is null) return forwarded ? "ți-a direcționat un task în Taskel." : "ți-a alocat un task în Taskel.";
         return (forwarded ? "a direcționat un task către grupul " : "a dat un task grupului ") + group.Name
