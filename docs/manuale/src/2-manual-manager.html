@@ -63,7 +63,7 @@
   <img src="../../screenshots/team-member.png" alt="Task-urile unui membru al echipei">
   <figcaption>Task-urile unui om din echipă, afișate sub tabelul de încărcare.</figcaption>
 </figure>
-<p>Un clic pe un task îl deschide în aceeași fereastră ca la task-urile tale, dar <b>doar pentru citire</b>, cu o singură excepție: <b>termenul</b>, pe care îl poți muta (vezi „Task-urile echipei”): vezi titlul, mesajul, termenul, starea, motivul așteptării sau mesajul de rezolvare, fișierele (le poți descărca) și traseul. Nu apar butoanele de stare, de editare sau de ștergere.</p>
+<p>Un clic pe un task îl deschide în aceeași fereastră ca la task-urile tale, dar <b>doar pentru citire</b>, cu o singură excepție: <b>termenul și nivelul</b>, pe care le poți schimba (vezi „Task-urile echipei”): vezi titlul, mesajul, termenul, starea, motivul așteptării sau mesajul de rezolvare, fișierele (le poți descărca) și traseul. Nu apar butoanele de stare, de editare sau de ștergere.</p>
 <div class="tip"><strong>Sfat</strong>Dacă vrei să intervii pe un task al unui coleg, discută cu el sau cu creatorul task-ului: ei îl pot realoca, direcționa sau finaliza. Pentru lucrările pe care vrei să le controlezi tu, creează tu task-ul și alocă-l: rămâne la tine în <b class="ui">Delegate</b>, cu toate drepturile.</div>
 
 <h2>Task-urile echipei</h2>
@@ -76,17 +76,31 @@
   <img src="../../screenshots/team-tasks.png" alt="Task-urile echipei">
   <figcaption>Task-urile echipei, pe zile, cu filtrul pe persoană.</figcaption>
 </figure>
-<h3>Mutarea unui termen</h3>
-<p>Deschide task-ul (din această listă sau din <b class="ui">Echipă</b>). Caseta <b class="ui">Termenul, ca manager</b> îți permite să alegi o dată nouă și să apeși <b class="ui">Mută termenul</b>, sau să scoți termenul cu <b class="ui">Fără termen</b>.</p>
+<h3>Tabla kanban</h3>
+<p>Fila <b class="ui">Kanban</b> arată task-urile deschise ale unei singure persoane (alege-o la <b class="ui">Persoana</b>), pe carduri, câte o coloană pentru fiecare zi: <b>Întârziate</b>, apoi o săptămână (cu <b class="ui">Înapoi</b> / <b class="ui">Înainte</b>) și <b>Fără termen</b>. Într-o zi, sus sunt task-urile cu nivel, în ordinea nivelului, iar sub <b>Fără nivel</b> cele fără nivel.</p>
 <ul>
-  <li>Se schimbă <b>doar termenul</b>; restul task-ului rămâne al persoanei.</li>
-  <li>Persoana responsabilă primește un email („Termen schimbat”), iar schimbarea rămâne în conversația task-ului.</li>
-  <li>Termenul nu poate fi înaintea datei de început a task-ului, iar un task finalizat nu se mai mută.</li>
+  <li><b>Tragi un card mai sus sau mai jos</b> în aceeași zi: i se schimbă nivelul. Un nivel ocupat le mută pe celelalte cu o poziție mai jos.</li>
+  <li><b>Tragi un card pe altă zi</b>: i se schimbă termenul (și primește nivelul locului unde l-ai lăsat).</li>
+  <li><b>Tragi un card sub „Fără nivel”</b>: rămâne fără nivel, la finalul zilei.</li>
+  <li>Butonul cu săgeată de pe card deschide aceeași fereastră fără tragere (util de pe tastatură sau de pe telefon).</li>
 </ul>
 <figure>
-  <img src="../../screenshots/team-due-date.png" alt="Mutarea termenului ca manager">
-  <figcaption>Un task al unui coleg, cu termenul mutat de manager.</figcaption>
+  <img src="../../screenshots/team-board.png" alt="Tabla kanban a unei persoane">
+  <figcaption>Tabla kanban: task-urile unei persoane, pe zile, cu nivelurile lor.</figcaption>
 </figure>
+<h3>Motivul, obligatoriu</h3>
+<p>La fiecare mutare se deschide o fereastră în care vezi ce se schimbă (termenul, nivelul) și scrii <b>motivul</b>, fără de care mutarea nu se face. Aici poți ajusta și data sau nivelul.</p>
+<ul>
+  <li>Persoana responsabilă primește un email („Task replanificat”) cu ce s-a schimbat, ce alte task-uri au coborât un nivel și motivul.</li>
+  <li>Același lucru rămâne în istoricul (conversația) task-ului.</li>
+  <li>Se schimbă <b>doar termenul și nivelul</b>; restul task-ului rămâne al persoanei.</li>
+  <li>Termenul nu poate fi înaintea datei de început a task-ului, un task finalizat nu se mai mută, iar o zi are cel mult 20 de niveluri.</li>
+</ul>
+<figure>
+  <img src="../../screenshots/team-move-reason.png" alt="Fereastra de mutare, cu motivul obligatoriu">
+  <figcaption>Mutarea unui card: ce se schimbă și motivul, obligatoriu.</figcaption>
+</figure>
+<p>Același lucru îl poți face dintr-un task deschis (din listă sau din <b class="ui">Echipă</b>), în caseta <b class="ui">Termen și nivel, ca manager</b>.</p>
 
 <h2>Calendarul echipei</h2>
 <p>Fila <b class="ui">Calendar</b> arată task-urile <i>deschise și cu termen</i>, pe zile, câte patru săptămâni odată.</p>

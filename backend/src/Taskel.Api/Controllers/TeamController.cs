@@ -29,7 +29,7 @@ public class TeamController(
 
     /// <summary>
     /// Every task the people of a department are responsible for: the open ones, and those completed in the last
-    /// two weeks. For reading, and for moving due dates (<see cref="ChangeDueDate"/>).
+    /// two weeks. For reading, and for moving tasks (<see cref="Reschedule"/>).
     /// </summary>
     /// <param name="department">The department to show. Managers may only name their own.</param>
     [HttpGet("tasks")]
@@ -61,12 +61,12 @@ public class TeamController(
     }
 
     /// <summary>
-    /// Moves the due date of a task someone in the manager's department is responsible for (an administrator: anyone).
-    /// Nothing else about the task changes. The person responsible is told, and the change is kept in the task's
-    /// conversation.
+    /// Moves a task someone in the manager's department is responsible for (an administrator: anyone) to another day,
+    /// another level within its day, or both. A taken level pushes the person's other tasks on that day down. The
+    /// reason is required: it is kept in the task's history, with what changed, and the person responsible is told.
     /// </summary>
-    [HttpPut("tasks/{taskId:guid}/due-date")]
-    public async Task<ActionResult<TaskResponse>> ChangeDueDate(Guid taskId, ChangeDueDateRequest request, CancellationToken ct)
+    [HttpPut("tasks/{taskId:guid}/schedule")]
+    public async Task<ActionResult<TaskResponse>> Reschedule(Guid taskId, RescheduleTaskRequest request, CancellationToken ct)
     {
         var me = await currentUser.GetAsync(User, ct);
         if (me is null) return Unauthorized();
@@ -81,23 +81,41 @@ public class TeamController(
         if (role != UserRole.Admin && (responsible.Department is null || !SameDepartment(responsible.Department, user.Department)))
             return OtherDepartment();
         if (task.IsCompleted)
-            return Problem(statusCode: StatusCodes.Status409Conflict, title: "This task is completed; its due date no longer matters.");
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: "This task is completed; it can no longer be moved.");
         if (request.DueDate is { } due && task.StartDate is { } start && start > due)
         {
             ModelState.AddModelError(nameof(request.DueDate), $"The due date cannot be before the task's start date ({start:yyyy-MM-dd}).");
             return ValidationProblem(ModelState);
         }
-        if (request.DueDate == task.DueDate) return Ok(TaskResponse.From(task, TaskAccess.Viewer));
+        if (request.DueDate == task.DueDate && request.PriorityLevel == task.PriorityLevel)
+            return Ok(TaskResponse.From(task, TaskAccess.Viewer));
 
-        var change = $"{DateText(task.DueDate)} → {DateText(request.DueDate)}";
+        var (oldDue, oldLevel) = (task.DueDate, task.PriorityLevel);
         task.DueDate = request.DueDate;
-        // On the new day the task keeps its level only if there is room for it.
-        await levels.FitOrDropAsync(task, ct);
-        db.TaskMessages.Add(new TaskMessage { TaskId = task.Id, AuthorId = user.Id, Kind = TaskMessageKind.DueDateChanged, Text = change });
+        task.PriorityLevel = request.PriorityLevel;
+        var pushed = new List<TaskItem>();
+        if (await levels.MakeRoomAsync(task, ct, pushed) is { } full)
+        {
+            (task.DueDate, task.PriorityLevel) = (oldDue, oldLevel);
+            return Problem(statusCode: StatusCodes.Status409Conflict,
+                title: $"Priority levels {request.PriorityLevel} to {PriorityLevels.Max} are all taken on {full:yyyy-MM-dd}: choose another level.");
+        }
+
+        var lines = new List<string>();
+        if (oldDue != task.DueDate) lines.Add($"Termen: {DateText(oldDue)} → {DateText(task.DueDate)}");
+        if (oldLevel != task.PriorityLevel) lines.Add($"Nivel: {LevelText(oldLevel)} → {LevelText(task.PriorityLevel)}");
+        if (pushed.Count > 0)
+            lines.Add("Coborâte cu un nivel: " + string.Join(", ", pushed.Select(t => $"„{t.Title}”")));
+        lines.Add($"Motiv: {request.Reason.Trim()}");
+        var details = string.Join("\n", lines);
+
+        db.TaskMessages.Add(new TaskMessage { TaskId = task.Id, AuthorId = user.Id, Kind = TaskMessageKind.Rescheduled, Text = details });
         await db.SaveChangesAsync(ct);
-        await notifier.TellAsync(task, responsible.Id, user.Id, TaskNotificationReason.DueDateChanged, change, ct);
+        await notifier.TellAsync(task, responsible.Id, user.Id, TaskNotificationReason.Rescheduled, details, ct);
         return Ok(TaskResponse.From(task, TaskAccess.Viewer));
     }
+
+    private static string LevelText(int? level) => level is { } l ? l.ToString(System.Globalization.CultureInfo.InvariantCulture) : "fără nivel";
 
     private static readonly System.Globalization.CultureInfo Romanian = System.Globalization.CultureInfo.GetCultureInfo("ro-RO");
 

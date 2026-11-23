@@ -8,6 +8,7 @@ import { ApiError } from '../api/client'
 import type { TaskItem } from '../api/tasks'
 import { teamApi, type Team as TeamData, type TeamMember } from '../api/team'
 import { countLabel, tasksLabel } from '../lib/text'
+import { rescheduleError } from '../lib/reschedule'
 import Icon, { type IconName } from './Icon'
 import TaskDetail from './TaskDetail'
 import TaskRow from './TaskRow'
@@ -337,15 +338,14 @@ function MemberTaskList({
           task={openTask}
           today={today}
           attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(memberId, openTask.id, file.id)}
-          onChangeDueDate={async (dueDate) => {
+          onReschedule={async (change) => {
             try {
-              const updated = await teamApi.changeDueDate(openTask.id, dueDate)
+              const updated = await teamApi.reschedule(openTask.id, change)
               setOpenTask(updated)
               onTaskChanged(updated)
               return null
             } catch (err) {
-              if (err instanceof ApiError && err.status === 400) return 'Termenul nu poate fi înaintea datei de început a task-ului.'
-              return 'Nu am putut schimba termenul.'
+              return rescheduleError(err)
             }
           }}
           onClose={() => setOpenTask(null)}

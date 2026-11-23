@@ -19,7 +19,11 @@ public enum TaskMessageKind
     /// <summary>The distributor closed one person's task without waiting for the answer.</summary>
     Closed,
     /// <summary>A manager moved the task's due date; the text says from what to what.</summary>
-    DueDateChanged
+    DueDateChanged,
+    /// <summary>
+    /// A manager moved the task to another day or level; the text says from what to what, and why.
+    /// </summary>
+    Rescheduled
 }
 
 /// <summary>
@@ -96,5 +100,14 @@ public record TaskMessageResponse(
 
 public record RelatedCopy(Guid TaskId, string Recipient);
 
+/// <summary>Where a manager moves a task: its day and its place in that day, and why.</summary>
 /// <param name="DueDate">The new due date; null to have none.</param>
-public record ChangeDueDateRequest([DueDateRange] DateOnly? DueDate);
+/// <param name="PriorityLevel">The new level, 1 first; null to have none. A taken level pushes the others down.</param>
+/// <param name="Reason">Why; kept in the task's history and sent to the person responsible.</param>
+public record RescheduleTaskRequest(
+    [DueDateRange] DateOnly? DueDate,
+    [Range(1, Services.PriorityLevels.Max)] int? PriorityLevel,
+    [Required, StringLength(RescheduleTaskRequest.MaxReasonLength, MinimumLength = 1), SafeText] string Reason)
+{
+    public const int MaxReasonLength = 1000;
+}

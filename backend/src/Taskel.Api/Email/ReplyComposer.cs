@@ -94,6 +94,7 @@ public static class ReplyComposer
                 TaskMessageKind.SentBack => $"i-a trimis înapoi lui {to}:",
                 TaskMessageKind.Closed => $"a închis task-ul lui {to}.",
                 TaskMessageKind.DueDateChanged => "a schimbat termenul:",
+                TaskMessageKind.Rescheduled => "a replanificat task-ul:",
                 _ => to is not null && to != who ? $"către {to}:" : "a scris:"
             };
             lines.Add(new Line(message.At, message.Kind == TaskMessageKind.AllAnswered ? "" : who, what, message.Text));

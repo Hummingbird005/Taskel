@@ -1587,9 +1587,72 @@ fieldset.state-bar { border: 0; margin: 0; padding: 0; min-width: 0; }
 .team-tasks-hint { flex-basis: 100%; margin: 0; font-size: var(--fs-sm); }
 .detail-callout.due-editor { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, transparent); }
 .detail-callout.due-editor h3 { color: var(--accent); }
-.due-editor-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
-.due-editor-row input { width: auto; }
 .detail-callout.due-editor p { margin: 0; font-size: var(--fs-sm); }
+
+/* Moving a task as a manager: day, level and the reason, which is required. */
+.reschedule-form { display: flex; flex-direction: column; gap: var(--s3); }
+.reschedule-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s2) var(--s3); }
+.reschedule-fields input { width: auto; }
+.reschedule-form textarea { width: 100%; resize: vertical; }
+.reschedule-changes { margin: 0; padding: var(--s2) var(--s3); list-style: none; border-radius: var(--radius); background: var(--hover); font-size: var(--fs-sm); }
+.reschedule-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.move-dialog { width: min(520px, calc(100vw - 32px)); }
+.move-dialog-body { padding: var(--s4) var(--s6); }
+
+/* The kanban board of one person's tasks, a column per day. */
+.team-tasks-tabs { margin-bottom: var(--s4); }
+.board-nav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.board-range { min-width: 140px; font-weight: 600; text-align: center; }
+.board-columns {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: var(--s3);
+  overflow-x: auto; padding-bottom: var(--s3); align-items: start;
+}
+.board-column {
+  display: flex; flex-direction: column; gap: var(--s2); min-height: 240px; padding: var(--s3);
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface, var(--bg));
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.board-column.weekend { background: var(--hover); }
+.board-column.today { border-color: var(--accent); }
+.board-column.danger { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+.board-column.danger .board-column-head h3 { color: var(--danger); }
+.board-column.can-drop { border-style: dashed; }
+.board-column.is-over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.board-column-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); }
+.board-column-head h3 { margin: 0; font-size: var(--fs-md); }
+.board-column-head .muted { font-size: var(--fs-sm); }
+.board-zone { display: flex; flex-direction: column; gap: var(--s2); margin: 0; padding: 0; list-style: none; min-height: 36px; }
+.board-zone.free { flex: 1; padding-top: var(--s2); border-top: 1px dashed var(--border); }
+.board-column.danger .board-zone.free { border-top: 0; padding-top: 0; }
+.board-zone-title, .board-hint { color: var(--muted); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em; }
+.board-hint { padding: var(--s2); border: 1px dashed var(--border); border-radius: var(--radius); text-align: center; text-transform: none; letter-spacing: 0; }
+.board-marker { height: 3px; border-radius: 2px; background: var(--accent); }
+.board-card {
+  display: flex; flex-direction: column; gap: 6px; padding: var(--s2) var(--s3);
+  border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--bg); cursor: grab; box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.board-card.priority-high { border-left-color: var(--danger); }
+.board-card.priority-low { border-left-color: var(--border); }
+.board-card.is-dragging { opacity: 0.45; }
+.board-card:active { cursor: grabbing; }
+.board-card-open {
+  display: flex; align-items: flex-start; gap: 0; padding: 0; border: 0; background: none; color: var(--text);
+  font: inherit; font-weight: 500; text-align: left; cursor: pointer;
+}
+.board-card-open:hover .board-card-title { text-decoration: underline; }
+.board-card-title { overflow-wrap: anywhere; }
+.board-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.board-card-meta .chip { font-size: var(--fs-xs); }
+.board-card-move {
+  display: grid; place-items: center; width: 26px; height: 26px; margin-left: auto; padding: 0;
+  border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer;
+}
+.board-card-move:hover, .board-card-move:focus-visible { background: var(--hover); color: var(--text); }
+@media (max-width: 640px) {
+  .board-columns { grid-auto-columns: minmax(78vw, 1fr); }
+  .move-dialog-body { padding: var(--s4); }
+}
 
 /* Priority level: the task's place in its day, before the title. */
 .level-badge {

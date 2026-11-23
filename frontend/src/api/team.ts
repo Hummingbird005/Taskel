@@ -53,6 +53,13 @@ export interface TeamCalendar {
   members: CalendarMember[]
 }
 
+/** Where a manager moves a task, and why. */
+export interface Reschedule {
+  dueDate: string | null
+  priorityLevel: number | null
+  reason: string
+}
+
 export const teamApi = {
   /** The department's open, dated tasks per person, for the days from..to (YYYY-MM-DD, inclusive). */
   calendar: (from: string, to: string, department?: string | null) => {
@@ -69,9 +76,12 @@ export const teamApi = {
   /** Every task the department's people are responsible for: open ones, and those completed in the last two weeks. */
   tasks: (department?: string | null) =>
     request<TaskItem[]>(`/team/tasks${department ? `?${new URLSearchParams({ department })}` : ''}`),
-  /** Moves the due date of a task one of the manager's people is responsible for; null removes it. */
-  changeDueDate: (taskId: string, dueDate: string | null) =>
-    request<TaskItem>(`/team/tasks/${taskId}/due-date`, { method: 'PUT', body: JSON.stringify({ dueDate }) }),
+  /**
+   * Moves a task one of the manager's people is responsible for to a day (null: none) and a level (null: none), for
+   * a reason the person is told and that stays in the task's history. A taken level pushes the others down.
+   */
+  reschedule: (taskId: string, change: Reschedule) =>
+    request<TaskItem>(`/team/tasks/${taskId}/schedule`, { method: 'PUT', body: JSON.stringify(change) }),
   /** The tasks a member is responsible for, in full, for reading. */
   memberTasks: (userId: string) => request<TaskItem[]>(`/team/members/${userId}/tasks`),
 }

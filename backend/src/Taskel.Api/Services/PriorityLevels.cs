@@ -22,7 +22,8 @@ public class PriorityLevels(TaskelDbContext db)
     /// the caller saves. Returns null when it fits, or the day on which levels would go past <see cref="Max"/>, in
     /// which case nothing was changed.
     /// </summary>
-    public async Task<DateOnly?> MakeRoomAsync(TaskItem task, CancellationToken ct)
+    /// <param name="moved">When given, receives the tasks that were pushed down.</param>
+    public async Task<DateOnly?> MakeRoomAsync(TaskItem task, CancellationToken ct, List<TaskItem>? moved = null)
     {
         if (task.PriorityLevel is not { } level || task.DueDate is not { } day || task.IsCompleted) return null;
         var person = task.AssigneeId ?? (task.GroupId is null ? task.UserId : null);
@@ -45,6 +46,7 @@ public class PriorityLevels(TaskelDbContext db)
         }
         if (moving.Count > 0 && moving[^1].PriorityLevel >= Max) return day;
         foreach (var other in moving) other.PriorityLevel++;
+        moved?.AddRange(moving);
         return null;
     }
 

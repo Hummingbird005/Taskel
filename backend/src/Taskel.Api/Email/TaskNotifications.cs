@@ -83,7 +83,9 @@ public enum TaskNotificationReason
     /// <summary>The distributor closed someone's copy without waiting for the answer.</summary>
     Closed,
     /// <summary>A manager moved the due date of a task the person is responsible for.</summary>
-    DueDateChanged
+    DueDateChanged,
+    /// <summary>A manager moved a task the person is responsible for to another day or level.</summary>
+    Rescheduled
 }
 
 /// <summary>Tells people by email that a task reached them, directly or through one of their groups.</summary>
@@ -194,9 +196,10 @@ public class TaskNotifier(
                     TaskNotificationReason.Returned => "Rezolvarea lui ",
                     TaskNotificationReason.Answered or TaskNotificationReason.AllAnswered => "Răspunsul lui ",
                     TaskNotificationReason.DueDateChanged => "Termenul, schimbat de ",
+                    TaskNotificationReason.Rescheduled => "Ce a schimbat ",
                     _ => "Mesaj de la "
                 })
-                .Append(actorName).Append(": ").Append(note.Trim()).Append('\n');
+                .Append(actorName).Append(note.Trim().Contains('\n') ? ":\n" : ": ").Append(note.Trim()).Append('\n');
 
         var url = publicUrl?.Trim();
         if (!string.IsNullOrEmpty(url)) body.Append("\nDeschide Taskel: ").Append(url).Append('\n');
@@ -219,6 +222,7 @@ public class TaskNotifier(
             case TaskNotificationReason.Message: return $"Mesaj nou: {task.Title}";
             case TaskNotificationReason.Closed: return $"Task închis: {task.Title}";
             case TaskNotificationReason.DueDateChanged: return $"Termen schimbat: {task.Title}";
+            case TaskNotificationReason.Rescheduled: return $"Task replanificat: {task.Title}";
         }
         return group is not null ? $"Task pentru grupul {group.Name}: {task.Title}" : $"Task nou: {task.Title}";
     }
@@ -241,6 +245,8 @@ public class TaskNotifier(
                 return "a închis task-ul pe care ți-l distribuise. Nu mai e nevoie de răspunsul tău.";
             case TaskNotificationReason.DueDateChanged:
                 return "ți-a schimbat termenul unui task de care răspunzi.";
+            case TaskNotificationReason.Rescheduled:
+                return "ți-a replanificat un task de care răspunzi.";
             case TaskNotificationReason.Distributed:
                 return group is null
                     ? "ți-a distribuit un task în Taskel. Când îl finalizezi, răspunsul tău ajunge la el."
