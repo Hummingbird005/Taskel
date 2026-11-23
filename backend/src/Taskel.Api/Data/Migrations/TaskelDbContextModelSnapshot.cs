@@ -173,6 +173,9 @@ namespace Taskel.Api.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AnswerMessageId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ContentType")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -200,7 +203,12 @@ namespace Taskel.Api.Data.Migrations
                     b.Property<Guid?>("UploadedById")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("WithAnswer")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("AnswerMessageId");
 
                     b.HasIndex("TaskId");
 
@@ -491,6 +499,11 @@ namespace Taskel.Api.Data.Migrations
 
             modelBuilder.Entity("Taskel.Api.Models.TaskAttachment", b =>
                 {
+                    b.HasOne("Taskel.Api.Models.TaskMessage", null)
+                        .WithMany()
+                        .HasForeignKey("AnswerMessageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Taskel.Api.Models.TaskItem", null)
                         .WithMany("Attachments")
                         .HasForeignKey("TaskId")

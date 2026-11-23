@@ -96,7 +96,8 @@ public class DistributionsController(ITaskRepository repository, Distributions d
     {
         if (await LoadAsync(id, ct) is null) return NotFound();
         var messages = await distributions.ConversationAsync(id, ct);
-        return Ok(messages.Select(TaskMessageResponse.From));
+        var files = await distributions.AnswerFilesAsync(id, ct);
+        return Ok(messages.Select(m => TaskMessageResponse.From(m, files[m.Id])));
     }
 
     /// <summary>Writes in the task's conversation. Only those who work on the task may.</summary>

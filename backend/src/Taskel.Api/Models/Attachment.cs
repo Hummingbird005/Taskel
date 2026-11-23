@@ -18,6 +18,13 @@ public class TaskAttachment
     public Guid? UploadedById { get; set; }
     public User? UploadedBy { get; set; }
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    /// Attached to an answer: sent with it, to whoever distributed the task, and with the email reply when the task
+    /// is closed.
+    /// </summary>
+    public bool WithAnswer { get; set; }
+    /// <summary>The answer in the conversation this file came with, when it came with a copy's answer.</summary>
+    public Guid? AnswerMessageId { get; set; }
 }
 
 /// <summary>A value an administrator set from the interface.</summary>
@@ -27,11 +34,13 @@ public class AppSetting
     public string Value { get; set; } = string.Empty;
 }
 
-public record AttachmentResponse(Guid Id, string FileName, long Size, string ContentType, UserSummary? UploadedBy, DateTime UploadedAt)
+public record AttachmentResponse(Guid Id, string FileName, long Size, string ContentType, UserSummary? UploadedBy, DateTime UploadedAt,
+    bool WithAnswer = false)
 {
     public static AttachmentResponse From(TaskAttachment attachment) => new(
         attachment.Id, attachment.FileName, attachment.Size, attachment.ContentType,
-        attachment.UploadedBy is null ? null : UserSummary.From(attachment.UploadedBy), attachment.UploadedAt);
+        attachment.UploadedBy is null ? null : UserSummary.From(attachment.UploadedBy), attachment.UploadedAt,
+        attachment.WithAnswer);
 }
 
 /// <summary>What a client needs to know before offering an upload.</summary>

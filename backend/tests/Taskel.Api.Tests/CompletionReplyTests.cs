@@ -37,7 +37,8 @@ public class CompletionReplyTests(TaskelApiFactory factory)
 
         var reply = Assert.Single(factory.Emails.SentTo(sender));
         Assert.Equal("Offer request", reply.Subject);
-        Assert.Equal("Oferta a fost trimisă. Mulțumim!", reply.Body);
+        // The answer first; the original email follows, quoted, as in any reply.
+        Assert.StartsWith("Oferta a fost trimisă. Mulțumim!\n", reply.Body);
         Assert.Equal("<original-123@mail.example.com>", reply.InReplyToMessageId);
 
         var stored = await GetAsync(client, task.Id);
@@ -171,7 +172,7 @@ public class CompletionReplyTests(TaskelApiFactory factory)
 
         Assert.Equal(HttpStatusCode.BadRequest, (await CompleteAsync(client, task.Id, null)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await CompleteAsync(client, task.Id, "Second")).StatusCode);
-        Assert.Equal(["First", "Second"], factory.Emails.SentTo(sender).Select(m => m.Body));
+        Assert.Equal(["First", "Second"], factory.Emails.SentTo(sender).Select(m => m.Body.Split('\n')[0]));
     }
 
     [Fact]

@@ -21,6 +21,27 @@ public class SmtpMessageTests
         Assert.Equal("Am rezolvat.\nMulțumesc!", message.TextBody);
     }
 
+    [Fact]
+    public void A_Formatted_Reply_Carries_Text_Html_And_Files()
+    {
+        var reply = new ReplyEmail("ion@example.com", "Ofertă", "Gata.", "<abc@mail.example.com>", "<p>Gata.</p>",
+            [
+                new ReplyAttachment("oferta.pdf", "application/pdf", () => new MemoryStream("%PDF-1.7"u8.ToArray())),
+                new ReplyAttachment("lipsa.txt", "text/plain", () => null),
+                new ReplyAttachment("ciudat.bin", "nu e un tip", () => new MemoryStream([1, 2, 3])),
+            ]);
+
+        var message = SmtpEmailSender.BuildMessage(reply, Smtp);
+
+        Assert.Equal("Gata.", message.TextBody);
+        Assert.Equal("<p>Gata.</p>", message.HtmlBody);
+        Assert.Equal(["oferta.pdf", "ciudat.bin"], message.Attachments.Select(a => a.ContentDisposition.FileName));
+        Assert.Equal("application/pdf", message.Attachments.First().ContentType.MimeType);
+        // A type that cannot be read is sent as plain bytes.
+        Assert.Equal("application/octet-stream", message.Attachments.Last().ContentType.MimeType);
+        Assert.Equal("abc@mail.example.com", message.InReplyTo);
+    }
+
     [Theory]
     [InlineData("Re: Already a reply", "Re: Already a reply")]
     [InlineData("RE: Shouting", "RE: Shouting")]

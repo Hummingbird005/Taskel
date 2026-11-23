@@ -394,7 +394,7 @@ public class EmailDistributionTests(TaskelApiFactory factory)
 
         (await CompleteAsync(manager, id, "Vă trimitem oferta.")).EnsureSuccessStatusCode();
 
-        Assert.Equal("Vă trimitem oferta.", Assert.Single(factory.Emails.SentTo(client)).Body);
+        Assert.StartsWith("Vă trimitem oferta.\n", Assert.Single(factory.Emails.SentTo(client)).Body);
     }
 
     [Fact]

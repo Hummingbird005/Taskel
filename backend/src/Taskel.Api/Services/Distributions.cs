@@ -81,11 +81,29 @@ public class Distributions(TaskelDbContext db, TaskNotifier notifier)
         if (parent is null) return;
 
         var byRecipient = actorId != copy.UserId;
-        db.TaskMessages.Add(new TaskMessage
+        var message = new TaskMessage
         {
             TaskId = parentId, RelatedTaskId = copy.Id, AuthorId = actorId,
             Kind = byRecipient ? TaskMessageKind.Answered : TaskMessageKind.Closed, Text = answer
-        });
+        };
+        db.TaskMessages.Add(message);
+        // The files attached to this answer go with it to the distributor's task (shared, not copied on disk).
+        foreach (var file in copy.Attachments.Where(a => a.WithAnswer && a.AnswerMessageId is null))
+        {
+            file.AnswerMessageId = message.Id;
+            db.Attachments.Add(new TaskAttachment
+            {
+                TaskId = parentId,
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                Size = file.Size,
+                StoredName = file.StoredName,
+                UploadedById = file.UploadedById,
+                UploadedAt = file.UploadedAt,
+                WithAnswer = true,
+                AnswerMessageId = message.Id
+            });
+        }
         var wasWaiting = parent.WaitingReason?.StartsWith(WaitingPrefix, StringComparison.Ordinal) == true;
         await SyncAsync(parent, ct);
         var allAnswered = wasWaiting && parent.WaitingReason is null && !parent.IsCompleted;
@@ -204,6 +222,18 @@ public class Distributions(TaskelDbContext db, TaskNotifier notifier)
             .Where(m => m.TaskId == taskId || m.RelatedTaskId == taskId)
             .OrderBy(m => m.At)
             .ToListAsync(ct);
+
+    /// <summary>
+    /// The files that came with answers in a task's conversation, by message, as they are listed on that task: the
+    /// distributor reaches them on their task, a recipient on their copy.
+    /// </summary>
+    public async Task<ILookup<Guid, TaskAttachment>> AnswerFilesAsync(Guid taskId, CancellationToken ct) =>
+        (await db.Attachments.AsNoTracking()
+            .Include(a => a.UploadedBy)
+            .Where(a => a.TaskId == taskId && a.AnswerMessageId != null)
+            .OrderBy(a => a.UploadedAt)
+            .ToListAsync(ct))
+        .ToLookup(a => a.AnswerMessageId!.Value);
 
     /// <summary>Puts the task on hold while any of its copies is open, and takes it off hold when none is.</summary>
     private async Task SyncAsync(TaskItem parent, CancellationToken ct)

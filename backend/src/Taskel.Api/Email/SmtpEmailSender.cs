@@ -60,7 +60,22 @@ public class SmtpEmailSender(IntegrationSettings settings, ILogger<SmtpEmailSend
             message.InReplyTo = reply.InReplyToMessageId;
             message.References.Add(reply.InReplyToMessageId);
         }
-        message.Body = new TextPart("plain") { Text = reply.Body };
+        if (reply.HtmlBody is null && (reply.Attachments is null || reply.Attachments.Count == 0))
+        {
+            message.Body = new TextPart("plain") { Text = reply.Body };
+            return message;
+        }
+
+        var body = new BodyBuilder { TextBody = reply.Body, HtmlBody = reply.HtmlBody };
+        foreach (var file in reply.Attachments ?? [])
+        {
+            using var content = file.Open();
+            if (content is null) continue;
+            var type = ContentType.TryParse(file.ContentType, out var parsed) ? parsed : new ContentType("application", "octet-stream");
+            // The content is copied into the message here, so the file can be closed right after.
+            body.Attachments.Add(file.FileName, content, type);
+        }
+        message.Body = body.ToMessageBody();
         return message;
     }
 
