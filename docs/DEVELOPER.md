@@ -59,7 +59,7 @@ database and adds the [demo data](DEMO-ACCOUNTS.md) on an empty database.
 | `Keycloak/` | Keycloak sign-in: the OpenID Connect handler's setup and events, reading the tokens, linking accounts, the admin API client for the test and the import, the sign-out address |
 | `Integrations/` | The integration settings an administrator saves (`IntegrationSettings`), what Active Directory and Keycloak accounts share (`ExternalAccounts`: roles and groups), and the public address of the interface |
 | `Email/` | SMTP sending, the notification queue and its background worker |
-| `Attachments/` | Storing files on disk, the size limit, and download headers |
+| `Attachments/` | Storing files on disk, the size limit, download headers, and `PreviewType`: which files may be shown rather than downloaded, recognised from their first bytes |
 | `Validation/` | Attributes shared by request records (`SafeText`, `StrictEmail`, `DueDateRange`) |
 
 ### A request, start to finish

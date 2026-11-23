@@ -173,9 +173,9 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | PUT    | `/api/admin/users/{id}` | admin | Set an account's role and department      |
 | GET    | `/api/attachments/limits` | ✓ | Largest file accepted and files per task     |
 | POST   | `/api/tasks/{id}/attachments` | ✓ | Attach a file (multipart/form-data, part `file`) |
-| GET    | `/api/tasks/{id}/attachments/{fileId}` | ✓ | Download a file                      |
+| GET    | `/api/tasks/{id}/attachments/{fileId}` | ✓ | Download a file; with `?view=true`, show a PDF or a picture |
 | DELETE | `/api/tasks/{id}/attachments/{fileId}` | ✓ | Remove a file                        |
-| GET    | `/api/team/members/{id}/tasks/{taskId}/attachments/{fileId}` | manager | Download a file of a team member's task |
+| GET    | `/api/team/members/{id}/tasks/{taskId}/attachments/{fileId}` | manager | Download a file of a team member's task (`?view=true` as above) |
 | GET    | `/api/admin/settings/attachments` | admin | The attachment size limit              |
 | PUT    | `/api/admin/settings/attachments` | admin | Change the attachment size limit       |
 | GET/PUT/DELETE | `/api/admin/integrations/email` | admin | Mail server and notifications: read, save, back to the server configuration |
@@ -690,6 +690,24 @@ Tasks can carry files, whether they were made in Taskel or from an email.
   waits on, someone who forwarded it, and the manager of the person responsible. Its creator and its assignee
   add and remove files.
 - Deleting a task deletes its files.
+
+### Viewing PDF files and pictures
+
+PDF files and pictures (PNG, JPEG, GIF, WEBP) open in a viewer over the task, without being downloaded: click the
+file's name. The viewer goes to the previous and next file (also ← →), zooms pictures (+, −, 0 to fit, or a click on
+the picture), and has a download button. PDF files open in the browser's own viewer. Every other file is
+downloaded when clicked, as before.
+
+The API shows a file only when its first bytes prove it is one of those types (`?view=true`), whatever its name or
+the type its uploader declared; anything else, SVG included (it can carry scripts), gets `415` and stays
+download-only. Shown files are sent inline with `X-Content-Type-Options: nosniff`, `Cross-Origin-Resource-Policy:
+same-origin` and a `Content-Security-Policy` that keeps them from being framed by other sites; pictures are also
+sandboxed. The browser's PDF viewer does not start in a sandbox, so PDF files are not: they are shown by the
+browser, never run as a page of Taskel. Large PDF files are read in parts (HTTP range requests).
+
+| | |
+|---|---|
+| ![Files of a task: an eye before files that can be viewed, and a download button](docs/screenshots/attachments-list.png) | ![A picture in the viewer, with zoom, download, previous and next](docs/screenshots/attachment-viewer.png) |
 
 ### Limits and settings
 

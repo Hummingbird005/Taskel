@@ -1,8 +1,16 @@
 import { useRef, useState } from 'react'
 import { ApiError } from '../api/client'
-import { attachmentsApi, checkFiles, uploadErrorText, type Attachment, type AttachmentLimits } from '../api/attachments'
+import {
+  attachmentsApi,
+  checkFiles,
+  previewKind,
+  uploadErrorText,
+  type Attachment,
+  type AttachmentLimits,
+} from '../api/attachments'
 import type { TaskItem } from '../api/tasks'
 import { formatBytes } from '../lib/text'
+import AttachmentViewer from './AttachmentViewer'
 import Icon from './Icon'
 
 interface Props {
@@ -25,7 +33,10 @@ interface Props {
   downloadUrl?: (attachment: Attachment) => string
 }
 
-/** The files of a task: a list to download from and, for those who work on it, a way to add and remove. */
+/**
+ * The files of a task: a list to open or download from and, for those who work on it, a way to add and remove.
+ * PDF files and pictures open in a viewer over the task; other files are downloaded.
+ */
 export default function TaskAttachments({
   task,
   limits,
@@ -40,7 +51,10 @@ export default function TaskAttachments({
   const [uploading, setUploading] = useState<{ name: string; fraction: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(showWhenEmpty || defaultOpen)
+  const [viewing, setViewing] = useState<number | null>(null)
   const files = task.attachments
+  const viewable = files.filter((file) => previewKind(file.fileName) !== null)
+  const urlOf = (file: Attachment) => (downloadUrl ? downloadUrl(file) : attachmentsApi.downloadUrl(task.id, file.id))
 
   if (files.length === 0 && !(canEdit && showWhenEmpty)) return null
 
@@ -94,18 +108,36 @@ export default function TaskAttachments({
         <ul className="attachment-list">
           {files.map((file) => (
             <li key={file.id}>
-              <Icon name="paperclip" size={15} />
-              <a
-                href={downloadUrl ? downloadUrl(file) : attachmentsApi.downloadUrl(task.id, file.id)}
-                download={file.fileName}
-                title={`Descarcă ${file.fileName}`}
-              >
-                {file.fileName}
-              </a>
+              <Icon name={previewKind(file.fileName) ? 'eye' : 'paperclip'} size={15} />
+              {previewKind(file.fileName) ? (
+                <button
+                  type="button"
+                  className="attachment-open"
+                  onClick={() => setViewing(viewable.indexOf(file))}
+                  title={`Deschide ${file.fileName}`}
+                >
+                  {file.fileName}
+                </button>
+              ) : (
+                <a href={urlOf(file)} download={file.fileName} title={`Descarcă ${file.fileName}`}>
+                  {file.fileName}
+                </a>
+              )}
               <span className="attachment-meta">
                 {formatBytes(file.size)}
                 {file.uploadedBy && ` · ${file.uploadedBy.displayName}`}
               </span>
+              {previewKind(file.fileName) && (
+                <a
+                  className="attachment-download"
+                  href={urlOf(file)}
+                  download={file.fileName}
+                  aria-label={`Descarcă ${file.fileName}`}
+                  title="Descarcă"
+                >
+                  <Icon name="download" size={15} />
+                </a>
+              )}
               {canEdit && (
                 <button type="button" className="attachment-remove" onClick={() => { remove(file) }} aria-label={`Șterge fișierul ${file.fileName}`} title="Șterge fișierul">
                   <Icon name="close" size={15} />
@@ -114,6 +146,9 @@ export default function TaskAttachments({
             </li>
           ))}
         </ul>
+      )}
+      {viewing !== null && viewable.length > 0 && (
+        <AttachmentViewer files={viewable} start={viewing} urlOf={urlOf} onClose={() => setViewing(null)} />
       )}
       {uploading && (
         <output className="upload-progress">

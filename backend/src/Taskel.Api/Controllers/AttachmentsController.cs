@@ -163,15 +163,15 @@ public class AttachmentsController(ITaskRepository tasks, TaskelDbContext db, At
         return (null, null);
     }
 
-    /// <summary>Downloads a file of a task the caller can see.</summary>
+    /// <summary>Downloads a file of a task the caller can see, or, with <c>view=true</c>, shows a PDF or a picture.</summary>
     [HttpGet("tasks/{taskId:guid}/attachments/{id:guid}")]
-    public async Task<IActionResult> Download(Guid taskId, Guid id, CancellationToken ct)
+    public async Task<IActionResult> Download(Guid taskId, Guid id, [FromQuery] bool view, CancellationToken ct)
     {
         var task = await tasks.GetAsync(User.GetUserId(), taskId, ct);
         var attachment = task?.Attachments.FirstOrDefault(a => a.Id == id);
         if (attachment is null) return NotFound();
 
-        return AttachmentDownload.Send(this, store, attachment, logger);
+        return await AttachmentDownload.SendAsync(this, store, attachment, logger, view, ct);
     }
 
     [HttpDelete("tasks/{taskId:guid}/attachments/{id:guid}")]

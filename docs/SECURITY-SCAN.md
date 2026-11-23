@@ -112,7 +112,7 @@ What the tools above do not reach, checked against the code:
 |---|---|
 | SQL injection | All queries go through EF Core LINQ, which parameterises; no raw SQL |
 | LDAP injection | User names are parsed to a strict character set (`DirectoryNames.TryParse`) and escaped in filters (`EscapeFilterValue`); sign-in binds as the user, no service account |
-| XSS | React escapes all text; there is no `dangerouslySetInnerHTML`. Uploaded files are always downloaded, never shown, with `nosniff` and `Content-Security-Policy: sandbox` |
+| XSS | React escapes all text; there is no `dangerouslySetInnerHTML`. Uploaded files are downloaded with `nosniff` and `Content-Security-Policy: sandbox`. Since the attachment viewer, PDF files and PNG, JPEG, GIF and WEBP pictures can also be shown (`?view=true`), only when their first bytes prove the type (never from the name or the declared type; SVG is never shown), inline with `nosniff`, `Cross-Origin-Resource-Policy: same-origin` and `frame-ancestors 'self'`, pictures also sandboxed |
 | Path traversal | Attachments are stored under generated 32-hex-digit names; the uploaded name is cleaned and only kept in the database |
 | CSRF | The session cookie is `HttpOnly` and `SameSite=Lax`, so other sites' forms do not carry it; the API reads JSON or multipart only |
 | Password guessing | Sign-in is rate-limited per client address (`Auth:LoginAttemptsPerMinute`) |

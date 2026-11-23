@@ -183,7 +183,8 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser, Attachm
     /// tasks in full, files included, without being part of those tasks.
     /// </summary>
     [HttpGet("members/{id:guid}/tasks/{taskId:guid}/attachments/{attachmentId:guid}")]
-    public async Task<IActionResult> DownloadMemberAttachment(Guid id, Guid taskId, Guid attachmentId, CancellationToken ct)
+    public async Task<IActionResult> DownloadMemberAttachment(Guid id, Guid taskId, Guid attachmentId, [FromQuery] bool view,
+        CancellationToken ct)
     {
         var me = await currentUser.GetAsync(User, ct);
         if (me is null) return Unauthorized();
@@ -199,7 +200,7 @@ public class TeamController(TaskelDbContext db, CurrentUser currentUser, Attachm
             a.Id == attachmentId && a.TaskId == taskId
             && db.Tasks.Any(t => t.Id == taskId
                 && (t.AssigneeId == id || (t.AssigneeId == null && t.GroupId == null && t.UserId == id))), ct);
-        return attachment is null ? NotFound() : AttachmentDownload.Send(this, attachments, attachment, logger);
+        return attachment is null ? NotFound() : await AttachmentDownload.SendAsync(this, attachments, attachment, logger, view, ct);
     }
 
     private async Task<List<string>> AllDepartmentsAsync(CancellationToken ct)

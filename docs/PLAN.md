@@ -3,7 +3,7 @@
 Agreed with the product owner on 2026-11-19 and 2026-11-23. Each part is a separate pull request, in this order.
 Decisions taken along the way are recorded here so they are not asked again.
 
-## PR 1 · Outlook: mark sent emails, a "To" field, a due date
+## PR 1 · Outlook: mark sent emails, a "To" field, a due date (done: #27)
 
 - **Mark in Outlook.** An email sent to Taskel gets the Outlook category **"Taskel"** (a coloured label, shown in
   the list and usable as a filter). Outlook allows no custom icon.
