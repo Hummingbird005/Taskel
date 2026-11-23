@@ -70,6 +70,11 @@ export default function TaskRow({ task, today, onOpen, onClaim, showHolder = fal
       <StateMark task={task} />
       <div className="task-body">
         <button type="button" className="task-open" onClick={onOpen}>
+          {task.priorityLevel != null && !task.isCompleted && (
+            <span className="level-badge" title={`Nivel de prioritate ${task.priorityLevel}: ordinea în zi`}>
+              {task.priorityLevel}
+            </span>
+          )}
           {task.title}
         </button>
         <div className="task-meta">

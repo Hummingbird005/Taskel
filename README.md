@@ -318,6 +318,25 @@ Every request is validated before anything is stored:
 The interface applies the same rules in its forms and shows the reason in Romanian. Validation failures return
 `400` with a problem-details body listing the fields.
 
+## Priority level
+
+Next to the priority (low, medium, high), a task can have a **priority level**, 1 to 20: its place in its day, 1
+first (`priorityLevel` in the task and in create and update requests; optional, and left out of an update it is
+removed).
+
+- **Within one day, one person has one open task per level.** The person is the one the task is with (its assignee,
+  or its creator while it is with nobody else); the day is its due date. Tasks without a due date, tasks waiting for
+  a group and completed tasks hold no place.
+- Choosing a level already taken that day **pushes the others down**: the task at that level goes one lower, and the
+  one below it too if that level was taken, until a free level. If that would take a task past 20, the change is
+  refused with `409` and nothing moves.
+- A task that reaches someone else's day without being asked for (assigned, forwarded, taken from a group, sent
+  back, its due date moved by a manager) keeps its level if there is room, and loses it otherwise.
+- Lists order each day by level, then the tasks without one by priority. The level shows as a dark square before the
+  title.
+
+![A day's tasks ordered by level, 1 first, then those without a level](docs/screenshots/priority-level.png)
+
 ## Assigning tasks
 
 A task belongs to the user who created it and can be assigned to one other user.

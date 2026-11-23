@@ -304,6 +304,9 @@ namespace Taskel.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(1);
 
+                    b.Property<int?>("PriorityLevel")
+                        .HasColumnType("integer");
+
                     b.Property<string>("SourceEmailAddress")
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");

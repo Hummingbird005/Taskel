@@ -22,6 +22,9 @@ export interface TaskActionContext {
 
 type Explain = (err: ApiError) => string | null
 
+/** A level that would push a task of that day past 20. */
+const LEVELS_FULL = 'În ziua aceea nu mai e loc la acest nivel: task-urile de sub el ar trece de nivelul 20. Alege alt nivel.'
+
 const replaceIn = (context: TaskActionContext, updated: TaskItem) =>
   context.setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
 
@@ -231,7 +234,14 @@ export async function claimTask(context: TaskActionContext, task: TaskItem): Pro
 /** Everything the task's dialog can do with it. */
 export function taskActions(context: TaskActionContext, task: TaskItem): TaskActions {
   return {
-    save: (draft) => attempt(context, () => saveTask(task, draft), 'Nu am putut salva task-ul.'),
+    save: async (draft) => {
+      const failure = await attempt(context, () => saveTask(task, draft), 'Nu am putut salva task-ul.', (err) =>
+        err.status === 409 ? LEVELS_FULL : null,
+      )
+      // A level may have pushed other tasks of that day down: the list is read again.
+      if (!failure && draft.priorityLevel != null) await context.refresh()
+      return failure
+    },
     complete: (response, attachmentIds = []) => completeTask(context, task, response, attachmentIds),
     wait: (reason) => attempt(context, () => tasksApi.wait(task.id, reason), 'Nu am putut pune task-ul în așteptare.', waitRefusal),
     resume: () => attempt(context, () => tasksApi.resume(task.id), 'Nu am putut relua task-ul.'),
@@ -293,11 +303,14 @@ export async function addTask(
     created = await tasksApi.create(draft)
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) context.onSessionExpired()
+    else if (err instanceof ApiError && err.status === 409) context.setError(LEVELS_FULL)
     else context.setError('Nu am putut adăuga task-ul.')
     return false
   }
   context.setTasks((prev) => [...prev, created])
   context.setError(null)
+  // A level may have pushed other tasks of that day down: the list is read again.
+  if (created.priorityLevel != null) await context.refresh()
   try {
     created = await uploadAll(context, created, files, limits)
   } catch {

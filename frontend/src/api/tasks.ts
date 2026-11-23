@@ -76,6 +76,11 @@ export interface TaskItem {
   /** Calendar date as YYYY-MM-DD, or null when the task has no due date. */
   dueDate: string | null
   priority: TaskPriority
+  /**
+   * Order within the day, 1 first, up to 20; null for none. One person has one open task per level on a day: a
+   * level already taken pushes the others down.
+   */
+  priorityLevel: number | null
   tags: string[]
   createdAt: string
   /**
@@ -120,6 +125,7 @@ export interface TaskItem {
 
 /** The editable fields of a task. */
 export type TaskDraft = Pick<TaskItem, 'title' | 'startDate' | 'dueDate' | 'priority' | 'tags'> & {
+  priorityLevel?: number | null
   description?: string | null
   /** User to assign the task to; null keeps it with its creator. Left out when not being changed. */
   assigneeId?: string | null
@@ -140,6 +146,7 @@ export const tasksApi = {
         startDate: task.startDate,
         dueDate: task.dueDate,
         priority: task.priority,
+        priorityLevel: task.priorityLevel,
         tags: task.tags,
       }),
     }),

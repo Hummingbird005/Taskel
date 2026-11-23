@@ -6,6 +6,7 @@ using Taskel.Api.Attachments;
 using Taskel.Api.Data;
 using Taskel.Api.Email;
 using Taskel.Api.Models;
+using Taskel.Api.Services;
 using Taskel.Api.Validation;
 
 namespace Taskel.Api.Controllers;
@@ -19,7 +20,8 @@ namespace Taskel.Api.Controllers;
 [Authorize]
 [Route("api/team")]
 public class TeamController(
-    TaskelDbContext db, CurrentUser currentUser, AttachmentStore attachments, TaskNotifier notifier, ILogger<TeamController> logger)
+    TaskelDbContext db, CurrentUser currentUser, AttachmentStore attachments, TaskNotifier notifier, PriorityLevels levels,
+    ILogger<TeamController> logger)
     : ControllerBase
 {
     /// <summary>How long a completed task stays in the team's list.</summary>
@@ -89,6 +91,8 @@ public class TeamController(
 
         var change = $"{DateText(task.DueDate)} → {DateText(request.DueDate)}";
         task.DueDate = request.DueDate;
+        // On the new day the task keeps its level only if there is room for it.
+        await levels.FitOrDropAsync(task, ct);
         db.TaskMessages.Add(new TaskMessage { TaskId = task.Id, AuthorId = user.Id, Kind = TaskMessageKind.DueDateChanged, Text = change });
         await db.SaveChangesAsync(ct);
         await notifier.TellAsync(task, responsible.Id, user.Id, TaskNotificationReason.DueDateChanged, change, ct);

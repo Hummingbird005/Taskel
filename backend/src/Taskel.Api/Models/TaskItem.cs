@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Taskel.Api.Services;
 using Taskel.Api.Validation;
 
 namespace Taskel.Api.Models;
@@ -62,6 +63,11 @@ public class TaskItem
     /// <summary>Calendar date the task is due, without a time or time zone. The last day of its interval.</summary>
     public DateOnly? DueDate { get; set; }
     public TaskPriority Priority { get; set; } = TaskPriority.Medium;
+    /// <summary>
+    /// Optional order of the task within its day, 1 first, up to 20. One person cannot have two open tasks with the
+    /// same level on the same due date: see <see cref="Services.PriorityLevels"/>.
+    /// </summary>
+    public int? PriorityLevel { get; set; }
     /// <summary>Normalized (trimmed, lower-case, distinct) tags. See <see cref="TagList"/>.</summary>
     public List<string> Tags { get; set; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -137,7 +143,9 @@ public record CreateTaskRequest(
     /// <summary>Group to give the task to, instead of a user. Any member can then take it.</summary>
     Guid? GroupId = null,
     /// <summary>First day of the task's interval. Needs a due date on or after it.</summary>
-    [DueDateRange] DateOnly? StartDate = null) : IValidatableObject
+    [DueDateRange] DateOnly? StartDate = null,
+    /// <summary>Order within the day, 1 to 20; a level already taken that day pushes the others down.</summary>
+    [Range(1, PriorityLevels.Max)] int? PriorityLevel = null) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
         TaskInterval.Validate(StartDate, DueDate);
@@ -152,7 +160,9 @@ public record UpdateTaskRequest(
     [DueDateRange] DateOnly? DueDate = null,
     [EnumDataType(typeof(TaskPriority))] TaskPriority Priority = TaskPriority.Medium,
     [TagList] List<string>? Tags = null,
-    [DueDateRange] DateOnly? StartDate = null) : IValidatableObject
+    [DueDateRange] DateOnly? StartDate = null,
+    /// <summary>Order within the day, 1 to 20; left out, the task has none.</summary>
+    [Range(1, PriorityLevels.Max)] int? PriorityLevel = null) : IValidatableObject
 {
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) =>
         TaskInterval.Validate(StartDate, DueDate);
@@ -257,7 +267,8 @@ public record TaskResponse(
     UserSummary? ReturnsTo = null,
     ParentTaskSummary? DistributedFrom = null,
     IReadOnlyList<DistributionResponse>? Distributions = null,
-    UserSummary? AnswersTo = null)
+    UserSummary? AnswersTo = null,
+    int? PriorityLevel = null)
 {
     /// <summary>The task's people, group and forwards must be loaded.</summary>
     /// <remarks>
@@ -303,5 +314,6 @@ public record TaskResponse(
         // The person a distributed task's answer goes to: whoever distributed it, its creator.
         access == TaskAccess.Assignee && task.ParentTaskId is not null && !task.IsCompleted && task.Owner is not null
             ? UserSummary.From(task.Owner)
-            : null);
+            : null,
+        task.PriorityLevel);
 }

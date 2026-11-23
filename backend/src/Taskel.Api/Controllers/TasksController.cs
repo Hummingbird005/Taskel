@@ -16,7 +16,8 @@ namespace Taskel.Api.Controllers;
 [Authorize]
 [Route("api/[controller]")]
 public class TasksController(
-    ITaskRepository repository, IEmailSender emailSender, TaskNotifier notifier, AttachmentStore attachments, Distributions distributions)
+    ITaskRepository repository, IEmailSender emailSender, TaskNotifier notifier, AttachmentStore attachments, Distributions distributions,
+    PriorityLevels levels)
     : ControllerBase
 {
     [HttpGet]
@@ -39,7 +40,7 @@ public class TasksController(
         var target = await ResolveTargetAsync(userId, request.AssigneeId, request.GroupId, ct);
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-        var task = await repository.AddAsync(new TaskItem
+        var task = new TaskItem
         {
             UserId = userId,
             AssigneeId = target.AssigneeId,
@@ -49,8 +50,11 @@ public class TasksController(
             StartDate = request.StartDate,
             DueDate = request.DueDate,
             Priority = request.Priority,
+            PriorityLevel = request.PriorityLevel,
             Tags = TagList.Normalize(request.Tags)
-        }, ct);
+        };
+        if (await levels.MakeRoomAsync(task, ct) is { } full) return LevelsFull(task, full);
+        task = await repository.AddAsync(task, ct);
         await notifier.TaskReceivedAsync(task, userId, TaskNotificationReason.Assigned, ct: ct);
         return CreatedAtAction(nameof(Get), new { id = task.Id }, TaskResponse.From(task, TaskAccess.Creator));
     }
@@ -164,7 +168,9 @@ public class TasksController(
         task.StartDate = request.StartDate;
         task.DueDate = request.DueDate;
         task.Priority = request.Priority;
+        task.PriorityLevel = request.PriorityLevel;
         task.Tags = TagList.Normalize(request.Tags);
+        if (await levels.MakeRoomAsync(task, ct) is { } full) return LevelsFull(task, full);
         await repository.SaveAsync(task, ct);
         // A reopened copy is open work again: the task it came from waits for it.
         if (reopened) await distributions.CopyChangedAsync(task, ct);
@@ -189,6 +195,8 @@ public class TasksController(
         var changed = task.AssigneeId != target.AssigneeId || task.GroupId != target.GroupId;
         task.AssigneeId = target.AssigneeId;
         task.GroupId = target.GroupId;
+        // On someone else's day, the task keeps its level only if there is room for it.
+        await levels.FitOrDropAsync(task, ct);
         // The creator takes the task's course into their own hands: nobody is waiting for it back any more.
         if (changed)
         {
@@ -236,6 +244,8 @@ public class TasksController(
         });
         task.AssigneeId = target.AssigneeId;
         task.GroupId = target.GroupId;
+        // On someone else's day, the task keeps its level only if there is room for it.
+        await levels.FitOrDropAsync(task, ct);
         await repository.SaveAsync(task, ct);
         await notifier.TaskReceivedAsync(task, userId, TaskNotificationReason.Forwarded, NullIfBlank(request.Note), ct);
         return Ok(TaskResponse.From(task, AccessOf(task, userId, await repository.GetGroupIdsAsync(userId, ct))));
@@ -255,6 +265,7 @@ public class TasksController(
         }
 
         task.AssigneeId = User.GetUserId();
+        await levels.FitOrDropAsync(task, ct);
         await repository.SaveAsync(task, ct);
         return Ok(TaskResponse.From(task, TaskAccess.Assignee));
     }
@@ -274,6 +285,7 @@ public class TasksController(
         }
 
         task.AssigneeId = null;
+        await levels.FitOrDropAsync(task, ct);
         await repository.SaveAsync(task, ct);
         var groups = await repository.GetGroupIdsAsync(userId, ct);
         return Ok(TaskResponse.From(task, AccessOf(task, userId, groups)));
@@ -358,6 +370,7 @@ public class TasksController(
         });
         task.AssigneeId = pending.FromUserId == task.UserId ? null : pending.FromUserId;
         task.GroupId = null;
+        await levels.FitOrDropAsync(task, ct);
         ClearWaiting(task);
         await repository.SaveAsync(task, ct);
         await notifier.TaskReceivedAsync(task, userId, TaskNotificationReason.Returned, response, ct);
@@ -538,6 +551,11 @@ public class TasksController(
             ModelState.AddModelError(nameof(AssignTaskRequest.AssigneeId), "The user to assign the task to does not exist.");
         return (assigneeId, null);
     }
+
+    /// <summary>The level asked for would push a task on that day past the last level.</summary>
+    private ObjectResult LevelsFull(TaskItem task, DateOnly day) =>
+        Problem(statusCode: StatusCodes.Status409Conflict,
+            title: $"Priority levels {task.PriorityLevel} to {PriorityLevels.Max} are all taken on {day:yyyy-MM-dd}: choose another level.");
 
     private ObjectResult CreatorOnly(string action) =>
         Problem(statusCode: StatusCodes.Status403Forbidden, title: $"Only the person who created this task can {action} it.");

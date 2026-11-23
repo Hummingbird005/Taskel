@@ -1590,3 +1590,11 @@ fieldset.state-bar { border: 0; margin: 0; padding: 0; min-width: 0; }
 .due-editor-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
 .due-editor-row input { width: auto; }
 .detail-callout.due-editor p { margin: 0; font-size: var(--fs-sm); }
+
+/* Priority level: the task's place in its day, before the title. */
+.level-badge {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-right: var(--s2); padding: 0 5px;
+  border-radius: 6px; background: var(--text); color: var(--bg); font-size: var(--fs-xs); font-weight: 700;
+  font-variant-numeric: tabular-nums; vertical-align: 1px;
+}
+.level-field select { min-width: 72px; }

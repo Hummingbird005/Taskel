@@ -94,6 +94,8 @@ export default function TeamTasks({ user, today, onSessionExpired }: Props) {
     try {
       const updated = await teamApi.changeDueDate(task.id, dueDate)
       setTasks((prev) => prev?.map((t) => (t.id === updated.id ? updated : t)) ?? null)
+      // On the new day, a level may have pushed other tasks down.
+      if (updated.priorityLevel != null) setTasks(await teamApi.tasks(department))
       return null
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
