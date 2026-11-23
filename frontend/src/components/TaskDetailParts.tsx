@@ -55,6 +55,12 @@ export function DetailFacts({ task, today, onTagClick }: { task: TaskItem; today
         <dt>Prioritate</dt>
         <dd className={task.priority === 'high' ? 'overdue' : undefined}>{PRIORITY_LABEL[task.priority]}</dd>
       </div>
+      {task.priorityLevel !== null && task.priorityLevel !== undefined && (
+        <div>
+          <dt>Nivel</dt>
+          <dd>{task.priorityLevel} din 20</dd>
+        </div>
+      )}
       <div>
         <dt>Creat de</dt>
         <dd>{task.createdBy.displayName}</dd>

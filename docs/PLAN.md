@@ -52,14 +52,14 @@ Asked on 2026-11-23, after PR 3.
 - Whoever answers can attach files to the answer; on a copy they reach the distributor's task and the conversation,
   and they go with the email reply (up to 20 MB; larger ones are named and stay in Taskel).
 
-## PR 4 · Managers: their team's tasks and due dates
+## PR 4 · Managers: their team's tasks and due dates (branch feature/team-tasks)
 
 - New view **Task-urile echipei** for managers: every task of the people in their department (administrators:
   any department), grouped by day, with a filter by person.
 - A manager can **change the due date** of those tasks, from that view and from **Echipă**. Nothing else becomes
   editable. The person responsible is emailed, and the change is kept in the task's history.
 
-## PR 5 · Priority level 1–20
+## PR 5 · Priority level 1–20 (branch feature/priority-level)
 
 - An optional **level** (1 = first) next to the existing priority (low / medium / high).
 - **Within one day, one person cannot have two tasks with the same level**: the rule applies per person

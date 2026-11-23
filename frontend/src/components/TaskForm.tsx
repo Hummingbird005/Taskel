@@ -94,6 +94,7 @@ export default function TaskForm({
   const [startDate, setStartDate] = useState(initial.startDate ?? '')
   const [dueDate, setDueDate] = useState(initial.dueDate ?? '')
   const [priority, setPriority] = useState<TaskPriority>(initial.priority)
+  const [level, setLevel] = useState(initial.priorityLevel ? String(initial.priorityLevel) : '')
   const [tags, setTags] = useState(initial.tags.join(', '))
   const [description, setDescription] = useState(initial.description ?? '')
   // Who the task is for: '' for the user themselves, a user id, or a prefixed group id.
@@ -171,6 +172,7 @@ export default function TaskForm({
       startDate: startDate || null,
       dueDate: dueDate || null,
       priority,
+      priorityLevel: level ? Number(level) : null,
       tags: parsedTags,
       description: description.trim() || null,
       // Only sent when the form offers the choice.
@@ -187,6 +189,7 @@ export default function TaskForm({
     setStartDate(initial.startDate ?? '')
     setDueDate(initial.dueDate ?? '')
     setPriority(initial.priority)
+    setLevel(initial.priorityLevel ? String(initial.priorityLevel) : '')
     setTags(initial.tags.join(', '))
     setTarget(initialTarget)
     setFiles([])
@@ -239,6 +242,21 @@ export default function TaskForm({
       <option value="low">Scăzută</option>
       <option value="medium">Medie</option>
       <option value="high">Ridicată</option>
+    </select>
+  )
+  const levelField = (
+    <select
+      value={level}
+      onChange={(e) => change(setLevel, e.target.value)}
+      aria-label="Nivel de prioritate"
+      title="Ordinea în zi: 1 e primul. Un nivel ocupat în ziua aceea le mută pe celelalte cu o poziție mai jos."
+    >
+      <option value="">—</option>
+      {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+        <option key={n} value={n}>
+          {n}
+        </option>
+      ))}
     </select>
   )
   const tagsField = (
@@ -333,6 +351,10 @@ export default function TaskForm({
         <label className="field">
           <span>Prioritate</span>
           {priorityField}
+        </label>
+        <label className="field level-field">
+          <span>Nivel</span>
+          {levelField}
         </label>
         <label className="field">
           <span>Etichete</span>

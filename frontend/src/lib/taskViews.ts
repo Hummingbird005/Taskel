@@ -88,11 +88,11 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   low: 'Prioritate scăzută',
 }
 
-/** The order of a day's tasks: by priority. */
-export const compareWithinDay = (a: TaskItem, b: TaskItem) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
+/** The order of a day's tasks: by priority level (1 first, tasks without one after), then by priority. */
+export const compareWithinDay = (a: TaskItem, b: TaskItem) =>
+  (a.priorityLevel ?? 99) - (b.priorityLevel ?? 99) || PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
 
 const byDueDate = (a: TaskItem, b: TaskItem) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999')
-const byPriority = (a: TaskItem, b: TaskItem) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
 
 /**
  * Splits tasks into the sections shown between dividers. Open tasks are grouped by the sort
@@ -115,7 +115,7 @@ export function groupTasks(tasks: TaskItem[], sortBy: SortBy, today: string): Ta
     }
   } else {
     const tomorrow = addDaysIso(today, 1)
-    const sorted = [...open].sort((a, b) => byDueDate(a, b) || byPriority(a, b))
+    const sorted = [...open].sort((a, b) => byDueDate(a, b) || compareWithinDay(a, b))
     groups.push(
       { key: 'overdue', label: 'Întârziate', tone: 'danger', tasks: sorted.filter((t) => isOverdue(t, today)) },
       { key: 'today', label: 'Azi', tasks: sorted.filter((t) => t.dueDate === today) },

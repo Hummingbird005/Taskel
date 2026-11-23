@@ -49,6 +49,7 @@ builder.Services.AddSingleton<NotificationQueue>();
 builder.Services.AddHostedService<NotificationWorker>();
 builder.Services.AddScoped<TaskNotifier>();
 builder.Services.AddScoped<Distributions>();
+builder.Services.AddScoped<PriorityLevels>();
 builder.Services.Configure<DirectoryOptions>(builder.Configuration.GetSection(DirectoryOptions.Section));
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.Section));
 builder.Services.AddSingleton<IDirectoryAuthenticator, LdapDirectoryAuthenticator>();
