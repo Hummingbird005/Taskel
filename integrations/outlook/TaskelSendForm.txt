@@ -1,4 +1,4 @@
-' Taskel for Outlook: the window that asks who gets the email.
+' Taskel for Outlook: the window that asks who gets the email, and by when.
 '
 ' This is the code of a UserForm named TaskelSendForm. In the VBA editor:
 ' Insert > UserForm, set its (Name) to TaskelSendForm in the Properties
@@ -7,8 +7,12 @@
 ' designer. README.md next to this file has the full steps.
 '
 ' The macro (TaskelOutlook) calls Prepare, shows the form, then reads Sent,
-' RecipientsJson and Instructions. Without this form, every email becomes a
-' task of your own, as before.
+' RecipientsJson, Instructions and DueDate. Without this form, every email
+' becomes a task of your own, as before.
+'
+' The "Catre" field works like the To field of an email: type part of a name,
+' pick a suggestion with the mouse or the arrow keys and Enter, and names are
+' kept as "Andrei Stan; Ofertare; ". Backspace at the end removes the last one.
 '
 ' The look follows Taskel: Segoe UI, white surfaces, thin grey borders and
 ' one blue accent. VBA forms have no rounded corners or shadows; flat
@@ -21,43 +25,58 @@ Option Explicit
 
 Private Const MAX_RECIPIENTS As Long = 50
 Private Const MAX_INSTRUCTIONS As Long = 2000
+Private Const MAX_SUGGESTIONS As Long = 6
 
 ' Layout, in points.
 Private Const FORM_WIDTH As Single = 400
 Private Const PAD As Single = 16
 Private Const HEADER_HEIGHT As Single = 58
-Private Const FOOTER_TOP As Single = 410
+Private Const TO_TOP As Single = 86
+Private Const TO_HEIGHT As Single = 40
+Private Const DUE_TOP As Single = 182
+Private Const NOTES_TOP As Single = 250
+Private Const FOOTER_TOP As Single = 346
 Private Const FOOTER_HEIGHT As Single = 50
+Private Const ROW_HEIGHT As Single = 14.5
 
 ' MSForms values, written out so the code does not depend on their names.
 Private Const FLAT As Long = 0              ' fmSpecialEffectFlat
 Private Const SINGLE_BORDER As Long = 1     ' fmBorderStyleSingle
-Private Const NO_BORDER As Long = 0         ' fmBorderStyleNone
 Private Const OPAQUE As Long = 1            ' fmBackStyleOpaque
 Private Const TRANSPARENT As Long = 0       ' fmBackStyleTransparent
-Private Const MULTI_SELECT As Long = 1      ' fmMultiSelectMulti
-Private Const CHECK_LIST As Long = 1        ' fmListStyleOption
 Private Const VERTICAL_BAR As Long = 2      ' fmScrollBarsVertical
 
-Private WithEvents txtSearch As MSForms.TextBox
-Private WithEvents lblPlaceholder As MSForms.Label
-Private WithEvents lstPeople As MSForms.ListBox
+Private WithEvents txtTo As MSForms.TextBox
+Private WithEvents lstSuggest As MSForms.ListBox
+Private WithEvents txtDue As MSForms.TextBox
+Private WithEvents btnToday As MSForms.CommandButton
+Private WithEvents btnTomorrow As MSForms.CommandButton
+Private WithEvents btnFriday As MSForms.CommandButton
+Private WithEvents btnNextWeek As MSForms.CommandButton
+Private WithEvents txtNotes As MSForms.TextBox
 Private WithEvents btnSend As MSForms.CommandButton
 Private WithEvents btnCancel As MSForms.CommandButton
 Private WithEvents lblFooter As MSForms.Label
-Private txtNotes As MSForms.TextBox
 Private lblSubtitle As MSForms.Label
-Private lblChosen As MSForms.Label
+Private lblToHint As MSForms.Label
+Private lblDueHint As MSForms.Label
 
-' Everyone who can get the email, as Taskel listed them, and who is ticked.
+' Everyone who can get the email, as Taskel listed them.
 Private entryValues() As String
 Private entryNames() As String
 Private entryDetails() As String
-Private entryChosen() As Boolean
+Private entryEmails() As String
+' What the field shows for each: the name, with the address added where two share a name.
+Private entryTokens() As String
 Private entryCount As Long
-' Which entry each row of the list shows, as the search narrows it.
-Private rowEntry() As Long
-Private filling As Boolean
+' The entries the suggestion list shows, in its order.
+Private suggested() As Long
+Private suggestedCount As Long
+' Who the email goes to, worked out when Trimite is clicked.
+Private chosen() As Long
+Private chosenCount As Long
+Private dueValue As String
+Private updating As Boolean
 Private wasSent As Boolean
 ' False while the window is being built: the controls raise events as soon as
 ' they exist, before the others do, and those events must not touch them.
@@ -72,24 +91,45 @@ Private ready As Boolean
 Public Sub Prepare(ByVal recipients As String, ByVal mailCount As Long)
     Dim lines() As String
     Dim fields() As String
+    Dim size As Long
     Dim i As Long
+    Dim j As Long
 
     lines = Split(Replace(recipients, vbCr, ""), vbLf)
+    size = UBound(lines) + 1
+    ReDim entryValues(0 To size)
+    ReDim entryNames(0 To size)
+    ReDim entryDetails(0 To size)
+    ReDim entryEmails(0 To size)
+    ReDim entryTokens(0 To size)
+    ReDim chosen(0 To size)
+    ReDim suggested(0 To MAX_SUGGESTIONS)
     entryCount = 0
-    ReDim entryValues(0 To UBound(lines) + 1)
-    ReDim entryNames(0 To UBound(lines) + 1)
-    ReDim entryDetails(0 To UBound(lines) + 1)
-    ReDim entryChosen(0 To UBound(lines) + 1)
-    ReDim rowEntry(0 To UBound(lines) + 1)
 
     For i = 0 To UBound(lines)
         fields = Split(lines(i), vbTab)
         If UBound(fields) >= 3 Then
             entryValues(entryCount) = fields(1)
-            entryNames(entryCount) = fields(2)
+            entryNames(entryCount) = Trim$(fields(2))
             entryDetails(entryCount) = fields(3)
+            If fields(0) = "person" Then entryEmails(entryCount) = Trim$(Replace(fields(3), "(eu)", ""))
             entryCount = entryCount + 1
         End If
+    Next i
+
+    ' Two entries with the same name are told apart by the address, or as the group.
+    For i = 0 To entryCount - 1
+        entryTokens(i) = entryNames(i)
+        For j = 0 To entryCount - 1
+            If j <> i And Plain(entryNames(j)) = Plain(entryNames(i)) Then
+                If Len(entryEmails(i)) > 0 Then
+                    entryTokens(i) = entryNames(i) & " <" & entryEmails(i) & ">"
+                Else
+                    entryTokens(i) = entryNames(i) & " (grup)"
+                End If
+                Exit For
+            End If
+        Next j
     Next i
 
     If mailCount = 1 Then
@@ -97,8 +137,8 @@ Public Sub Prepare(ByVal recipients As String, ByVal mailCount As Long)
     Else
         lblSubtitle.Caption = mailCount & U(" emailuri selectate \u00b7 fiecare destinatar prime\u0219te task-urile lui")
     End If
-    ShowMatches
-    UpdateChosen
+    UpdateToHint
+    UpdateDueHint
 End Sub
 
 ' True when the user clicked Trimite, False when they gave up.
@@ -106,24 +146,27 @@ Public Property Get Sent() As Boolean
     Sent = wasSent
 End Property
 
-' The ticked people and groups, as the JSON array Taskel takes: ["id","group:id"].
-' Empty ([]) when nobody was ticked: the task is then the user's own.
+' The people and groups in the field, as the JSON array Taskel takes: ["id","group:id"].
+' Empty ([]) when the field was left empty: the task is then the user's own.
 Public Property Get RecipientsJson() As String
     Dim result As String
     Dim i As Long
 
-    For i = 0 To entryCount - 1
-        If entryChosen(i) Then
-            If Len(result) > 0 Then result = result & ","
-            ' Ids and "group:" ids only: nothing in them needs escaping.
-            result = result & Chr$(34) & entryValues(i) & Chr$(34)
-        End If
+    For i = 0 To chosenCount - 1
+        If Len(result) > 0 Then result = result & ","
+        ' Ids and "group:" ids only: nothing in them needs escaping.
+        result = result & Chr$(34) & entryValues(chosen(i)) & Chr$(34)
     Next i
     RecipientsJson = "[" & result & "]"
 End Property
 
 Public Property Get Instructions() As String
     Instructions = Trim$(txtNotes.Text)
+End Property
+
+' The due date as yyyy-mm-dd, or "" for none.
+Public Property Get DueDate() As String
+    DueDate = dueValue
 End Property
 
 ' ---------------------------------------------------------------------------
@@ -133,6 +176,7 @@ End Property
 Private Sub UserForm_Initialize()
     Dim lbl As MSForms.Label
     Dim inner As Single
+    Dim x As Single
 
     inner = FORM_WIDTH - 2 * PAD
     Me.Caption = "Taskel"
@@ -146,46 +190,45 @@ Private Sub UserForm_Initialize()
     Set lbl = AddLabel("lblTitle", U("Trimite \u00een Taskel"), PAD, 12, inner, 22)
     lbl.Font.Size = 13
     lbl.Font.Bold = True
-    lbl.ForeColor = ColorText()
     Set lblSubtitle = AddLabel("lblSubtitle", "", PAD, 34, inner, 14)
     lblSubtitle.ForeColor = ColorMuted()
     AddLine "lineHeader", HEADER_HEIGHT
 
-    ' Who gets it.
-    AddSectionTitle "lblTo", U("CUI TRIMI\u021aI"), 72
-    Set txtSearch = Me.Controls.Add("Forms.TextBox.1", "txtSearch")
-    Place txtSearch, PAD, 88, inner, 24
-    StyleField txtSearch
-    Set lblPlaceholder = AddLabel("lblPlaceholder", U("Caut\u0103 o persoan\u0103 sau un grup"), PAD + 7, 93, inner - 14, 14)
-    lblPlaceholder.ForeColor = ColorMuted()
-    lblPlaceholder.BackStyle = TRANSPARENT
-
-    Set lstPeople = Me.Controls.Add("Forms.ListBox.1", "lstPeople")
-    Place lstPeople, PAD, 118, inner, 150
-    With lstPeople
-        .Font.Name = "Segoe UI"
-        .Font.Size = 10
-        .ForeColor = ColorText()
-        .BackColor = ColorWhite()
-        .SpecialEffect = FLAT
-        .BorderStyle = SINGLE_BORDER
-        .BorderColor = ColorBorder()
-        .ColumnCount = 2
-        .ColumnWidths = "190 pt;160 pt"
-        .MultiSelect = MULTI_SELECT
-        .ListStyle = CHECK_LIST
-        .IntegralHeight = False
+    ' Who gets it: a To field, as in an email.
+    AddSectionTitle "lblTo", U("C\u0102TRE"), TO_TOP - 16
+    Set txtTo = Me.Controls.Add("Forms.TextBox.1", "txtTo")
+    Place txtTo, PAD, TO_TOP, inner, TO_HEIGHT
+    StyleField txtTo
+    With txtTo
+        .MultiLine = True
+        .WordWrap = True
+        .EnterKeyBehavior = False
     End With
+    Set lblToHint = AddLabel("lblToHint", "", PAD, TO_TOP + TO_HEIGHT + 4, inner, 28)
+    lblToHint.WordWrap = True
 
-    Set lblChosen = AddLabel("lblChosen", "", PAD, 274, inner, 28)
-    lblChosen.WordWrap = True
+    ' By when.
+    AddSectionTitle "lblDue", "TERMEN", DUE_TOP - 16
+    Set txtDue = Me.Controls.Add("Forms.TextBox.1", "txtDue")
+    Place txtDue, PAD, DUE_TOP, 92, 24
+    StyleField txtDue
+    txtDue.MaxLength = 10
+    x = PAD + 100
+    Set btnToday = AddQuickButton("btnToday", "Azi", x, 40)
+    x = x + 44
+    Set btnTomorrow = AddQuickButton("btnTomorrow", U("M\u00e2ine"), x, 52)
+    x = x + 56
+    Set btnFriday = AddQuickButton("btnFriday", "Vineri", x, 52)
+    x = x + 56
+    Set btnNextWeek = AddQuickButton("btnNextWeek", U("+1 s\u0103pt."), x, 60)
+    Set lblDueHint = AddLabel("lblDueHint", "", PAD, DUE_TOP + 28, inner, 14)
 
     ' What they should do.
-    Set lbl = AddSectionTitle("lblNotes", U("INDICA\u021aII"), 310)
-    Set lbl = AddLabel("lblOptional", U("op\u021bional, le vede fiecare destinatar"), PAD + 54, 310, inner - 54, 14)
+    AddSectionTitle "lblNotes", U("INDICA\u021aII"), NOTES_TOP - 16
+    Set lbl = AddLabel("lblOptional", U("op\u021bional, le vede fiecare destinatar"), PAD + 54, NOTES_TOP - 16, inner - 54, 14)
     lbl.ForeColor = ColorMuted()
     Set txtNotes = Me.Controls.Add("Forms.TextBox.1", "txtNotes")
-    Place txtNotes, PAD, 326, inner, 70
+    Place txtNotes, PAD, NOTES_TOP, inner, 82
     StyleField txtNotes
     With txtNotes
         .MultiLine = True
@@ -205,16 +248,33 @@ Private Sub UserForm_Initialize()
     Place btnCancel, FORM_WIDTH - PAD - 96 - 8 - 80, FOOTER_TOP + 11, 80, 28
     StyleButton btnCancel, False
     btnCancel.Caption = U("Renun\u021b\u0103")
-    btnCancel.Cancel = True
 
     Set btnSend = Me.Controls.Add("Forms.CommandButton.1", "btnSend")
     Place btnSend, FORM_WIDTH - PAD - 96, FOOTER_TOP + 11, 96, 28
     StyleButton btnSend, True
     btnSend.Caption = "Trimite"
-    ' Not the default button: Enter in the search box ticks a person instead of sending.
+    ' Not the default button: Enter in the To field picks a suggestion instead of sending.
 
-    txtSearch.TabIndex = 0
-    lstPeople.TabIndex = 1
+    ' The suggestions, made last so they open over the fields below the To field.
+    Set lstSuggest = Me.Controls.Add("Forms.ListBox.1", "lstSuggest")
+    Place lstSuggest, PAD, TO_TOP + TO_HEIGHT - 1, inner, ROW_HEIGHT
+    With lstSuggest
+        .Font.Name = "Segoe UI"
+        .Font.Size = 10
+        .ForeColor = ColorText()
+        .BackColor = ColorWhite()
+        .SpecialEffect = FLAT
+        .BorderStyle = SINGLE_BORDER
+        .BorderColor = ColorAccent()
+        .ColumnCount = 2
+        .ColumnWidths = "170 pt;180 pt"
+        .IntegralHeight = False
+        .TabStop = False
+        .Visible = False
+    End With
+
+    txtTo.TabIndex = 0
+    txtDue.TabIndex = 1
     txtNotes.TabIndex = 2
     btnSend.TabIndex = 3
     btnCancel.TabIndex = 4
@@ -231,44 +291,122 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
     End If
 End Sub
 
-Private Sub txtSearch_Change()
-    If Not ready Then Exit Sub
-    lblPlaceholder.Visible = (Len(txtSearch.Text) = 0)
-    ShowMatches
+' --- The To field --------------------------------------------------------
+
+Private Sub txtTo_Change()
+    If Not ready Or updating Then Exit Sub
+    RefreshSuggestions
+    UpdateToHint
 End Sub
 
-' Enter ticks the first person found; the down arrow moves into the list.
-Private Sub txtSearch_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+Private Sub txtTo_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
     If Not ready Then Exit Sub
-    If KeyCode = vbKeyReturn And lstPeople.ListCount > 0 And Len(txtSearch.Text) > 0 Then
-        lstPeople.Selected(0) = Not lstPeople.Selected(0)
-        txtSearch.Text = ""
+    Select Case KeyCode
+        Case vbKeyDown
+            If lstSuggest.Visible Then
+                If lstSuggest.ListIndex < suggestedCount - 1 Then lstSuggest.ListIndex = lstSuggest.ListIndex + 1
+                KeyCode = 0
+            End If
+        Case vbKeyUp
+            If lstSuggest.Visible Then
+                If lstSuggest.ListIndex > 0 Then lstSuggest.ListIndex = lstSuggest.ListIndex - 1
+                KeyCode = 0
+            End If
+        Case vbKeyReturn
+            ' Enter picks the highlighted suggestion; the field never takes a line break.
+            If lstSuggest.Visible Then AcceptSuggestion
+            KeyCode = 0
+        Case vbKeyTab
+            HideSuggestions
+        Case vbKeyEscape
+            If lstSuggest.Visible Then
+                HideSuggestions
+                KeyCode = 0
+            End If
+        Case vbKeyBack
+            If txtTo.SelLength = 0 And txtTo.SelStart >= Len(RTrim$(txtTo.Text)) Then
+                If RemoveLastName() Then KeyCode = 0
+            End If
+    End Select
+End Sub
+
+Private Sub lstSuggest_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If ready Then AcceptSuggestion
+End Sub
+
+Private Sub lstSuggest_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    If Not ready Then Exit Sub
+    If KeyCode = vbKeyReturn Then
+        AcceptSuggestion
         KeyCode = 0
-    ElseIf KeyCode = vbKeyDown And lstPeople.ListCount > 0 Then
-        lstPeople.SetFocus
-        lstPeople.ListIndex = 0
+    ElseIf KeyCode = vbKeyEscape Then
+        HideSuggestions
+        txtTo.SetFocus
         KeyCode = 0
     End If
 End Sub
 
-Private Sub lblPlaceholder_Click()
-    If ready Then txtSearch.SetFocus
+' Typing or clicking elsewhere closes the suggestions.
+Private Sub txtDue_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    If ready Then HideSuggestions
 End Sub
 
-Private Sub lstPeople_Change()
-    Dim row As Long
-
-    If filling Or Not ready Then Exit Sub
-    For row = 0 To lstPeople.ListCount - 1
-        entryChosen(rowEntry(row)) = lstPeople.Selected(row)
-    Next row
-    UpdateChosen
+Private Sub txtDue_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If ready Then HideSuggestions
 End Sub
+
+Private Sub txtNotes_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    If ready Then HideSuggestions
+End Sub
+
+Private Sub txtNotes_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+    If ready Then HideSuggestions
+End Sub
+
+Private Sub UserForm_Click()
+    If ready Then HideSuggestions
+End Sub
+
+' --- The due date --------------------------------------------------------
+
+Private Sub txtDue_Change()
+    If ready Then UpdateDueHint
+End Sub
+
+Private Sub btnToday_Click()
+    SetDue Date
+End Sub
+
+Private Sub btnTomorrow_Click()
+    SetDue Date + 1
+End Sub
+
+Private Sub btnFriday_Click()
+    SetDue NextFriday()
+End Sub
+
+Private Sub btnNextWeek_Click()
+    SetDue Date + 7
+End Sub
+
+' --- Buttons --------------------------------------------------------------
 
 Private Sub btnSend_Click()
-    If ChosenCount() > MAX_RECIPIENTS Then
-        MsgBox U("Po\u021bi trimite la cel mult ") & MAX_RECIPIENTS & U(" destinatari odat\u0103."), _
-            vbExclamation, "Taskel"
+    Dim d As Date
+
+    If Not ready Then Exit Sub
+    HideSuggestions
+    If Not ResolveRecipients() Then
+        txtTo.SetFocus
+        Exit Sub
+    End If
+    If Len(Trim$(txtDue.Text)) = 0 Then
+        dueValue = ""
+    ElseIf ParseDue(txtDue.Text, d) Then
+        dueValue = Format$(d, "yyyy\-mm\-dd")
+    Else
+        UpdateDueHint
+        txtDue.SetFocus
         Exit Sub
     End If
     wasSent = True
@@ -305,73 +443,312 @@ Private Sub UserForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, 
 End Sub
 
 ' ---------------------------------------------------------------------------
-' Helpers
+' Recipients
 ' ---------------------------------------------------------------------------
 
-' Fills the list with the entries whose name or detail contains the search
-' text, ignoring case and Romanian diacritics, and keeps what was ticked.
-Private Sub ShowMatches()
-    Dim search As String
-    Dim i As Long
-    Dim row As Long
+' The name being typed: whatever follows the last semicolon.
+Private Function Fragment() As String
+    Dim t As String
 
-    search = Plain(Trim$(txtSearch.Text))
-    filling = True
-    lstPeople.Clear
-    row = 0
+    t = txtTo.Text
+    Fragment = Trim$(Mid$(t, InStrRev(t, ";") + 1))
+End Function
+
+' The entry a name in the field stands for; -1 when none, -2 when the name is
+' shared by several and was written without the address.
+Private Function FindEntry(ByVal token As String) As Long
+    Dim key As String
+    Dim hits As Long
+    Dim i As Long
+
+    FindEntry = -1
+    key = Plain(Trim$(token))
+    If Len(key) = 0 Then Exit Function
     For i = 0 To entryCount - 1
-        If Len(search) = 0 Or InStr(1, Plain(entryNames(i) & " " & entryDetails(i)), search, vbBinaryCompare) > 0 Then
-            lstPeople.AddItem entryNames(i)
-            lstPeople.List(row, 1) = entryDetails(i)
-            lstPeople.Selected(row) = entryChosen(i)
-            rowEntry(row) = i
-            row = row + 1
+        If Plain(entryTokens(i)) = key Then
+            FindEntry = i
+            Exit Function
         End If
     Next i
-    filling = False
+    For i = 0 To entryCount - 1
+        If Len(entryEmails(i)) > 0 Then
+            If Plain(entryEmails(i)) = key Then
+                FindEntry = i
+                Exit Function
+            End If
+        End If
+    Next i
+    For i = 0 To entryCount - 1
+        If Plain(entryNames(i)) = key Then hits = hits + 1
+    Next i
+    If hits > 1 Then FindEntry = -2
+End Function
+
+' The entries already written in full in the field, as ";3;7;", so they are not suggested again.
+Private Function TakenKeys() As String
+    Dim parts As Variant
+    Dim found As Long
+    Dim i As Long
+
+    TakenKeys = ";"
+    parts = Split(txtTo.Text, ";")
+    For i = 0 To UBound(parts) - 1
+        found = FindEntry(CStr(parts(i)))
+        If found >= 0 Then TakenKeys = TakenKeys & found & ";"
+    Next i
+End Function
+
+' Lists the people and groups whose name or address contains what is being
+' typed, ignoring case and Romanian diacritics.
+Private Sub RefreshSuggestions()
+    Dim search As String
+    Dim taken As String
+    Dim i As Long
+
+    search = Plain(Fragment())
+    suggestedCount = 0
+    lstSuggest.Clear
+    If Len(search) > 0 Then
+        taken = TakenKeys()
+        For i = 0 To entryCount - 1
+            If InStr(1, taken, ";" & i & ";", vbBinaryCompare) = 0 Then
+                If InStr(1, Plain(entryNames(i) & " " & entryDetails(i)), search, vbBinaryCompare) > 0 Then
+                    lstSuggest.AddItem entryNames(i)
+                    lstSuggest.List(suggestedCount, 1) = entryDetails(i)
+                    suggested(suggestedCount) = i
+                    suggestedCount = suggestedCount + 1
+                    If suggestedCount = MAX_SUGGESTIONS Then Exit For
+                End If
+            End If
+        Next i
+    End If
+
+    If suggestedCount > 0 Then
+        lstSuggest.Height = suggestedCount * ROW_HEIGHT + 4
+        lstSuggest.ListIndex = 0
+        lstSuggest.Visible = True
+    Else
+        lstSuggest.Visible = False
+    End If
 End Sub
 
-' Says who is ticked, also those the search hides, and names the button after it.
-Private Sub UpdateChosen()
-    Dim chosen As Long
-    Dim names As String
+Private Sub HideSuggestions()
+    If lstSuggest.Visible Then lstSuggest.Visible = False
+End Sub
+
+' Replaces the name being typed with the highlighted suggestion, followed by "; ".
+Private Sub AcceptSuggestion()
+    Dim t As String
+    Dim base As String
+
+    If lstSuggest.ListIndex < 0 Or lstSuggest.ListIndex >= suggestedCount Then Exit Sub
+    t = txtTo.Text
+    base = RTrim$(Left$(t, InStrRev(t, ";")))
+    If Len(base) > 0 Then base = base & " "
+    updating = True
+    txtTo.Text = base & entryTokens(suggested(lstSuggest.ListIndex)) & "; "
+    updating = False
+    HideSuggestions
+    txtTo.SetFocus
+    txtTo.SelStart = Len(txtTo.Text)
+    UpdateToHint
+End Sub
+
+' Backspace right after "; " removes the whole last name, as in Outlook.
+Private Function RemoveLastName() As Boolean
+    Dim t As String
+
+    t = RTrim$(txtTo.Text)
+    If Len(t) = 0 Or Len(Fragment()) > 0 Then Exit Function
+    If Right$(t, 1) = ";" Then t = Left$(t, Len(t) - 1)
+    t = RTrim$(Left$(t, InStrRev(t, ";")))
+    If Len(t) > 0 Then t = t & " "
+    updating = True
+    txtTo.Text = t
+    updating = False
+    txtTo.SelStart = Len(t)
+    HideSuggestions
+    UpdateToHint
+    RemoveLastName = True
+End Function
+
+' Says who the email goes to, or which names are not recognised. The name
+' still being typed (after the last semicolon) is not judged yet.
+Private Sub UpdateToHint()
+    Dim parts As Variant
+    Dim token As String
+    Dim names As Long
+    Dim bad As Long
     Dim i As Long
 
     If Not ready Then Exit Sub
+    parts = Split(txtTo.Text, ";")
+    For i = 0 To UBound(parts) - 1
+        token = Trim$(parts(i))
+        If Len(token) > 0 Then
+            If FindEntry(token) >= 0 Then names = names + 1 Else bad = bad + 1
+        End If
+    Next i
 
-    For i = 0 To entryCount - 1
-        If entryChosen(i) Then
-            chosen = chosen + 1
-            If Len(names) < 160 Then
-                If Len(names) > 0 Then names = names & ", "
-                names = names & entryNames(i)
+    If bad > 0 Then
+        lblToHint.ForeColor = ColorDanger()
+        If bad = 1 Then
+            lblToHint.Caption = U("Un nume nu este recunoscut: alege-l din sugestii sau corecteaz\u0103-l.")
+        Else
+            lblToHint.Caption = bad & U(" nume nu sunt recunoscute: alege-le din sugestii sau corecteaz\u0103-le.")
+        End If
+    ElseIf names = 0 Then
+        lblToHint.ForeColor = ColorMuted()
+        lblToHint.Caption = U("Scrie un nume \u0219i alege din sugestii. F\u0103r\u0103 destinatari, task-ul r\u0103m\u00e2ne la tine.")
+    ElseIf names = 1 Then
+        lblToHint.ForeColor = ColorAccent()
+        lblToHint.Caption = U("1 destinatar: prime\u0219te task-ul, iar r\u0103spunsul vine la tine.")
+    Else
+        lblToHint.ForeColor = ColorAccent()
+        lblToHint.Caption = names & U(" destinatari: fiecare prime\u0219te task-ul lui, iar r\u0103spunsurile vin la tine.")
+    End If
+    If names > 1 Then btnSend.Caption = "Trimite (" & names & ")" Else btnSend.Caption = "Trimite"
+End Sub
+
+' Works out who the email goes to from everything in the field, the name being
+' typed included. False, with the reason shown, when a name is not recognised.
+Private Function ResolveRecipients() As Boolean
+    Dim parts As Variant
+    Dim token As String
+    Dim unknown As String
+    Dim found As Long
+    Dim twice As Boolean
+    Dim i As Long
+    Dim j As Long
+
+    chosenCount = 0
+    parts = Split(txtTo.Text, ";")
+    For i = 0 To UBound(parts)
+        token = Trim$(parts(i))
+        If Len(token) > 0 Then
+            found = FindEntry(token)
+            If found < 0 Then
+                If Len(unknown) > 0 Then unknown = unknown & ", "
+                unknown = unknown & U("\u201e") & token & U("\u201d")
+                If found = -2 Then unknown = unknown & U(" (sunt mai mul\u021bi cu acest nume)")
+            Else
+                twice = False
+                For j = 0 To chosenCount - 1
+                    If chosen(j) = found Then twice = True
+                Next j
+                If Not twice Then
+                    chosen(chosenCount) = found
+                    chosenCount = chosenCount + 1
+                End If
             End If
         End If
     Next i
 
-    If chosen = 0 Then
-        lblChosen.ForeColor = ColorMuted()
-        lblChosen.Caption = U("Niciun destinatar ales: task-ul r\u0103m\u00e2ne la tine.")
-        btnSend.Caption = "Trimite"
+    If Len(unknown) > 0 Then
+        lblToHint.ForeColor = ColorDanger()
+        lblToHint.Caption = U("Nu g\u0103sesc: ") & unknown & U(". Alege numele din sugestii.")
+        Exit Function
+    End If
+    If chosenCount > MAX_RECIPIENTS Then
+        lblToHint.ForeColor = ColorDanger()
+        lblToHint.Caption = U("Po\u021bi trimite la cel mult ") & MAX_RECIPIENTS & U(" destinatari odat\u0103.")
+        Exit Function
+    End If
+    ResolveRecipients = True
+End Function
+
+' ---------------------------------------------------------------------------
+' Due date
+' ---------------------------------------------------------------------------
+
+Private Sub SetDue(ByVal d As Date)
+    If Not ready Then Exit Sub
+    HideSuggestions
+    txtDue.Text = Format$(d, "dd\.mm\.yyyy")
+End Sub
+
+' The next Friday; a week from today when today is Friday.
+Private Function NextFriday() As Date
+    Dim days As Long
+
+    days = (vbFriday - Weekday(Date, vbSunday) + 7) Mod 7
+    If days = 0 Then days = 7
+    NextFriday = Date + days
+End Function
+
+' Reads dd.mm.yyyy (also with / or -, and a two-digit year). False for anything else.
+Private Function ParseDue(ByVal text As String, ByRef result As Date) As Boolean
+    Dim parts() As String
+    Dim dd As Long
+    Dim mm As Long
+    Dim yy As Long
+
+    text = Replace(Replace(Trim$(text), "/", "."), "-", ".")
+    parts = Split(text, ".")
+    If UBound(parts) <> 2 Then Exit Function
+    If Not (IsDigits(parts(0)) And IsDigits(parts(1)) And IsDigits(parts(2))) Then Exit Function
+    dd = CLng(parts(0))
+    mm = CLng(parts(1))
+    yy = CLng(parts(2))
+    If yy < 100 Then yy = yy + 2000
+    If dd < 1 Or dd > 31 Or mm < 1 Or mm > 12 Or yy < 2000 Or yy > 2100 Then Exit Function
+    result = DateSerial(yy, mm, dd)
+    ' DateSerial turns 31.02 into a day in March; such a date was not a real one.
+    ParseDue = (Day(result) = dd And Month(result) = mm)
+End Function
+
+Private Function IsDigits(ByVal value As String) As Boolean
+    Dim i As Long
+
+    value = Trim$(value)
+    If Len(value) = 0 Or Len(value) > 4 Then Exit Function
+    For i = 1 To Len(value)
+        If InStr("0123456789", Mid$(value, i, 1)) = 0 Then Exit Function
+    Next i
+    IsDigits = True
+End Function
+
+' Repeats the chosen date in words, so a typo shows at once.
+Private Sub UpdateDueHint()
+    Dim d As Date
+    Dim days As Long
+
+    If Not ready Then Exit Sub
+    If Len(Trim$(txtDue.Text)) = 0 Then
+        lblDueHint.ForeColor = ColorMuted()
+        lblDueHint.Caption = U("F\u0103r\u0103 termen.")
+    ElseIf ParseDue(txtDue.Text, d) Then
+        days = DateDiff("d", Date, d)
+        lblDueHint.Caption = RoWeekday(d) & ", " & Day(d) & " " & RoMonth(d) & " " & Year(d) & RelativeText(days)
+        If days < 0 Then lblDueHint.ForeColor = ColorDanger() Else lblDueHint.ForeColor = ColorMuted()
     Else
-        If Len(names) >= 160 Then names = names & ", ..."
-        lblChosen.ForeColor = ColorAccent()
-        lblChosen.Caption = U("Ale\u0219i (") & chosen & "): " & names & U(". R\u0103spunsurile vin la tine.")
-        If chosen = 1 Then
-            btnSend.Caption = "Trimite"
-        Else
-            btnSend.Caption = "Trimite (" & chosen & ")"
-        End If
+        lblDueHint.ForeColor = ColorDanger()
+        lblDueHint.Caption = U("Scrie data ca zz.ll.aaaa, de exemplu ") & Format$(Date + 1, "dd\.mm\.yyyy") & "."
     End If
 End Sub
 
-Private Function ChosenCount() As Long
-    Dim i As Long
-
-    For i = 0 To entryCount - 1
-        If entryChosen(i) Then ChosenCount = ChosenCount + 1
-    Next i
+Private Function RelativeText(ByVal days As Long) As String
+    Select Case days
+        Case 0: RelativeText = U(" \u00b7 azi")
+        Case 1: RelativeText = U(" \u00b7 m\u00e2ine")
+        Case -1: RelativeText = U(" \u00b7 ieri, \u00een trecut")
+        Case Is > 1: RelativeText = U(" \u00b7 peste ") & days & " zile"
+        Case Else: RelativeText = U(" \u00b7 acum ") & -days & U(" zile, \u00een trecut")
+    End Select
 End Function
+
+Private Function RoWeekday(ByVal d As Date) As String
+    RoWeekday = U(Choose(Weekday(d, vbSunday), "duminic\u0103", "luni", "mar\u021bi", "miercuri", "joi", "vineri", "s\u00e2mb\u0103t\u0103"))
+End Function
+
+Private Function RoMonth(ByVal d As Date) As String
+    RoMonth = Choose(Month(d), "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", _
+        "august", "septembrie", "octombrie", "noiembrie", "decembrie")
+End Function
+
+' ---------------------------------------------------------------------------
+' Building the window
+' ---------------------------------------------------------------------------
 
 Private Function AddLabel(ByVal controlName As String, ByVal text As String, ByVal leftPos As Single, _
                           ByVal topPos As Single, ByVal widthPts As Single, ByVal heightPts As Single) As MSForms.Label
@@ -407,6 +784,20 @@ Private Sub AddLine(ByVal controlName As String, ByVal topPos As Single)
     lbl.BackStyle = OPAQUE
     lbl.BackColor = ColorBorder()
 End Sub
+
+' A small white button next to the date, that fills it in.
+Private Function AddQuickButton(ByVal controlName As String, ByVal buttonText As String, _
+                                ByVal leftPos As Single, ByVal widthPts As Single) As MSForms.CommandButton
+    Dim button As MSForms.CommandButton
+
+    Set button = Me.Controls.Add("Forms.CommandButton.1", controlName)
+    Place button, leftPos, DUE_TOP, widthPts, 24
+    StyleButton button, False
+    button.Font.Size = 8
+    button.Caption = buttonText
+    button.TabStop = False
+    Set AddQuickButton = button
+End Function
 
 Private Sub StyleField(ByVal box As MSForms.TextBox)
     box.Font.Name = "Segoe UI"
@@ -459,6 +850,10 @@ End Function
 
 Private Function ColorMuted() As Long
     ColorMuted = RGB(91, 91, 99)
+End Function
+
+Private Function ColorDanger() As Long
+    ColorDanger = RGB(180, 35, 24)
 End Function
 
 Private Function ColorBorder() As Long

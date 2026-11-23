@@ -10,8 +10,9 @@ Option Explicit
 '   SendToTaskel     - create a task from each selected (or open) email,
 '                      with the files attached to it. With the
 '                      TaskelSendForm window installed, it first asks who
-'                      gets the emails (one task for each) and for
-'                      instructions for them
+'                      gets the emails (one task for each), by when, and
+'                      for instructions for them. Each email sent is then
+'                      marked with the Outlook category "Taskel".
 '   ConfigureTaskel  - set the Taskel address and API token
 '
 ' This file is plain ASCII on purpose: the VBA editor imports .bas files
@@ -32,13 +33,19 @@ Private Const OL_BY_VALUE As Long = 1
 Private Const OL_EMBEDDED_ITEM As Long = 5
 Private Const OL_FORMAT_HTML As Long = 2
 Private Const UPLOAD_TIMEOUT_MS As Long = 600000
+' The Outlook category put on emails sent to Taskel, and its colour (olCategoryColorPurple).
+Private Const TASKEL_CATEGORY As String = "Taskel"
+Private Const TASKEL_CATEGORY_COLOR As Long = 9
 
 ' Who gets the emails during one run of SendToTaskel, as chosen in the
 ' TaskelSendForm window. Without the window, each email is a task of your own.
 Private distributing As Boolean
 Private recipientsJson As String
 Private instructionsText As String
+Private dueText As String
 Private tasksCreated As Long
+' Emails whose task was created but which Outlook would not let us mark.
+Private unmarked As Long
 
 ' What happened to the attachments during one run of SendToTaskel.
 Private attachmentsAdded As Long
@@ -70,6 +77,7 @@ Public Sub SendToTaskel()
     If Not AskRecipients(mails.Count) Then Exit Sub
 
     tasksCreated = 0
+    unmarked = 0
     attachmentsAdded = 0
     attachmentProblems = ""
     maxAttachmentBytes = AttachmentLimitBytes()
@@ -84,10 +92,11 @@ Public Sub SendToTaskel()
 
     If added = mails.Count Then
         If Len(attachmentProblems) = 0 Then
-            MsgBox TaskCountText(tasksCreated) & " added to Taskel." & AttachmentCountText(), vbInformation, APP_NAME
+            MsgBox TaskCountText(tasksCreated) & " added to Taskel." & AttachmentCountText() & UnmarkedText(), _
+                vbInformation, APP_NAME
         Else
-            MsgBox TaskCountText(tasksCreated) & " added to Taskel." & AttachmentCountText() & vbCrLf & vbCrLf & _
-                "Some attachments were not added:" & vbCrLf & attachmentProblems, vbExclamation, APP_NAME
+            MsgBox TaskCountText(tasksCreated) & " added to Taskel." & AttachmentCountText() & UnmarkedText() & _
+                vbCrLf & vbCrLf & "Some attachments were not added:" & vbCrLf & attachmentProblems, vbExclamation, APP_NAME
         End If
     Else
         MsgBox FailureText(status, detail) & vbCrLf & vbCrLf & _
@@ -187,6 +196,7 @@ Private Function AskRecipients(ByVal mailCount As Long) As Boolean
     distributing = False
     recipientsJson = "[]"
     instructionsText = ""
+    dueText = ""
     AskRecipients = True
 
     On Error Resume Next
@@ -209,6 +219,11 @@ Private Function AskRecipients(ByVal mailCount As Long) As Boolean
             distributing = True
             recipientsJson = form.RecipientsJson
             instructionsText = SafeLeft(form.Instructions, MAX_INSTRUCTIONS_CHARS)
+            ' A window pasted before due dates existed has no DueDate.
+            On Error Resume Next
+            dueText = form.DueDate
+            On Error GoTo 0
+            If Not dueText Like "####-##-##" Then dueText = ""
         Else
             AskRecipients = False
         End If
@@ -235,6 +250,7 @@ Private Function PostEmail(ByVal mail As Object, ByRef status As Long, ByRef det
         ' One task for each recipient, with the instructions; none means your own.
         payload = Left$(payload, Len(payload) - 1) & ",""recipients"":" & recipientsJson
         If Len(instructionsText) > 0 Then payload = payload & ",""instructions"":" & JsonString(instructionsText)
+        If Len(dueText) > 0 Then payload = payload & ",""dueDate"":""" & dueText & """"
         payload = payload & "}"
         path = "/api/tasks/from-email/distribute"
     End If
@@ -252,6 +268,7 @@ Private Function PostEmail(ByVal mail As Object, ByRef status As Long, ByRef det
         taskIds.Add JsonValue(response, "id")
     End If
     tasksCreated = tasksCreated + taskIds.Count
+    MarkAsSent mail
 
     ' The tasks exist from here on. A problem with an attachment is reported at
     ' the end and does not undo them.
@@ -299,6 +316,72 @@ Private Function SendRequest(ByVal method As String, ByVal path As String, ByVal
 RequestFailed:
     status = 0
     detail = Err.Description
+End Function
+
+' ---------------------------------------------------------------------------
+' The "Taskel" mark in Outlook
+' ---------------------------------------------------------------------------
+
+' Adds the category "Taskel" to an email whose task was created, so the list
+' shows which emails are already in Taskel. The category is created the first
+' time. An email Outlook will not change (in a read-only shared mailbox, for
+' example) keeps its task and is only counted, for the final message.
+Private Sub MarkAsSent(ByVal mail As Object)
+    Dim current As String
+
+    On Error GoTo NotMarked
+    EnsureTaskelCategory
+    current = mail.Categories
+    If HasCategory(current, TASKEL_CATEGORY) Then Exit Sub
+    If Len(Trim$(current)) = 0 Then
+        mail.Categories = TASKEL_CATEGORY
+    Else
+        mail.Categories = current & ListSeparator() & " " & TASKEL_CATEGORY
+    End If
+    mail.Save
+    Exit Sub
+
+NotMarked:
+    unmarked = unmarked + 1
+End Sub
+
+Private Sub EnsureTaskelCategory()
+    Dim found As Object
+
+    On Error Resume Next
+    Set found = Application.Session.Categories.Item(TASKEL_CATEGORY)
+    On Error GoTo 0
+    If found Is Nothing Then Application.Session.Categories.Add TASKEL_CATEGORY, TASKEL_CATEGORY_COLOR
+End Sub
+
+' Outlook keeps an item's categories as one text, separated by the list
+' separator of the Windows region settings (a comma or a semicolon).
+Private Function HasCategory(ByVal categories As String, ByVal categoryName As String) As Boolean
+    Dim parts() As String
+    Dim i As Long
+
+    parts = Split(Replace(categories, ";", ","), ",")
+    For i = 0 To UBound(parts)
+        If StrComp(Trim$(parts(i)), categoryName, vbTextCompare) = 0 Then
+            HasCategory = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+Private Function ListSeparator() As String
+    On Error Resume Next
+    ListSeparator = CreateObject("WScript.Shell").RegRead("HKCU\Control Panel\International\sList")
+    On Error GoTo 0
+    If Len(ListSeparator) = 0 Then ListSeparator = ","
+End Function
+
+Private Function UnmarkedText() As String
+    If unmarked = 1 Then
+        UnmarkedText = vbCrLf & "1 email could not be marked with the Taskel category in Outlook."
+    ElseIf unmarked > 1 Then
+        UnmarkedText = vbCrLf & unmarked & " emails could not be marked with the Taskel category in Outlook."
+    End If
 End Function
 
 ' ---------------------------------------------------------------------------

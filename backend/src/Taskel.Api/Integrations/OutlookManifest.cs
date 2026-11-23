@@ -4,7 +4,8 @@ namespace Taskel.Api.Integrations;
 
 /// <summary>
 /// The XML manifest of the Outlook add-in: a "Taskel" button on a message being read, which opens the add-in's
-/// pane (<c>outlook.html</c> of the interface) next to it. The pane can be pinned, so it follows the selected
+/// pane (<c>outlook.html</c> of the interface) next to it. Version 1.1 asks to change the open email, to mark it
+/// with the category "Taskel"; an add-in installed from version 1.0 must be installed again for that. The pane can be pinned, so it follows the selected
 /// message. Works in classic Outlook for Windows, the new Outlook, Outlook on the web and Outlook for Mac.
 /// </summary>
 public static class OutlookManifest
@@ -13,7 +14,13 @@ public static class OutlookManifest
     public const string AddInId = "5b0f3c2e-8f4a-4d1e-9c6b-7a2d1e4f9b30";
 
     /// <summary>Raised when the manifest changes, so Outlook picks up the new one.</summary>
-    public const string Version = "1.0.0.0";
+    public const string Version = "1.1.0.0";
+
+    /// <summary>
+    /// Read the email, and change only it: the pane adds the category "Taskel" to an email it sent. Nothing else in
+    /// the mailbox is read or changed.
+    /// </summary>
+    public const string Permission = "ReadWriteItem";
 
     /// <summary>The manifest for a Taskel reached at <paramref name="baseUrl"/> (no trailing slash).</summary>
     public static string For(string baseUrl)
@@ -51,7 +58,7 @@ public static class OutlookManifest
       </DesktopSettings>
     </Form>
   </FormSettings>
-  <Permissions>ReadItem</Permissions>
+  <Permissions>{Permission}</Permissions>
   <Rule xsi:type="RuleCollection" Mode="Or">
     <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read" />
   </Rule>

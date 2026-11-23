@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import Icon from '../components/Icon'
 import { paneApi, PaneError, savedToken, saveToken, type Group, type Me, type Person } from './api'
-import { attachmentFile, officeReady, onItemChanged, openInBrowser, readEmail, type OutlookEmail } from './office'
+import {
+  attachmentFile,
+  markAsSent,
+  officeReady,
+  onItemChanged,
+  openInBrowser,
+  readEmail,
+  TASKEL_CATEGORY,
+  type OutlookEmail,
+} from './office'
 
 const MAX_RECIPIENTS = 50
 const MAX_INSTRUCTIONS = 2000
@@ -21,7 +30,10 @@ type Stage =
   | { name: 'connect'; error?: string }
   | { name: 'ready' }
   | { name: 'sending'; progress: string }
-  | { name: 'done'; tasks: number; to: string[]; attached: number; problems: string[] }
+  | { name: 'done'; tasks: number; to: string[]; attached: number; problems: string[]; mark: Mark; due: string | null }
+
+/** Whether the email got the "Taskel" category in Outlook. */
+type Mark = 'marked' | 'missing' | 'unsupported'
 
 /** Lower case, without Romanian diacritics, so "stefan" finds "Ștefan". */
 function plain(text: string): string {
@@ -58,6 +70,45 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1).replace('.', ',')} MB`
 }
 
+/** A date as yyyy-mm-dd, in local time. */
+function isoDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function daysFromToday(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return isoDate(date)
+}
+
+/** The next Friday; a week from today when today is Friday. */
+function nextFriday(): string {
+  const days = (5 - new Date().getDay() + 7) % 7 || 7
+  return daysFromToday(days)
+}
+
+/** "luni, 24 noiembrie · mâine": the chosen date in words, so a wrong click shows at once. */
+function dueText(value: string): { text: string; past: boolean } {
+  const [y, m, d] = value.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const days = Math.round((date.getTime() - today.getTime()) / 86_400_000)
+  const words = new Intl.DateTimeFormat('ro-RO', { weekday: 'long', day: 'numeric', month: 'long' }).format(date)
+  const when =
+    days === 0
+      ? 'azi'
+      : days === 1
+        ? 'mâine'
+        : days > 1
+          ? `peste ${days} zile`
+          : days === -1
+            ? 'ieri, în trecut'
+            : `acum ${-days} zile, în trecut`
+  return { text: `${words} · ${when}`, past: days < 0 }
+}
+
 function tasksText(n: number): string {
   return n === 1 ? '1 task creat' : `${n} task-uri create`
 }
@@ -71,12 +122,14 @@ export default function OutlookPane() {
   const [chosen, setChosen] = useState<Recipient[]>([])
   const [instructions, setInstructions] = useState('')
   const [withFiles, setWithFiles] = useState(true)
+  const [due, setDue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const loadEmail = useCallback(async () => {
     setEmail(await readEmail())
     setChosen([])
     setInstructions('')
+    setDue('')
     setWithFiles(true)
     setError(null)
     setStage((s) => (s.name === 'done' || s.name === 'ready' ? { name: 'ready' } : s))
@@ -161,7 +214,9 @@ export default function OutlookPane() {
     setStage({ name: 'sending', progress: 'Se creează task-urile…' })
     let taskIds: string[]
     try {
-      taskIds = (await paneApi.distribute(token, email, chosen.map((r) => r.value), instructions.trim())).taskIds
+      taskIds = (
+        await paneApi.distribute(token, email, chosen.map((r) => r.value), instructions.trim(), due || null)
+      ).taskIds
     } catch (err) {
       if (err instanceof PaneError && err.status === 401) {
         signOut()
@@ -207,12 +262,17 @@ export default function OutlookPane() {
       }
     }
 
+    setStage({ name: 'sending', progress: 'Se marchează emailul…' })
+    const mark: Mark = await markAsSent().catch(() => 'missing' as const)
+
     setStage({
       name: 'done',
       tasks: taskIds.length,
       to: chosen.length === 0 ? ['tine'] : chosen.map((r) => r.name),
       attached,
       problems,
+      mark,
+      due: due || null,
     })
   }
 
@@ -281,6 +341,8 @@ export default function OutlookPane() {
                   : `Fiecare dintre cei ${chosen.length} primește task-ul lui; răspunsurile vin la tine.`}
             </p>
           </section>
+
+          <DueField value={due} onChange={setDue} disabled={stage.name === 'sending'} />
 
           <section className="ox-section">
             <label className="ox-label" htmlFor="ox-instructions">
@@ -354,6 +416,62 @@ export default function OutlookPane() {
         </form>
       )}
     </div>
+  )
+}
+
+function DueField({ value, onChange, disabled }: { value: string; onChange: (next: string) => void; disabled: boolean }) {
+  const quick = [
+    { label: 'Azi', value: daysFromToday(0) },
+    { label: 'Mâine', value: daysFromToday(1) },
+    { label: 'Vineri', value: nextFriday() },
+    { label: '+1 săpt.', value: daysFromToday(7) },
+  ]
+  const words = value ? dueText(value) : null
+  return (
+    <section className="ox-section">
+      <label className="ox-label" htmlFor="ox-due">
+        Termen <span className="ox-optional">opțional</span>
+      </label>
+      <div className="ox-due">
+        <input
+          id="ox-due"
+          type="date"
+          className="ox-input ox-date"
+          value={value}
+          min="2000-01-01"
+          max="2100-12-31"
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+        />
+        {value && (
+          <button
+            type="button"
+            className="ox-icon-button"
+            onClick={() => onChange('')}
+            title="Fără termen"
+            aria-label="Șterge termenul"
+            disabled={disabled}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        )}
+      </div>
+      <div className="ox-quick" role="group" aria-label="Termene rapide">
+        {quick.map((q) => (
+          <button
+            key={q.label}
+            type="button"
+            className={`ox-pill ${value === q.value ? 'active' : ''}`}
+            aria-pressed={value === q.value}
+            onClick={() => onChange(q.value)}
+            disabled={disabled}
+          >
+            {q.label}
+          </button>
+        ))}
+      </div>
+      <p className={`ox-hint ${words?.past ? 'ox-past' : ''}`}>{words ? words.text : 'Fără termen.'}</p>
+    </section>
   )
 }
 
@@ -596,7 +714,25 @@ function Done({ stage, onAgain }: { stage: Extract<Stage, { name: 'done' }>; onA
       <p className="ox-muted">
         {stage.to.length === 1 && stage.to[0] === 'tine' ? 'Task-ul este la tine.' : `Pentru ${stage.to.join(', ')}.`}
         {stage.attached > 0 && ` ${stage.attached === 1 ? '1 fișier atașat' : `${stage.attached} fișiere atașate`}.`}
+        {stage.due && ` Termen: ${dueText(stage.due).text.split(' · ')[0]}.`}
       </p>
+      {stage.mark === 'marked' && (
+        <p className="ox-marked">
+          <span className="ox-category" aria-hidden="true" />
+          Emailul are categoria „{TASKEL_CATEGORY}” în Outlook.
+        </p>
+      )}
+      {stage.mark === 'missing' && (
+        <div className="ox-warning">
+          <p>
+            <Icon name="alert" size={15} /> Emailul nu a putut fi marcat în Outlook.
+          </p>
+          <p className="ox-plain">
+            Creează o dată categoria „{TASKEL_CATEGORY}”: clic dreapta pe un email → <b>Categorize</b> →{' '}
+            <b>All Categories</b> → <b>New</b>. De atunci, emailurile trimise primesc categoria singure.
+          </p>
+        </div>
+      )}
       {stage.problems.length > 0 && (
         <div className="ox-warning">
           <p>

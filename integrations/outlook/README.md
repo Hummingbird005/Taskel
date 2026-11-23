@@ -11,6 +11,8 @@ Turn emails into Taskel tasks, for yourself, for colleagues or for a group, with
 | Needs | Taskel on HTTPS with a valid certificate; Outlook must reach Microsoft's Office.js | Nothing beyond Outlook |
 
 Both send the same thing to the same API, with a personal API token, and both work with the reply on completion.
+Both let you choose the recipients, a due date and instructions, and both mark each email sent with the Outlook
+category **"Taskel"**, so the list shows which emails are already in Taskel (filter or search by that category).
 
 ## Outlook add-in
 
@@ -37,16 +39,28 @@ manifest was downloaded from, so download it from the address people use.
 
 When Taskel's address changes, download the manifest again and replace the add-in.
 
+**Updating from version 1.0.** Version 1.1 marks the email it sent, which needs the permission to change the open
+email (`ReadWriteItem` instead of `ReadItem`). Outlook keeps using the old manifest until the add-in is installed
+again: remove it (**My add-ins → Taskel → Remove**, or in the admin center) and add the new manifest.
+
 ### Use
 
 Open an email and click **Trimite în Taskel**. The pane shows the email (subject, sender, importance, files), then:
 
 - **Cui trimiți**: type part of a name or email; pick people and groups from the suggestions (arrow keys and Enter
   work too). They appear as chips; Backspace removes the last one. With nobody chosen, the task is yours.
+- **Termen** (optional): a date, or one click on **Azi**, **Mâine**, **Vineri** or **+1 săpt.**; the day is repeated
+  in words under the field, in red when it is in the past. Every task gets that due date.
 - **Indicații** (optional, up to 2000 characters): shown to each recipient above the email.
 - **Atașează fișierele**: on by default. Files shown inside the message (signature logos) are left out. A file
   shared as a link (OneDrive) cannot be sent and is listed at the end.
-- **Trimite**: one task per recipient. The pane confirms how many, and **Deschide Taskel** opens Taskel in the browser.
+- **Trimite**: one task per recipient. The pane confirms how many, marks the email with the category **Taskel**, and
+  **Deschide Taskel** opens Taskel in the browser.
+
+An add-in cannot create an Outlook category without access to the whole mailbox, which Taskel does not ask for.
+If the category **Taskel** does not exist yet, the pane says so after sending: create it once (right-click an email →
+**Categorize → All Categories → New**, name `Taskel`), and every email sent from then on gets it. The macro creates
+it by itself, so after using the macro once it exists for the add-in too.
 
 Pin the pane (the pin at its top) to keep it open while moving between emails; it resets for each email.
 
@@ -54,7 +68,8 @@ Pin the pane (the pin at its top) to keep it open while moving between emails; i
 
 - The token is kept in the pane's storage on that computer or browser. **Deconectează** (top right) forgets it.
   Revoke it in Taskel if the device is lost.
-- The add-in only reads the email you open (permission `ReadItem`); it never changes or sends mail.
+- The add-in reads only the email you open and changes nothing but its categories (permission `ReadWriteItem`); it
+  never sends mail and cannot see the rest of the mailbox.
 - Importance is read from the email's headers; attachments need Outlook with Mailbox 1.8 (Outlook 2021, Microsoft 365,
   new Outlook, web). On older versions the task is created without the files, and the pane says so.
 - Outlook loads add-ins only from HTTPS addresses with a trusted certificate (`http://localhost` is allowed for
@@ -107,12 +122,24 @@ When Outlook asks about macros at startup, choose **Enable Macros**.
 Select one or more emails in the list (or open one) and click **Send to Taskel**. With the recipients window
 installed, it opens first (once for all the selected emails):
 
-- **Caută** narrows the list of people and groups; tick one or more of them. Ticks are kept while you search,
-  and the line under the list names everyone ticked. Enter ticks the first match; the down arrow moves into the list.
+- **Către** works like the To field of an email: type part of a name or address, then pick a suggestion with the
+  mouse, or with the arrow keys and Enter. Names are kept as `Andrei Stan; Ofertare; `; Backspace right after a name
+  removes all of it. Two people with the same name are written with their address (`Ion Popescu <ion@…>`). The
+  line under the field says how many recipients there are, or which name is not recognised; a name that is not
+  recognised stops the sending until it is corrected. An empty field keeps the task for you.
+- **Termen** (optional): type the date as `dd.mm.yyyy` (also `/` or `-`, and a two-digit year), or click **Azi**,
+  **Mâine**, **Vineri** or **+1 săpt.**. The day is repeated in words, in red when it is in the past.
 - **Indicații** (optional, up to 2000 characters) is shown to each recipient above the email and sent to them in
   the notification.
-- **Trimite** creates one task for each recipient, per email, with the subject as the title and the attachments
-  on each. With nobody ticked, the task is yours. **Renunță** sends nothing.
+- **Trimite** creates one task for each recipient, per email, with the subject as the title, the due date and the
+  attachments on each. **Renunță** sends nothing.
+
+Each email whose task was created gets the Outlook category **Taskel** (purple), which the macro creates the first
+time. An email Outlook will not change, in a read-only shared mailbox for example, keeps its task; the final message
+says how many emails could not be marked.
+
+A window pasted before due dates existed still works, without the date: paste the new `TaskelSendForm.txt` to get
+it.
 
 A message confirms how many tasks were added. Switch to Taskel in the browser; the list refreshes when the
 window gets focus.

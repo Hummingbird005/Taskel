@@ -274,6 +274,10 @@ two ways (setup and comparison in [integrations/outlook/README.md](integrations/
 - **VBA macro** in `integrations/outlook`, for classic Outlook on Windows: sends the selected emails to
   `POST /api/tasks/from-email`.
 
+Both can set the recipients, a due date (`dueDate`) and instructions, and mark each email sent with the Outlook
+category "Taskel". The add-in's manifest asks for `ReadWriteItem` for that (version 1.1; an add-in installed from
+1.0 must be installed again).
+
 Both call the API with a personal API token.
 
 The add-in, and the macro with its optional `TaskelSendForm` window installed, ask who gets the email and for

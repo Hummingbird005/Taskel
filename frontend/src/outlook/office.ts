@@ -17,6 +17,11 @@ export interface OfficeAttachment {
 }
 
 interface MailItem {
+  /** Mailbox 1.8: the Outlook categories of the item; adding one needs the ReadWriteItem permission. */
+  categories?: {
+    getAsync(callback: (result: AsyncResult<{ displayName: string }[] | null>) => void): void
+    addAsync(categories: string[], callback: (result: AsyncResult<void>) => void): void
+  }
   subject?: string
   from?: { displayName?: string; emailAddress?: string }
   internetMessageId?: string
@@ -156,6 +161,27 @@ export async function readEmail(): Promise<OutlookEmail | null> {
     messageId: messageId && messageId.length <= MAX_MESSAGE_ID ? messageId : null,
     attachments: (mail.attachments ?? []).filter((a) => !a.isInline),
     canReadAttachments: typeof mail.getAttachmentContentAsync === 'function',
+  }
+}
+
+/** The Outlook category put on emails sent to Taskel. */
+export const TASKEL_CATEGORY = 'Taskel'
+
+/**
+ * Marks the open email with the category "Taskel", so the list shows it is in Taskel.
+ * "missing" when Outlook has no such category: an add-in cannot create one without access to the whole mailbox,
+ * so the user adds it once. "unsupported" in Outlook versions without categories for add-ins.
+ */
+export async function markAsSent(): Promise<'marked' | 'missing' | 'unsupported'> {
+  const categories = item()?.categories
+  if (!categories) return 'unsupported'
+  const current = await promised<{ displayName: string }[] | null>((cb) => categories.getAsync(cb)).catch(() => null)
+  if (current?.some((c) => c.displayName.toLowerCase() === TASKEL_CATEGORY.toLowerCase())) return 'marked'
+  try {
+    await promised<void>((cb) => categories.addAsync([TASKEL_CATEGORY], cb))
+    return 'marked'
+  } catch {
+    return 'missing'
   }
 }
 

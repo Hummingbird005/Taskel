@@ -22,7 +22,9 @@ public class OutlookAddInTests(TaskelApiFactory factory)
 
         var xml = XDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal(OutlookManifest.AddInId, xml.Root!.Element(App + "Id")!.Value);
-        Assert.Equal("ReadItem", xml.Root.Element(App + "Permissions")!.Value);
+        // Enough to mark the open email with the "Taskel" category, and nothing more of the mailbox.
+        Assert.Equal("ReadWriteItem", xml.Root.Element(App + "Permissions")!.Value);
+        Assert.Equal(OutlookManifest.Version, xml.Root.Element(App + "Version")!.Value);
         var pane = xml.Descendants(Types + "Url").Select(u => u.Attribute("DefaultValue")!.Value).Distinct();
         // The public address set for emails, as in the links Taskel sends.
         Assert.Equal("https://taskel.test.invalid/outlook.html", Assert.Single(pane));

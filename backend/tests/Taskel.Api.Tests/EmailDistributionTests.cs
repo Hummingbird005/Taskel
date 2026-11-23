@@ -80,6 +80,41 @@ public class EmailDistributionTests(TaskelApiFactory factory)
     }
 
     [Fact]
+    public async Task The_Due_Date_Chosen_In_Outlook_Is_On_Every_Task()
+    {
+        var (manager, _) = await factory.CreateUserAsync();
+        var (ana, anaUser) = await factory.CreateUserAsync();
+        var (dan, danUser) = await factory.CreateUserAsync();
+
+        // As the macro and the add-in send it: the email, the recipients and "dueDate" as yyyy-MM-dd.
+        var response = await manager.PostApiAsync("/api/tasks/from-email/distribute", new
+        {
+            subject = "Cerere ofertă 2027",
+            senderEmail = NewAddress(),
+            recipients = new[] { anaUser.Id.ToString(), danUser.Id.ToString() },
+            dueDate = "2026-12-04"
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var ids = (await response.Content.ReadApiAsync<DistributedEmailResponse>())!.TaskIds;
+
+        Assert.Equal(new DateOnly(2026, 12, 4), (await GetAsync(ana, ids[0])).DueDate);
+        Assert.Equal(new DateOnly(2026, 12, 4), (await GetAsync(dan, ids[1])).DueDate);
+    }
+
+    [Theory]
+    [InlineData("04.12.2026")]
+    [InlineData("1999-12-31")]
+    public async Task A_Due_Date_That_Is_Not_A_Date_In_Range_Is_Refused(string dueDate)
+    {
+        var (manager, _) = await factory.CreateUserAsync();
+
+        var response = await manager.PostApiAsync("/api/tasks/from-email/distribute",
+            new { subject = "x", senderEmail = NewAddress(), dueDate });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Without_Recipients_The_Task_Stays_With_The_Sender()
     {
         var (manager, managerUser) = await factory.CreateUserAsync();
