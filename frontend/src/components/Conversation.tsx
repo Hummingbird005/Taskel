@@ -48,6 +48,8 @@ function describe(message: TaskMessage, onCopy: boolean): Pick<Entry, 'what' | '
       return { what: onCopy ? 'ți-a trimis task-ul înapoi' : `i-a trimis înapoi lui ${to}`, icon: 'reply', event: false }
     case 'dueDateChanged':
       return { what: 'a schimbat termenul', icon: 'calendar', event: false }
+    case 'rescheduled':
+      return { what: 'a replanificat task-ul', icon: 'calendar', event: false }
     case 'closed':
       return { what: onCopy ? 'a închis task-ul' : `a închis task-ul lui ${to}`, icon: 'close', event: true }
     default:
@@ -128,7 +130,7 @@ export default function Conversation({ task, currentUserId, canWrite, onSessionE
   const urlOf = (file: Attachment) => attachmentsApi.downloadUrl(task.id, file.id)
 
   // Read again whenever the task changes: an answer, a send-back or a new distribution adds to the conversation.
-  const version = `${task.state}|${task.completedAt}|${task.distributions?.map((d) => d.state).join()}`
+  const version = `${task.state}|${task.completedAt}|${task.dueDate}|${task.priorityLevel}|${task.distributions?.map((d) => d.state).join()}`
   const expired = useRef(onSessionExpired)
   useEffect(() => {
     expired.current = onSessionExpired

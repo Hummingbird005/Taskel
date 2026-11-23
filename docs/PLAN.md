@@ -69,6 +69,14 @@ Asked on 2026-11-23, after PR 3.
 - Lists order each day by level (1, 2, 3, …), then tasks without a level, by priority as today. Existing tasks
   need no level.
 
+## PR 6 · Kanban board for managers, with a required reason (branch feature/team-board)
+
+- A level stays optional: tasks without one come after those with one, in each day.
+- **Task-urile echipei → Kanban**: the manager picks one person and sees their open tasks as cards, in a column per
+  day. Dragging a card up or down changes its level; onto another day, its due date.
+- **Every such move needs a reason**: it stays in the task's history with what changed, and the person is emailed the
+  details. The same applies to moving a task from its details (the former "move the due date").
+
 ## For every PR
 
 API tests, a browser check, READMEs, manuals (PDF) and screenshots updated. The VBA code cannot run here: its

@@ -3,12 +3,15 @@ import type { User } from '../api/auth'
 import { attachmentsApi } from '../api/attachments'
 import { ApiError } from '../api/client'
 import type { TaskItem } from '../api/tasks'
-import { teamApi, type Team as TeamData } from '../api/team'
+import { teamApi, type Reschedule, type Team as TeamData } from '../api/team'
 import { addDaysIso, formatLongDate } from '../lib/dates'
 import { compareWithinDay, isOverdue } from '../lib/taskViews'
+import { rescheduleError } from '../lib/reschedule'
 import EmptyState from './ui/EmptyState'
 import { TaskListSkeleton } from './ui/Skeleton'
+import Icon from './Icon'
 import TaskDetail from './TaskDetail'
+import TeamBoard from './TeamBoard'
 import TaskRow from './TaskRow'
 
 interface Props {
@@ -63,6 +66,7 @@ export default function TeamTasks({ user, today, onSessionExpired }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [person, setPerson] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
+  const [mode, setMode] = useState<'list' | 'board'>('list')
 
   useEffect(() => {
     let cancelled = false
@@ -90,9 +94,9 @@ export default function TeamTasks({ user, today, onSessionExpired }: Props) {
   const groups = useMemo(() => groupByDay(shown, today), [shown, today])
   const openTask = tasks?.find((t) => t.id === openId) ?? null
 
-  async function changeDueDate(task: TaskItem, dueDate: string | null): Promise<string | null> {
+  async function reschedule(task: TaskItem, change: Reschedule): Promise<string | null> {
     try {
-      const updated = await teamApi.changeDueDate(task.id, dueDate)
+      const updated = await teamApi.reschedule(task.id, change)
       setTasks((prev) => prev?.map((t) => (t.id === updated.id ? updated : t)) ?? null)
       // On the new day, a level may have pushed other tasks down.
       if (updated.priorityLevel != null) setTasks(await teamApi.tasks(department))
@@ -102,9 +106,7 @@ export default function TeamTasks({ user, today, onSessionExpired }: Props) {
         onSessionExpired()
         return null
       }
-      if (err instanceof ApiError && err.status === 400) return 'Termenul nu poate fi înaintea datei de început a task-ului.'
-      if (err instanceof ApiError && err.status === 409) return 'Task-ul este finalizat; termenul nu se mai poate schimba.'
-      return 'Nu am putut schimba termenul.'
+      return rescheduleError(err)
     }
   }
 
@@ -155,14 +157,40 @@ export default function TeamTasks({ user, today, onSessionExpired }: Props) {
           </label>
         )}
         <p className="muted team-tasks-hint">
-          Deschide un task ca să-l citești sau să-i muți termenul. Persoana responsabilă primește un email.
+          {mode === 'board'
+            ? 'Trage un card mai sus sau mai jos ca să-i schimbi nivelul, ori pe altă zi ca să-i muți termenul. Fiecare mutare cere un motiv, pe care persoana îl primește pe email.'
+            : 'Deschide un task ca să-l citești sau să-l muți. Fiecare mutare cere un motiv, pe care persoana responsabilă îl primește pe email.'}
         </p>
+      </div>
+
+      <div className="tabs team-tasks-tabs" role="tablist" aria-label="Cum sunt arătate task-urile">
+        <button type="button" role="tab" aria-selected={mode === 'list'} onClick={() => setMode('list')}>
+          <Icon name="menu" />
+          Listă
+        </button>
+        <button type="button" role="tab" aria-selected={mode === 'board'} onClick={() => setMode('board')}>
+          <Icon name="board" />
+          Kanban
+        </button>
       </div>
 
       {!team.department ? (
         <EmptyState icon="users" title="Niciun departament">
           {user.role === 'admin' ? 'Alege un departament.' : 'Contul tău nu are un departament setat.'}
         </EmptyState>
+      ) : mode === 'board' ? (
+        person ? (
+          <TeamBoard
+            tasks={shown.filter((t) => !t.isCompleted)}
+            today={today}
+            onOpen={(task) => setOpenId(task.id)}
+            onReschedule={reschedule}
+          />
+        ) : (
+          <EmptyState icon="user" title="Alege o persoană">
+            Tabla kanban arată task-urile unei singure persoane, pe zile. Alege-o mai sus, la „Persoana”.
+          </EmptyState>
+        )
       ) : groups.length === 0 ? (
         <EmptyState icon="inbox" title="Niciun task">
           {person ? 'Persoana aleasă nu are task-uri.' : 'Nimeni din echipă nu are task-uri.'}
@@ -189,7 +217,7 @@ export default function TeamTasks({ user, today, onSessionExpired }: Props) {
           task={openTask}
           today={today}
           attachmentUrl={(file) => attachmentsApi.memberDownloadUrl(responsibleOf(openTask).id, openTask.id, file.id)}
-          onChangeDueDate={(dueDate) => changeDueDate(openTask, dueDate)}
+          onReschedule={(change) => reschedule(openTask, change)}
           onClose={() => setOpenId(null)}
         />
       )}

@@ -170,7 +170,7 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | GET    | `/api/team/calendar` | manager | A department's dated open tasks, per person, for a period |
 | GET    | `/api/team/members/{id}/tasks` | manager | A team member's tasks, read only |
 | GET    | `/api/team/tasks`    | manager | Every task of the department's people: open, and completed in the last 14 days |
-| PUT    | `/api/team/tasks/{taskId}/due-date` | manager | Move the due date of a team member's task |
+| PUT    | `/api/team/tasks/{taskId}/schedule` | manager | Move a team member's task to another day or level, with a reason |
 | GET    | `/api/admin/users`   | admin | Accounts with their role and department      |
 | PUT    | `/api/admin/users/{id}` | admin | Set an account's role and department      |
 | GET    | `/api/attachments/limits` | ✓ | Largest file accepted and files per task     |
@@ -516,11 +516,23 @@ date; a value more than a day away from the server's is ignored.
 
 **Task-urile echipei** (`GET /api/team/tasks`, optional `department` for administrators) lists every task the
 department's people answer for: the open ones and those completed in the last two weeks. The interface groups them
-by day (overdue, each day with tasks, no due date, recently completed) with a filter by person. A manager can **move
-the due date** of such a task (`PUT /api/team/tasks/{taskId}/due-date` with `dueDate`, or `null` for none), from that
-list or from **Echipă**: nothing else about the task changes. Not before the task's start date, not on a completed
-task, and only within the manager's department (administrators: any). The person responsible is emailed ("Termen
-schimbat"), and the change is kept in the task's conversation.
+by day (overdue, each day with tasks, no due date, recently completed) with a filter by person. A manager can **move** such a task
+to another day, another level within its day, or both (`PUT /api/team/tasks/{taskId}/schedule` with `dueDate` and
+`priorityLevel`, each `null` for none, and a `reason`, which is required). A taken level pushes the person's other
+tasks on that day down (`409` when that would go past 20). Nothing else about the task changes. The move is refused
+before the task's start date (`400`) and on a completed task (`409`), and is allowed only within the manager's own
+department (administrators: any). The person responsible is emailed ("Task replanificat") with what changed and
+the reason, and the same is kept in the task's history.
+
+The view has two modes:
+- **Listă**: the list described above.
+- **Kanban**: one person's open tasks as cards, in a column per day (overdue, a week at a time, no due date). Within
+  a day, the cards with a level come first, then those without one.
+  - Dragging a card up or down within a day changes its level; dragging it onto another day changes its due date;
+    dropping it under "Fără nivel" removes its level.
+  - Every move opens a dialog that asks for the reason, where the day and the level can still be adjusted.
+  - The same dialog opens from each card's button, for the keyboard and for touch screens.
+  - In a task opened from Task-urile echipei or Echipă, the **Termen și nivel, ca manager** box does the same.
 It does not give the manager access to the tasks themselves: they cannot edit, complete or delete them.
 
 A manager can only name their own department (`403` otherwise) and a manager without a department sees nobody.

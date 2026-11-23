@@ -4,6 +4,7 @@ import { attachmentsApi, checkFiles, DEFAULT_ATTACHMENT_LIMITS, uploadErrorText 
 import { ApiError } from '../api/client'
 import type { GroupListItem } from '../api/groups'
 import type { TaskDraft, TaskItem, TaskState, TaskTarget } from '../api/tasks'
+import type { Reschedule } from '../api/team'
 import type { UserSummary } from '../api/users'
 import { LIMITS, validateNotes } from '../lib/validation'
 import ForwardTask from './ForwardTask'
@@ -14,6 +15,7 @@ import { canDistribute, STATE_ICON, STATE_LABEL, stateChangeProblem } from '../l
 import Conversation from './Conversation'
 import DistributeTask from './DistributeTask'
 import { DistributedFrom, DistributionPanel } from './Distributions'
+import RescheduleForm from './RescheduleForm'
 import { DetailFacts, Instructions, ReturnedResolution, StateCallout, WorkFooter } from './TaskDetailParts'
 import TaskTrail from './TaskTrail'
 
@@ -52,7 +54,7 @@ interface Props {
   /** Shows the tasks with a tag: closes the dialog and opens the tag's list. */
   onTagClick?: (tag: string) => void
   /** For a manager reading a team member's task: moves its due date. Resolves to an error message, or null. */
-  onChangeDueDate?: (dueDate: string | null) => Promise<string | null>
+  onReschedule?: (change: Reschedule) => Promise<string | null>
   onSessionExpired?: () => void
   onClose: () => void
 }
@@ -88,7 +90,7 @@ export default function TaskDetail({
   attachmentLimits = DEFAULT_ATTACHMENT_LIMITS,
   attachmentUrl,
   onTagClick,
-  onChangeDueDate,
+  onReschedule,
   onSessionExpired,
   onClose,
 }: Props) {
@@ -257,7 +259,7 @@ export default function TaskDetail({
               attachmentLimits={attachmentLimits}
               attachmentUrl={attachmentUrl}
               onTagClick={onTagClick}
-              onChangeDueDate={onChangeDueDate}
+              onReschedule={onReschedule}
               onSessionExpired={onSessionExpired}
               onMessage={(text) => {
                 setError(null)
@@ -362,7 +364,7 @@ function DetailView({
   attachmentLimits,
   attachmentUrl,
   onTagClick,
-  onChangeDueDate,
+  onReschedule,
   onSessionExpired,
   onMessage,
   onState,
@@ -382,7 +384,7 @@ function DetailView({
   attachmentLimits: AttachmentLimits
   attachmentUrl?: (attachment: Attachment) => string
   onTagClick?: (tag: string) => void
-  onChangeDueDate?: (dueDate: string | null) => Promise<string | null>
+  onReschedule?: (change: Reschedule) => Promise<string | null>
   onSessionExpired?: () => void
   onMessage: (message: string) => void
   onState: (state: TaskState) => void
@@ -401,7 +403,15 @@ function DetailView({
           {task.title}
         </h2>
         <DetailFacts task={task} today={today} onTagClick={onTagClick} />
-        {onChangeDueDate && task.state !== 'completed' && <DueDateEditor task={task} onChange={onChangeDueDate} />}
+        {onReschedule && task.state !== 'completed' && (
+          <section className="detail-callout due-editor" aria-label="Mută task-ul">
+            <h3>
+              <Icon name="calendar" size={15} />
+              Termen și nivel, ca manager
+            </h3>
+            <RescheduleForm task={task} onSubmit={onReschedule} />
+          </section>
+        )}
         <DistributedFrom task={task} />
         <Instructions task={task} />
         <ReturnedResolution task={task} />
@@ -459,56 +469,5 @@ function DetailView({
         </div>
       )}
     </>
-  )
-}
-
-/** For a manager: moves the due date of a task one of their people answers for. */
-function DueDateEditor({ task, onChange }: { task: TaskItem; onChange: (dueDate: string | null) => Promise<string | null> }) {
-  const [value, setValue] = useState(task.dueDate ?? '')
-  const [state, setState] = useState<{ busy: boolean; error: string | null; saved: boolean }>({ busy: false, error: null, saved: false })
-  const changed = value !== (task.dueDate ?? '')
-
-  async function save() {
-    setState({ busy: true, error: null, saved: false })
-    const failure = await onChange(value || null)
-    setState({ busy: false, error: failure, saved: !failure })
-  }
-
-  return (
-    <section className="detail-callout due-editor" aria-label="Schimbă termenul">
-      <h3>
-        <Icon name="calendar" size={15} />
-        Termenul, ca manager
-      </h3>
-      <div className="due-editor-row">
-        <input
-          type="date"
-          value={value}
-          min={task.startDate ?? '2000-01-01'}
-          max="2100-12-31"
-          onChange={(e) => {
-            setValue(e.target.value)
-            setState({ busy: false, error: null, saved: false })
-          }}
-          aria-label="Termen nou"
-        />
-        <button type="button" className="button primary small" onClick={save} disabled={!changed || state.busy}>
-          {state.busy ? <span className="spinner" aria-hidden="true" /> : <Icon name="check" />}
-          Mută termenul
-        </button>
-        {value && (
-          <button type="button" className="button ghost small" onClick={() => setValue('')} disabled={state.busy}>
-            Fără termen
-          </button>
-        )}
-      </div>
-      {state.error && (
-        <p className="error" role="alert">
-          {state.error}
-        </p>
-      )}
-      {state.saved && <p className="muted">Termen mutat. Persoana responsabilă a primit un email.</p>}
-      {!state.error && !state.saved && <p className="muted">Doar termenul se poate schimba; restul task-ului rămâne al persoanei.</p>}
-    </section>
   )
 }
