@@ -14,6 +14,7 @@ export type View =
   | { kind: 'tag'; tag: string }
   | { kind: 'integrations' }
   | { kind: 'team' }
+  | { kind: 'teamTasks' }
   | { kind: 'groups' }
   | { kind: 'admin' }
   | { kind: 'settings' }
@@ -61,6 +62,7 @@ export function tasksInView(tasks: TaskItem[], view: View, today: string): TaskI
     case 'dashboard':
     case 'integrations':
     case 'team':
+    case 'teamTasks':
     case 'groups':
     case 'admin':
     case 'settings':
@@ -85,6 +87,9 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
   medium: 'Prioritate medie',
   low: 'Prioritate scăzută',
 }
+
+/** The order of a day's tasks: by priority. */
+export const compareWithinDay = (a: TaskItem, b: TaskItem) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
 
 const byDueDate = (a: TaskItem, b: TaskItem) => (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999')
 const byPriority = (a: TaskItem, b: TaskItem) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
@@ -163,7 +168,7 @@ export function sourceOf(
 }
 
 /** Views that show a page of their own rather than a list of tasks. */
-export const PAGE_VIEWS: ReadonlySet<View['kind']> = new Set(['integrations', 'team', 'groups', 'admin', 'settings'])
+export const PAGE_VIEWS: ReadonlySet<View['kind']> = new Set(['integrations', 'team', 'teamTasks', 'groups', 'admin', 'settings'])
 
 export function viewTitle(view: View): string {
   switch (view.kind) {
@@ -193,6 +198,8 @@ export function viewTitle(view: View): string {
       return 'Integrări'
     case 'team':
       return 'Echipă'
+    case 'teamTasks':
+      return 'Task-urile echipei'
     case 'admin':
       return 'Utilizatori'
     case 'settings':

@@ -80,6 +80,7 @@ export default function Sidebar({ user, view, counts, tags, onSelect, onLogout }
             <h2 className="nav-heading">Organizare</h2>
             <ul className="nav-list">
               {item({ kind: 'team' }, 'users', 'Echipă')}
+              {item({ kind: 'teamTasks' }, 'calendar', 'Task-urile echipei')}
               {item({ kind: 'groups' }, 'hand', 'Grupuri')}
               {user.role === 'admin' && item({ kind: 'admin' }, 'shield', 'Utilizatori')}
               {user.role === 'admin' && item({ kind: 'settings' }, 'settings', 'Setări sistem')}

@@ -46,6 +46,8 @@ function describe(message: TaskMessage, onCopy: boolean): Pick<Entry, 'what' | '
       return { what: 'Au răspuns toți. Task-ul e din nou deschis.', icon: 'checkCircle', event: true }
     case 'sentBack':
       return { what: onCopy ? 'ți-a trimis task-ul înapoi' : `i-a trimis înapoi lui ${to}`, icon: 'reply', event: false }
+    case 'dueDateChanged':
+      return { what: 'a schimbat termenul', icon: 'calendar', event: false }
     case 'closed':
       return { what: onCopy ? 'a închis task-ul' : `a închis task-ul lui ${to}`, icon: 'close', event: true }
     default:

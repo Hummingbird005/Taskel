@@ -42,7 +42,7 @@ Decisions taken along the way are recorded here so they are not asked again.
 - **Larger task window** (about 1000px, two columns: details on the left, the conversation with a reply box on the
   right); one column on phones.
 
-## PR 3b · The reply carries the history; files with the answer
+## PR 3b · The reply carries the history; files with the answer (#30)
 
 Asked on 2026-11-23, after PR 3.
 

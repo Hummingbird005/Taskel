@@ -41,7 +41,7 @@ export interface Distribution {
 }
 
 /** What a message in a task's conversation records. */
-export type TaskMessageKind = 'note' | 'distributed' | 'answered' | 'allAnswered' | 'sentBack' | 'closed'
+export type TaskMessageKind = 'note' | 'distributed' | 'answered' | 'allAnswered' | 'sentBack' | 'closed' | 'dueDateChanged'
 
 /** One entry in a task's conversation. */
 export interface TaskMessage {

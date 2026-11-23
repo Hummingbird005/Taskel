@@ -6,6 +6,7 @@ import Groups from './Groups'
 import Integrations from './Integrations'
 import SystemSettings from './SystemSettings'
 import Team from './Team'
+import TeamTasks from './TeamTasks'
 
 interface Props {
   kind: View['kind']
@@ -38,6 +39,8 @@ export default function PageView({
       )
     case 'team':
       return <Team user={user} today={today} onSessionExpired={onSessionExpired} />
+    case 'teamTasks':
+      return <TeamTasks user={user} today={today} onSessionExpired={onSessionExpired} />
     case 'groups':
       return <Groups user={user} onSessionExpired={onSessionExpired} onChanged={onGroupsChanged} />
     case 'admin':

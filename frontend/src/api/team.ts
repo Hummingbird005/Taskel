@@ -66,6 +66,12 @@ export const teamApi = {
     if (department) query.set('department', department)
     return request<Team>(`/team?${query}`)
   },
+  /** Every task the department's people are responsible for: open ones, and those completed in the last two weeks. */
+  tasks: (department?: string | null) =>
+    request<TaskItem[]>(`/team/tasks${department ? `?${new URLSearchParams({ department })}` : ''}`),
+  /** Moves the due date of a task one of the manager's people is responsible for; null removes it. */
+  changeDueDate: (taskId: string, dueDate: string | null) =>
+    request<TaskItem>(`/team/tasks/${taskId}/due-date`, { method: 'PUT', body: JSON.stringify({ dueDate }) }),
   /** The tasks a member is responsible for, in full, for reading. */
   memberTasks: (userId: string) => request<TaskItem[]>(`/team/members/${userId}/tasks`),
 }

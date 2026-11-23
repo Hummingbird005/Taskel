@@ -17,7 +17,9 @@ public enum TaskMessageKind
     /// <summary>The distributor sent one person's task back, with this message.</summary>
     SentBack,
     /// <summary>The distributor closed one person's task without waiting for the answer.</summary>
-    Closed
+    Closed,
+    /// <summary>A manager moved the task's due date; the text says from what to what.</summary>
+    DueDateChanged
 }
 
 /// <summary>
@@ -93,3 +95,6 @@ public record TaskMessageResponse(
 }
 
 public record RelatedCopy(Guid TaskId, string Recipient);
+
+/// <param name="DueDate">The new due date; null to have none.</param>
+public record ChangeDueDateRequest([DueDateRange] DateOnly? DueDate);

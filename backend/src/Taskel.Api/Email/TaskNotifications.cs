@@ -81,7 +81,9 @@ public enum TaskNotificationReason
     /// <summary>A message in the conversation of a distributed task.</summary>
     Message,
     /// <summary>The distributor closed someone's copy without waiting for the answer.</summary>
-    Closed
+    Closed,
+    /// <summary>A manager moved the due date of a task the person is responsible for.</summary>
+    DueDateChanged
 }
 
 /// <summary>Tells people by email that a task reached them, directly or through one of their groups.</summary>
@@ -191,6 +193,7 @@ public class TaskNotifier(
                 {
                     TaskNotificationReason.Returned => "Rezolvarea lui ",
                     TaskNotificationReason.Answered or TaskNotificationReason.AllAnswered => "Răspunsul lui ",
+                    TaskNotificationReason.DueDateChanged => "Termenul, schimbat de ",
                     _ => "Mesaj de la "
                 })
                 .Append(actorName).Append(": ").Append(note.Trim()).Append('\n');
@@ -215,6 +218,7 @@ public class TaskNotifier(
             case TaskNotificationReason.SentBack: return $"Task trimis înapoi: {task.Title}";
             case TaskNotificationReason.Message: return $"Mesaj nou: {task.Title}";
             case TaskNotificationReason.Closed: return $"Task închis: {task.Title}";
+            case TaskNotificationReason.DueDateChanged: return $"Termen schimbat: {task.Title}";
         }
         return group is not null ? $"Task pentru grupul {group.Name}: {task.Title}" : $"Task nou: {task.Title}";
     }
@@ -235,6 +239,8 @@ public class TaskNotifier(
                 return "ți-a scris în conversația unui task.";
             case TaskNotificationReason.Closed:
                 return "a închis task-ul pe care ți-l distribuise. Nu mai e nevoie de răspunsul tău.";
+            case TaskNotificationReason.DueDateChanged:
+                return "ți-a schimbat termenul unui task de care răspunzi.";
             case TaskNotificationReason.Distributed:
                 return group is null
                     ? "ți-a distribuit un task în Taskel. Când îl finalizezi, răspunsul tău ajunge la el."
