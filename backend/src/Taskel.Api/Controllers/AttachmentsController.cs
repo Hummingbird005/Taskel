@@ -190,7 +190,8 @@ public class AttachmentsController(ITaskRepository tasks, TaskelDbContext db, At
 
         db.Attachments.Remove(attachment);
         await db.SaveChangesAsync(ct);
-        store.Delete(attachment.StoredName);
+        // Distributed copies share their files with the task they came from: a file goes when nobody lists it.
+        if (!await db.Attachments.AnyAsync(a => a.StoredName == attachment.StoredName, ct)) store.Delete(attachment.StoredName);
         return NoContent();
     }
 

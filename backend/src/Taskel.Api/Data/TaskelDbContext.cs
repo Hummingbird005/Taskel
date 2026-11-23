@@ -13,6 +13,7 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<TaskForward> TaskForwards => Set<TaskForward>();
+    public DbSet<TaskMessage> TaskMessages => Set<TaskMessage>();
     public DbSet<TaskAttachment> Attachments => Set<TaskAttachment>();
     public DbSet<AppSetting> Settings => Set<AppSetting>();
     public DbSet<IntegrationSetting> IntegrationSettings => Set<IntegrationSetting>();
@@ -139,6 +140,22 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             task.HasOne(t => t.Group).WithMany().HasForeignKey(t => t.GroupId).OnDelete(DeleteBehavior.SetNull);
             task.HasIndex(t => t.GroupId);
             task.HasIndex(t => new { t.UserId, t.CreatedAt });
+            // A distributed copy outlives the task it came from; it just stops being linked to it.
+            task.HasOne(t => t.ParentTask).WithMany(t => t.Distributions).HasForeignKey(t => t.ParentTaskId)
+                .OnDelete(DeleteBehavior.SetNull);
+            task.HasIndex(t => t.ParentTaskId);
+        });
+
+        modelBuilder.Entity<TaskMessage>(message =>
+        {
+            message.ToTable("task_messages");
+            message.HasKey(m => m.Id);
+            message.Property(m => m.Text).HasMaxLength(4000);
+            message.HasOne<TaskItem>().WithMany().HasForeignKey(m => m.TaskId).OnDelete(DeleteBehavior.Cascade);
+            message.HasOne(m => m.RelatedTask).WithMany().HasForeignKey(m => m.RelatedTaskId).OnDelete(DeleteBehavior.SetNull);
+            message.HasOne(m => m.Author).WithMany().HasForeignKey(m => m.AuthorId).OnDelete(DeleteBehavior.SetNull);
+            message.HasIndex(m => new { m.TaskId, m.At });
+            message.HasIndex(m => m.RelatedTaskId);
         });
     }
 }
