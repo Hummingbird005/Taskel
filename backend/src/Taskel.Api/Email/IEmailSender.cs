@@ -1,11 +1,17 @@
 namespace Taskel.Api.Email;
 
-/// <summary>A plain-text reply to an email that was turned into a task.</summary>
-/// <param name="To">Address of the original sender.</param>
+/// <summary>A reply to an email that was turned into a task.</summary>
+/// <param name="To">Who gets it: the original sender, or the person who brought the email into Taskel.</param>
 /// <param name="Subject">Subject of the original email, without a "Re:" prefix added.</param>
-/// <param name="Body">The response text.</param>
+/// <param name="Body">The plain-text version.</param>
 /// <param name="InReplyToMessageId">Message-ID of the original email, when known.</param>
-public record ReplyEmail(string To, string? Subject, string Body, string? InReplyToMessageId);
+/// <param name="HtmlBody">The same, formatted, for mail programs that show HTML.</param>
+/// <param name="Attachments">Files sent with the reply.</param>
+public record ReplyEmail(string To, string? Subject, string Body, string? InReplyToMessageId, string? HtmlBody = null,
+    IReadOnlyList<ReplyAttachment>? Attachments = null);
+
+/// <summary>A file attached to a reply; opened when the message is built.</summary>
+public record ReplyAttachment(string FileName, string ContentType, Func<Stream?> Open);
 
 /// <summary>A plain-text email Taskel sends on its own behalf, such as a notification.</summary>
 public record EmailMessage(string To, string Subject, string Body);

@@ -123,6 +123,11 @@ export default function TaskAttachments({
                   {file.fileName}
                 </a>
               )}
+              {file.withAnswer && (
+                <span className="answer-badge" title="Trimis cu un răspuns">
+                  la răspuns
+                </span>
+              )}
               <span className="attachment-meta">
                 {formatBytes(file.size)}
                 {file.uploadedBy && ` · ${file.uploadedBy.displayName}`}

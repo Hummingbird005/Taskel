@@ -93,7 +93,12 @@ async function saveTask(task: TaskItem, draft: TaskDraft): Promise<TaskItem> {
   return changed ? tasksApi.assign(task.id, next) : updated
 }
 
-async function completeTask(context: TaskActionContext, task: TaskItem, response: string | null): Promise<string | null> {
+async function completeTask(
+  context: TaskActionContext,
+  task: TaskItem,
+  response: string | null,
+  attachmentIds: string[],
+): Promise<string | null> {
   // Closing a distributed task before everyone answered closes their tasks too: asked first.
   const waitingFor = openCopies(task)
   if (
@@ -107,7 +112,7 @@ async function completeTask(context: TaskActionContext, task: TaskItem, response
     return null
   }
   try {
-    replaceIn(context, await tasksApi.complete(task.id, response, waitingFor > 0))
+    replaceIn(context, await tasksApi.complete(task.id, response, waitingFor > 0, attachmentIds))
     context.setError(null)
     if (waitingFor > 0) await context.refresh()
     if (task.answersTo) {
@@ -227,7 +232,7 @@ export async function claimTask(context: TaskActionContext, task: TaskItem): Pro
 export function taskActions(context: TaskActionContext, task: TaskItem): TaskActions {
   return {
     save: (draft) => attempt(context, () => saveTask(task, draft), 'Nu am putut salva task-ul.'),
-    complete: (response) => completeTask(context, task, response),
+    complete: (response, attachmentIds = []) => completeTask(context, task, response, attachmentIds),
     wait: (reason) => attempt(context, () => tasksApi.wait(task.id, reason), 'Nu am putut pune task-ul în așteptare.', waitRefusal),
     resume: () => attempt(context, () => tasksApi.resume(task.id), 'Nu am putut relua task-ul.'),
     reopen: () => attempt(context, () => tasksApi.update({ ...task, isCompleted: false }), 'Nu am putut redeschide task-ul.'),

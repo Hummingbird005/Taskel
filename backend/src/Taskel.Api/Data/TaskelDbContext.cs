@@ -96,6 +96,7 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             attachment.Property(a => a.StoredName).HasMaxLength(32).IsRequired();
             attachment.HasOne<TaskItem>().WithMany(t => t.Attachments).HasForeignKey(a => a.TaskId).OnDelete(DeleteBehavior.Cascade);
             attachment.HasOne(a => a.UploadedBy).WithMany().HasForeignKey(a => a.UploadedById).OnDelete(DeleteBehavior.SetNull);
+            attachment.HasOne<TaskMessage>().WithMany().HasForeignKey(a => a.AnswerMessageId).OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<IntegrationSetting>(setting =>

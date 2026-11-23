@@ -74,14 +74,17 @@ public record PostMessageRequest(
     Guid? RelatedTaskId = null);
 
 /// <param name="Related">The copy of a distributed task the message concerns, and who has it.</param>
+/// <param name="Attachments">Files that came with an answer, as the reader reaches them on their own task.</param>
 public record TaskMessageResponse(
-    Guid Id, TaskMessageKind Kind, UserSummary? Author, string? Text, DateTime At, RelatedCopy? Related)
+    Guid Id, TaskMessageKind Kind, UserSummary? Author, string? Text, DateTime At, RelatedCopy? Related,
+    IReadOnlyList<AttachmentResponse>? Attachments = null)
 {
-    public static TaskMessageResponse From(TaskMessage message) => new(
+    public static TaskMessageResponse From(TaskMessage message, IEnumerable<TaskAttachment>? files = null) => new(
         message.Id, message.Kind,
         message.Author is null ? null : UserSummary.From(message.Author),
         message.Text, message.At,
-        message.RelatedTask is { } copy ? new RelatedCopy(copy.Id, RecipientName(copy)) : null);
+        message.RelatedTask is { } copy ? new RelatedCopy(copy.Id, RecipientName(copy)) : null,
+        files?.Select(AttachmentResponse.From).ToList() is { Count: > 0 } list ? list : null);
 
     private static string RecipientName(TaskItem copy) =>
         copy.Assignee is { } user ? user.DisplayName ?? user.Email

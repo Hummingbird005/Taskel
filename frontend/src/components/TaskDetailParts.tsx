@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import type { Attachment } from '../api/attachments'
 import type { TaskItem, TaskPriority, TaskState } from '../api/tasks'
 import { formatDueDate, formatRange, formatTimestamp } from '../lib/dates'
 import { isOverdue } from '../lib/taskViews'
@@ -201,6 +203,10 @@ export function WorkFooter({
   onMessage,
   onState,
   onDistribute,
+  answerFiles = [],
+  uploading = null,
+  onAddAnswerFiles,
+  onDropAnswerFile,
 }: {
   task: TaskItem
   message: string
@@ -210,7 +216,16 @@ export function WorkFooter({
   onState: (state: TaskState) => void
   /** Opens the distribution form; left out when the person cannot distribute the task. */
   onDistribute?: () => void
+  /** Files uploaded to go with the answer. */
+  answerFiles?: Attachment[]
+  /** The file being uploaded, if any. */
+  uploading?: string | null
+  onAddAnswerFiles?: (files: File[]) => void
+  onDropAnswerFile?: (id: string) => void
 }) {
+  const picker = useRef<HTMLInputElement>(null)
+  // Files go with an answer someone waits for: to whoever distributed the task, or with the email reply.
+  const answers = task.state !== 'completed' && Boolean(task.answersTo || task.replyTo) && Boolean(onAddAnswerFiles)
   const field = messageField(task)
   const labels = buttonLabels(task)
   const states: TaskState[] = task.state === 'completed' ? ['open'] : ['open', 'waiting', 'completed']
@@ -227,6 +242,40 @@ export function WorkFooter({
             placeholder={field.placeholder}
           />
         </label>
+      )}
+      {answers && (
+        <div className="answer-files">
+          {answerFiles.map((file) => (
+            <span key={file.id} className="answer-file">
+              <Icon name="paperclip" size={13} />
+              {file.fileName}
+              <button type="button" onClick={() => onDropAnswerFile?.(file.id)} aria-label={`Nu trimite ${file.fileName} cu răspunsul`} title="Nu-l trimite cu răspunsul">
+                <Icon name="close" size={12} />
+              </button>
+            </span>
+          ))}
+          {uploading && (
+            <span className="answer-file muted">
+              <span className="spinner" aria-hidden="true" />
+              {uploading}
+            </span>
+          )}
+          <input
+            ref={picker}
+            type="file"
+            multiple
+            hidden
+            onChange={(e) => {
+              const picked = [...(e.target.files ?? [])]
+              e.target.value = ''
+              onAddAnswerFiles?.(picked)
+            }}
+          />
+          <button type="button" className="button ghost small" onClick={() => picker.current?.click()} disabled={busy !== null || uploading !== null}>
+            <Icon name="paperclip" />
+            Atașează la răspuns
+          </button>
+        </div>
       )}
       <fieldset className="state-bar">
         <legend className="visually-hidden">Starea task-ului</legend>

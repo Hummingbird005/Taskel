@@ -110,6 +110,13 @@ copies, and `SyncAsync`, which keeps the distributed task on hold (reason starti
 copy is open and opens it when none is. A reason written by hand is left alone. Completing a copy (by its
 assignee: an answer; by its creator: a close) goes through `CopyCompletedAsync`.
 
+**The email reply.** `Email/ReplyComposer.cs` writes it, in text and HTML: the answer, then, only for a reply to a
+colleague, the history (task fields, forwards and the conversation), then the original email (the task's
+description) quoted. `TasksController.SendCompletionReplyAsync` picks the files: every `WithAnswer` file for a
+colleague, only those attached now for the email's sender, up to `MaxReplyAttachmentBytes`.
+`SmtpEmailSender.BuildMessage` sends `multipart/alternative` with the files when there is HTML or a file. People's
+text is always HTML-encoded.
+
 **Returns.** A forward made with `returnToMe` has `ReturnPending`. `TaskItem.PendingReturn()` is the latest such
 step not yet answered; when the assignee completes, `TasksController.Complete` hands the task back to that step's
 sender instead (`ReturnAsync`): it adds a step with `IsReturn` and the message as its note, clears the pending
@@ -134,6 +141,8 @@ completes, the creator's own address otherwise (an assignee's answer goes to who
   copy they concern in `RelatedTaskId`; a copy's conversation is the messages where `RelatedTaskId` is the copy.
 - `task_attachments`: file metadata; the content is on disk under a generated name. Copies list the same stored
   files as the task they came from: delete a file from disk only when no row names it (`IsFileSharedAsync`).
+  `WithAnswer` marks files sent with an answer; `AnswerMessageId` links those that came with a copy's answer to
+  that message, on the copy and on the distributor's task.
 - `api_tokens`: hashed personal tokens for the Outlook macro and other clients.
 - `app_settings`: single values an administrator changes from the interface (the attachment size limit).
 - `integration_settings`: one row per integration (`email`, `directory`, `keycloak`) saved in **Setări sistem**:

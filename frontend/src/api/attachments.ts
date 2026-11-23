@@ -11,6 +11,8 @@ export interface Attachment {
   contentType: string
   uploadedBy: UserSummary | null
   uploadedAt: string
+  /** Sent with an answer: to whoever distributed the task, and with the email reply when it is closed. */
+  withAnswer?: boolean
 }
 
 export interface AttachmentLimits {

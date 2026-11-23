@@ -309,6 +309,13 @@ public class TasksController(
                 $"An answer is required: it goes to {task.Owner?.DisplayName ?? "whoever distributed the task"}.");
             return ValidationProblem(ModelState);
         }
+        var answerFiles = request.AttachmentIds ?? [];
+        if (answerFiles.Any(fileId => task.Attachments.All(a => a.Id != fileId)))
+        {
+            ModelState.AddModelError(nameof(request.AttachmentIds), "Only files of this task can be attached to its answer.");
+            return ValidationProblem(ModelState);
+        }
+        foreach (var file in task.Attachments.Where(a => answerFiles.Contains(a.Id))) file.WithAnswer = true;
         var pending = access == TaskAccess.Assignee ? task.PendingReturn() : null;
         var replyTo = pending is null ? task.ReplyAddressFor(access) : null;
         if (task.RequiresCompletionReply && response is null)
@@ -321,7 +328,7 @@ public class TasksController(
 
         if (pending is not null) return await ReturnAsync(task, pending, userId, response, ct);
 
-        if (replyTo is not null && await SendCompletionReplyAsync(task, access, replyTo, response!, ct) is { } failure)
+        if (replyTo is not null && await SendCompletionReplyAsync(task, access, replyTo, response!, answerFiles, ct) is { } failure)
             return failure;
 
         if (openCopies > 0) await distributions.CloseOpenCopiesAsync(task, userId, ct);
@@ -357,23 +364,46 @@ public class TasksController(
         return Ok(TaskResponse.From(task, AccessOf(task, userId, await repository.GetGroupIdsAsync(userId, ct))));
     }
 
+    /// <summary>The most an email reply carries in files; beyond it, files are named and left in Taskel.</summary>
+    public const long MaxReplyAttachmentBytes = 20L * 1024 * 1024;
+
     /// <summary>
-    /// Emails the completion message of an email task: to the email's sender, or to the task's creator
-    /// with a line saying who completed it. Null when it was sent; otherwise the answer to give.
+    /// Emails the completion message of an email task, as a reply in the original email's thread (see
+    /// <see cref="ReplyComposer"/>). To the task's creator, a colleague, it carries the history in Taskel and every
+    /// file sent with an answer; to the email's sender, only the answer, the files attached to it now and their own
+    /// email quoted. Null when it was sent; otherwise the answer to give.
     /// </summary>
     private async Task<ObjectResult?> SendCompletionReplyAsync(
-        TaskItem task, TaskAccess access, string to, string response, CancellationToken ct)
+        TaskItem task, TaskAccess access, string to, string response, IReadOnlyCollection<Guid> answerFiles, CancellationToken ct)
     {
-        var body = response;
-        if (access != TaskAccess.Creator)
+        var internalReply = access != TaskAccess.Creator;
+        var closedBy = (internalReply ? task.Assignee : task.Owner) ?? throw new InvalidOperationException("Task people are not loaded.");
+        var messages = internalReply ? await distributions.ConversationAsync(task.Id, ct) : [];
+
+        var candidates = task.Attachments
+            .Where(a => internalReply ? a.WithAnswer : answerFiles.Contains(a.Id))
+            .OrderBy(a => a.UploadedAt)
+            .ToList();
+        var sent = new List<TaskAttachment>();
+        var tooLarge = new List<string>();
+        long total = 0;
+        foreach (var file in candidates)
         {
-            var me = task.Assignee ?? throw new InvalidOperationException("Task assignee is not loaded.");
-            var name = string.IsNullOrWhiteSpace(me.DisplayName) ? me.Email : me.DisplayName;
-            body = $"{name} a finalizat în Taskel task-ul „{task.Title}”:\n\n{response}";
+            if (total + file.Size > MaxReplyAttachmentBytes) tooLarge.Add(file.FileName);
+            else
+            {
+                sent.Add(file);
+                total += file.Size;
+            }
         }
+
+        var (text, html) = ReplyComposer.Compose(task, closedBy, response, messages, internalReply,
+            [.. sent.Select(f => f.FileName)], tooLarge);
+        var files = sent.Select(f => new ReplyAttachment(f.FileName, f.ContentType, () => attachments.Open(f.StoredName))).ToList();
         try
         {
-            await emailSender.SendReplyAsync(new ReplyEmail(to, task.SourceEmailSubject, body, task.SourceEmailMessageId), ct);
+            await emailSender.SendReplyAsync(
+                new ReplyEmail(to, task.SourceEmailSubject, text, task.SourceEmailMessageId, html, files), ct);
             return null;
         }
         catch (EmailNotConfiguredException)

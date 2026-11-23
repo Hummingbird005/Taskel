@@ -175,9 +175,11 @@ public static class TaskInterval
 /// <param name="CloseDistributions">
 /// Needed to complete a task distributed to people who have not answered yet: their tasks are closed with it.
 /// </param>
+/// <param name="AttachmentIds">Files of the task attached to this answer: sent with it, and with the email reply.</param>
 public record CompleteTaskRequest(
     [StringLength(4000), SafeText(Multiline = true)] string? Response = null,
-    bool CloseDistributions = false);
+    bool CloseDistributions = false,
+    [MaxLength(20)] List<Guid>? AttachmentIds = null);
 
 /// <summary>Where a task stands.</summary>
 public enum TaskState
