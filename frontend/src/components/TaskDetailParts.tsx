@@ -116,12 +116,19 @@ export function StateCallout({ task }: { task: TaskItem }) {
 
 /** What completing does, said on its button: send the task back, email the message, or just complete it. */
 function completeLabel(task: TaskItem): string {
+  if (task.answersTo) return 'Trimite răspunsul'
   if (task.returnsTo) return `Rezolvat, înapoi la ${task.returnsTo.displayName}`
   return task.replyTo ? 'Trimite și finalizează' : 'Finalizat'
 }
 
 /** The message field's label and hint, which say where the message goes. */
 function messageField(task: TaskItem): { label: string; placeholder: string } {
+  if (task.answersTo) {
+    return {
+      label: `Răspuns pentru ${task.answersTo.displayName}`,
+      placeholder: 'Obligatoriu la finalizare: ajunge la cine ți-a distribuit task-ul, în conversație.',
+    }
+  }
   if (task.returnsTo) {
     return {
       label: `Rezolvare pentru ${task.returnsTo.displayName}`,
@@ -193,6 +200,7 @@ export function WorkFooter({
   busy,
   onMessage,
   onState,
+  onDistribute,
 }: {
   task: TaskItem
   message: string
@@ -200,6 +208,8 @@ export function WorkFooter({
   busy: string | null
   onMessage: (message: string) => void
   onState: (state: TaskState) => void
+  /** Opens the distribution form; left out when the person cannot distribute the task. */
+  onDistribute?: () => void
 }) {
   const field = messageField(task)
   const labels = buttonLabels(task)
@@ -233,6 +243,12 @@ export function WorkFooter({
             {labels[state]}
           </button>
         ))}
+        {onDistribute && (
+          <button type="button" className="state-button distribute" onClick={onDistribute} disabled={busy !== null}>
+            <Icon name="users" />
+            Distribuie
+          </button>
+        )}
       </fieldset>
     </form>
   )

@@ -7,6 +7,7 @@ import { attachmentsApi, uploadErrorText, type AttachmentLimits } from '../api/a
 import { ApiError } from '../api/client'
 import { tasksApi, type TaskDraft, type TaskItem, type TaskTarget } from '../api/tasks'
 import type { TaskActions } from '../components/TaskDetail'
+import { openCopies } from './taskStates'
 
 /** The workspace state the actions read and change. */
 export interface TaskActionContext {
@@ -93,9 +94,26 @@ async function saveTask(task: TaskItem, draft: TaskDraft): Promise<TaskItem> {
 }
 
 async function completeTask(context: TaskActionContext, task: TaskItem, response: string | null): Promise<string | null> {
+  // Closing a distributed task before everyone answered closes their tasks too: asked first.
+  const waitingFor = openCopies(task)
+  if (
+    waitingFor > 0 &&
+    !window.confirm(
+      waitingFor === 1
+        ? 'O persoană nu a răspuns încă. Închizi task-ul și task-ul ei?'
+        : `${waitingFor} persoane nu au răspuns încă. Închizi task-ul și task-urile lor?`,
+    )
+  ) {
+    return null
+  }
   try {
-    replaceIn(context, await tasksApi.complete(task.id, response))
+    replaceIn(context, await tasksApi.complete(task.id, response, waitingFor > 0))
     context.setError(null)
+    if (waitingFor > 0) await context.refresh()
+    if (task.answersTo) {
+      context.setNotice(`Răspuns trimis lui ${task.answersTo.displayName}.`)
+      return null
+    }
     if (task.returnsTo) {
       // The task is no longer the caller's: it went back to whoever asked for it back.
       context.closeTask()
@@ -107,6 +125,38 @@ async function completeTask(context: TaskActionContext, task: TaskItem, response
     context.onSessionExpired()
     return null
   }
+}
+
+function distributeRefusal(err: ApiError): string | null {
+  if (err.status === 400) return err.message.includes('open copy')
+    ? 'Cineva dintre cei aleși are deja task-ul, încă deschis. Scrie-i în conversație.'
+    : 'Una dintre persoanele sau grupurile alese nu mai există.'
+  if (err.status === 403) return 'Doar cine răspunde de task îl poate distribui.'
+  return err.status === 409 ? 'Task-ul este finalizat. Redeschide-l mai întâi.' : null
+}
+
+async function distributeTask(
+  context: TaskActionContext,
+  task: TaskItem,
+  recipients: string[],
+  message: string | null,
+  dueDate: string | null,
+) {
+  const failure = await attempt(
+    context,
+    () => tasksApi.distribute(task.id, recipients, message, dueDate),
+    'Nu am putut distribui task-ul. Încearcă din nou.',
+    distributeRefusal,
+  )
+  if (failure) return failure
+  context.setNotice(
+    recipients.length === 1
+      ? 'Task distribuit. Răspunsul apare în conversația task-ului.'
+      : `Task distribuit la ${recipients.length} destinatari. Răspunsurile apar în conversația task-ului.`,
+  )
+  // The copies are the user's own tasks, given to others: they appear under "Delegate".
+  await context.refresh()
+  return null
 }
 
 function waitRefusal(err: ApiError): string | null {
@@ -182,6 +232,11 @@ export function taskActions(context: TaskActionContext, task: TaskItem): TaskAct
     resume: () => attempt(context, () => tasksApi.resume(task.id), 'Nu am putut relua task-ul.'),
     reopen: () => attempt(context, () => tasksApi.update({ ...task, isCompleted: false }), 'Nu am putut redeschide task-ul.'),
     forward: (target, note, returnToMe) => forwardTask(context, task, target, note, returnToMe),
+    distribute: (recipients, message, dueDate) => distributeTask(context, task, recipients, message, dueDate),
+    sendBack: (copyId, message) =>
+      attempt(context, () => tasksApi.sendBack(task.id, copyId, message), 'Nu am putut trimite înapoi.', (err) =>
+        err.status === 409 ? 'Persoana nu a răspuns încă, sau task-ul tău e finalizat.' : null,
+      ),
     claim: () => claimTask(context, task),
     release: () => releaseTask(context, task),
     remove: () => removeTask(context, task),

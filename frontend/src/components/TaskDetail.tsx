@@ -9,7 +9,10 @@ import ForwardTask from './ForwardTask'
 import Icon from './Icon'
 import TaskAttachments from './TaskAttachments'
 import TaskForm from './TaskForm'
-import { STATE_ICON, STATE_LABEL, stateChangeProblem } from '../lib/taskStates'
+import { canDistribute, STATE_ICON, STATE_LABEL, stateChangeProblem } from '../lib/taskStates'
+import Conversation from './Conversation'
+import DistributeTask from './DistributeTask'
+import { DistributedFrom, DistributionPanel } from './Distributions'
 import { DetailFacts, Instructions, ReturnedResolution, StateCallout, WorkFooter } from './TaskDetailParts'
 import TaskTrail from './TaskTrail'
 
@@ -24,6 +27,9 @@ export interface TaskActions {
   resume: () => Promise<string | null>
   reopen: () => Promise<string | null>
   forward: (target: TaskTarget, note: string | null, returnToMe: boolean) => Promise<string | null>
+  distribute: (recipients: string[], message: string | null, dueDate: string | null) => Promise<string | null>
+  /** Reopens one answered copy of the distributed task, with a message. */
+  sendBack: (copyId: string, message: string) => Promise<string | null>
   claim: () => Promise<string | null>
   release: () => Promise<string | null>
   remove: () => Promise<string | null>
@@ -76,7 +82,7 @@ export default function TaskDetail({
   onClose,
 }: Props) {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [mode, setMode] = useState<'view' | 'edit' | 'forward'>('view')
+  const [mode, setMode] = useState<'view' | 'edit' | 'forward' | 'distribute'>('view')
   const [message, setMessage] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -117,7 +123,13 @@ export default function TaskDetail({
   }
 
   return (
-    <dialog ref={dialog} className="task-dialog task-detail" aria-labelledby="task-detail-title" onClose={onClose}>
+    <dialog
+      ref={dialog}
+      // Wide, with the conversation beside the task, for those who can read the conversation.
+      className={`task-dialog task-detail${actions && mode === 'view' ? ' with-conversation' : ''}`}
+      aria-labelledby="task-detail-title"
+      onClose={onClose}
+    >
       <header className="task-dialog-head">
         <span className={`state-pill ${task.state}`}>
           <Icon name={STATE_ICON[task.state]} size={14} />
@@ -172,29 +184,60 @@ export default function TaskDetail({
           />
         </div>
       )}
+      {mode === 'distribute' && actions && (
+        <div className="detail-body">
+          <DistributeTask
+            task={task}
+            people={people}
+            groups={groups}
+            currentUserId={currentUser?.id}
+            onCancel={() => setMode('view')}
+            onSubmit={async (recipients, note, dueDate) => {
+              const failure = await actions.distribute(recipients, note, dueDate)
+              if (!failure) setMode('view')
+              return failure
+            }}
+          />
+        </div>
+      )}
       {(mode === 'view' || !actions) && (
-        <DetailView
-          task={task}
-          today={today}
-          actions={actions}
-          message={message}
-          error={error}
-          busy={busy}
-          attachmentLimits={attachmentLimits}
-          attachmentUrl={attachmentUrl}
-          onTagClick={onTagClick}
-          onSessionExpired={onSessionExpired}
-          onMessage={(text) => {
-            setError(null)
-            setMessage(text)
-          }}
-          onState={(state) => {
-            changeState(state)
-          }}
-          onClaim={(claim) => {
-            run('claim', claim)
-          }}
-        />
+        <div className="detail-columns">
+          <div className="detail-main">
+            <DetailView
+              task={task}
+              today={today}
+              actions={actions}
+              message={message}
+              error={error}
+              busy={busy}
+              attachmentLimits={attachmentLimits}
+              attachmentUrl={attachmentUrl}
+              onTagClick={onTagClick}
+              onSessionExpired={onSessionExpired}
+              onMessage={(text) => {
+                setError(null)
+                setMessage(text)
+              }}
+              onState={(state) => {
+                changeState(state)
+              }}
+              onClaim={(claim) => {
+                run('claim', claim)
+              }}
+              onDistribute={() => setMode('distribute')}
+            />
+          </div>
+          {actions && (
+            <aside className="detail-side">
+              <Conversation
+                task={task}
+                currentUserId={currentUser?.id}
+                canWrite={task.access === 'creator' || task.access === 'assignee'}
+                onSessionExpired={onSessionExpired}
+              />
+            </aside>
+          )}
+        </div>
       )}
     </dialog>
   )
@@ -272,6 +315,7 @@ function DetailView({
   onMessage,
   onState,
   onClaim,
+  onDistribute,
 }: {
   task: TaskItem
   today: string
@@ -286,6 +330,7 @@ function DetailView({
   onMessage: (message: string) => void
   onState: (state: TaskState) => void
   onClaim: (claim: () => Promise<string | null>) => void
+  onDistribute: () => void
 }) {
   const canWork = Boolean(actions) && (task.access === 'creator' || task.access === 'assignee')
   return (
@@ -295,6 +340,7 @@ function DetailView({
           {task.title}
         </h2>
         <DetailFacts task={task} today={today} onTagClick={onTagClick} />
+        <DistributedFrom task={task} />
         <Instructions task={task} />
         <ReturnedResolution task={task} />
         <section className="detail-section">
@@ -302,6 +348,7 @@ function DetailView({
           {task.description ? <p className="detail-message">{task.description}</p> : <p className="muted">Fără mesaj.</p>}
         </section>
         <StateCallout task={task} />
+        <DistributionPanel task={task} onSendBack={actions && canDistribute(task) ? actions.sendBack : undefined} />
         {(canWork || task.attachments.length > 0) && (
           <section className="detail-section">
             <TaskAttachments
@@ -324,7 +371,16 @@ function DetailView({
         )}
       </div>
 
-      {canWork && <WorkFooter task={task} message={message} busy={busy} onMessage={onMessage} onState={onState} />}
+      {canWork && (
+        <WorkFooter
+          task={task}
+          message={message}
+          busy={busy}
+          onMessage={onMessage}
+          onState={onState}
+          onDistribute={canDistribute(task) ? onDistribute : undefined}
+        />
+      )}
       {actions && task.access === 'group' && (
         <div className="detail-footer">
           <p className="muted">Task-ul așteaptă ca cineva din grupul {task.group?.name} să îl preia.</p>

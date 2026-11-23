@@ -28,6 +28,33 @@ export interface TaskForward {
   returnPending: boolean
 }
 
+/** One copy of a distributed task: who has it, where it stands, and their answer. */
+export interface Distribution {
+  taskId: string
+  assignee: UserSummary | null
+  group: GroupSummary | null
+  state: TaskState
+  dueDate: string | null
+  /** What they answered when they completed their copy. */
+  answer: string | null
+  completedAt: string | null
+}
+
+/** What a message in a task's conversation records. */
+export type TaskMessageKind = 'note' | 'distributed' | 'answered' | 'allAnswered' | 'sentBack' | 'closed'
+
+/** One entry in a task's conversation. */
+export interface TaskMessage {
+  id: string
+  kind: TaskMessageKind
+  /** Null for what Taskel itself records. */
+  author: UserSummary | null
+  text: string | null
+  at: string
+  /** On a distributed task: the copy the message concerns, and who has it. */
+  related: { taskId: string; recipient: string } | null
+}
+
 /** Who a task goes to: a user, a group, or nobody else (both null). */
 export interface TaskTarget {
   assigneeId: string | null
@@ -81,6 +108,12 @@ export interface TaskItem {
   replyTo: string | null
   /** For the person asking: who the task goes back to when they complete it, instead of being completed. */
   returnsTo: UserSummary | null
+  /** For a copy of a distributed task: the task it came from. */
+  distributedFrom: { id: string; title: string } | null
+  /** For a distributed task: its copies, one per person or group, oldest first. Null when it has none. */
+  distributions: Distribution[] | null
+  /** For the person asking, on a copy they have: who their answer goes to. */
+  answersTo: UserSummary | null
 }
 
 /** The editable fields of a task. */
@@ -124,8 +157,21 @@ export const tasksApi = {
   claim: (id: string) => request<TaskItem>(`/tasks/${id}/claim`, { method: 'POST' }),
   /** Hands a task taken from a group back to it. */
   release: (id: string) => request<TaskItem>(`/tasks/${id}/release`, { method: 'POST' }),
-  /** Completes a task. For email tasks the response is required and is emailed to the sender. */
-  complete: (id: string, response: string | null) =>
-    request<TaskItem>(`/tasks/${id}/complete`, { method: 'POST', body: JSON.stringify({ response }) }),
+  /**
+   * Completes a task. For email tasks the response is required and is emailed to the sender; for a copy it is the
+   * answer. A distributed task with copies still open needs `closeDistributions`, which closes them too.
+   */
+  complete: (id: string, response: string | null, closeDistributions = false) =>
+    request<TaskItem>(`/tasks/${id}/complete`, { method: 'POST', body: JSON.stringify({ response, closeDistributions }) }),
+  /** Gives a copy of the task to each recipient (user ids, or "group:" and a group id); the task waits for them. */
+  distribute: (id: string, recipients: string[], message: string | null, dueDate: string | null) =>
+    request<TaskItem>(`/tasks/${id}/distribute`, { method: 'POST', body: JSON.stringify({ recipients, message, dueDate }) }),
+  /** Reopens one answered copy with a message. Answers with the distributed task. */
+  sendBack: (id: string, copyId: string, message: string) =>
+    request<TaskItem>(`/tasks/${id}/distributions/${copyId}/send-back`, { method: 'POST', body: JSON.stringify({ message }) }),
+  conversation: (id: string) => request<TaskMessage[]>(`/tasks/${id}/conversation`),
+  /** Writes in the conversation; on a distributed task, to one copy's exchange when `relatedTaskId` is given. */
+  postMessage: (id: string, text: string, relatedTaskId: string | null) =>
+    request<TaskMessage>(`/tasks/${id}/messages`, { method: 'POST', body: JSON.stringify({ text, relatedTaskId }) }),
   remove: (id: string) => request<void>(`/tasks/${id}`, { method: 'DELETE' }),
 }

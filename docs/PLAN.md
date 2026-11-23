@@ -17,7 +17,7 @@ Decisions taken along the way are recorded here so they are not asked again.
 - **Due date** in both: the macro has a date field (dd.mm.yyyy) with *Azi · Mâine · Vineri · +1 săpt.*; the
   add-in a date picker with the same shortcuts. The API already accepts `dueDate`.
 
-## PR 2 · View PDF files and pictures without downloading them
+## PR 2 · View PDF files and pictures without downloading them (done: #28)
 
 - PDF, PNG, JPEG, GIF and WEBP open in a viewer over the task (previous/next, zoom for pictures, download).
 - The API serves them inline only for those types, decided from the file's content, not from the type the

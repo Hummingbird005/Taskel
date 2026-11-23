@@ -1475,3 +1475,86 @@ fieldset.state-bar { border: 0; margin: 0; padding: 0; min-width: 0; }
   .viewer-nav { top: auto; bottom: var(--s4); translate: none; }
   .viewer-zoom-value { min-width: 56px !important; }
 }
+
+/* ---------- Distributing a task, and the task's conversation ---------- */
+/* Wider, with the conversation in a column beside the task; one column on narrow screens. */
+.task-dialog.with-conversation { width: min(1080px, calc(100vw - 32px)); }
+.detail-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); align-items: start; }
+.detail-main { min-width: 0; }
+.detail-side {
+  position: sticky; top: 0; align-self: stretch; min-width: 0; border-left: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+}
+@media (max-width: 900px) {
+  .detail-columns { grid-template-columns: minmax(0, 1fr); }
+  .detail-side { position: static; border-left: 0; border-top: 1px solid var(--border); }
+}
+
+/* Distribuie sits apart from the state buttons, on the left. */
+.state-button.distribute { --tone: var(--text); order: -1; margin-right: auto; }
+@media (max-width: 640px) { .state-bar .state-button.distribute { grid-column: 1 / -1; margin-right: 0; } }
+
+.distribute-form .distribute-field { display: flex; flex-direction: column; gap: var(--s2); font-size: var(--fs-sm); font-weight: 500; }
+.recipient-chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.recipient-chips li {
+  display: inline-flex; align-items: center; gap: var(--s1); padding: 2px 4px 2px var(--s2); border-radius: 999px;
+  background: var(--accent-soft); color: var(--text); font-weight: 500;
+}
+.recipient-chips button {
+  display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
+  background: none; color: var(--muted);
+}
+.recipient-chips button:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); }
+.distribute-due input { width: auto; max-width: 220px; }
+
+.detail-callout.distributed-from { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.detail-callout.distributed-from h3 { color: var(--accent); }
+
+.distributions h3 { font-size: var(--fs-sm); margin-bottom: var(--s2); }
+.distributions ul { display: flex; flex-direction: column; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.distribution { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3); border: 1px solid var(--border); border-radius: var(--radius); }
+.distribution.completed { border-color: color-mix(in srgb, var(--go) 40%, var(--border)); }
+.distribution-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.distribution-due { margin-left: auto; font-size: var(--fs-xs); }
+.distribution-answer { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-sm); }
+.distribution > .button { align-self: flex-start; }
+.state-pill.small { padding: 1px var(--s2); font-size: var(--fs-xs); }
+.send-back { display: flex; flex-direction: column; gap: var(--s2); }
+.send-back textarea {
+  width: 100%; padding: var(--s2) var(--s3); border: 1px solid var(--field-border); border-radius: var(--radius);
+  background: var(--bg); color: var(--text); resize: vertical;
+}
+.send-back-actions { display: flex; gap: var(--s2); }
+
+.conversation { display: flex; flex-direction: column; min-height: 100%; }
+.conversation > h3 {
+  display: flex; align-items: center; gap: var(--s2); padding: var(--s4) var(--s4) var(--s2);
+  font-size: 0.7333rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+}
+.chat { flex: 1; display: flex; flex-direction: column; gap: var(--s3); margin: 0; padding: var(--s2) var(--s4) var(--s4); list-style: none; }
+.chat-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 92%; }
+.chat-item.mine { align-self: flex-end; align-items: flex-end; }
+.chat-item.event { align-self: center; align-items: center; max-width: 100%; text-align: center; }
+.chat-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--muted); }
+.chat-meta strong { color: var(--text); font-weight: 600; }
+.chat-meta time { font-variant-numeric: tabular-nums; }
+.chat-item.mine .chat-meta { flex-direction: row-reverse; }
+.chat-bubble {
+  padding: var(--s2) var(--s3); border: 1px solid var(--border); border-radius: 12px 12px 12px 4px; background: var(--bg);
+  font-size: var(--fs-sm); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.chat-item.mine .chat-bubble { border-color: transparent; border-radius: 12px 12px 4px 12px; background: var(--accent); color: var(--on-accent); }
+.chat-item.event .chat-bubble { border-style: dashed; border-radius: 8px; }
+.chat-compose {
+  position: sticky; bottom: 0; display: flex; flex-direction: column; gap: var(--s2); padding: var(--s3) var(--s4);
+  border-top: 1px solid var(--border); background: inherit;
+}
+.chat-compose select { align-self: flex-start; max-width: 100%; }
+.chat-input { display: flex; align-items: flex-end; gap: var(--s2); }
+.chat-input textarea {
+  flex: 1; min-width: 0; padding: var(--s2) var(--s3); border: 1px solid var(--field-border); border-radius: var(--radius);
+  background: var(--bg); color: var(--text); resize: vertical; line-height: 1.5;
+}
+.chat-input textarea:focus { outline: none; border-color: var(--border-strong); box-shadow: 0 0 0 1px var(--border-strong); }
+.chat-input .button { flex-shrink: 0; width: var(--control); padding: 0; }
+.chat-compose .error { margin: 0; font-size: var(--fs-xs); }
