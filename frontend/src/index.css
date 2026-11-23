@@ -1558,3 +1558,26 @@ fieldset.state-bar { border: 0; margin: 0; padding: 0; min-width: 0; }
 .chat-input textarea:focus { outline: none; border-color: var(--border-strong); box-shadow: 0 0 0 1px var(--border-strong); }
 .chat-input .button { flex-shrink: 0; width: var(--control); padding: 0; }
 .chat-compose .error { margin: 0; font-size: var(--fs-xs); }
+
+/* Files sent with an answer: picked in the footer, marked in the list, shown under the answer. */
+.answer-files { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.answer-file {
+  display: inline-flex; align-items: center; gap: var(--s1); padding: 2px 4px 2px var(--s2); border-radius: 999px;
+  background: var(--accent-soft); font-size: var(--fs-xs); font-weight: 500;
+}
+.answer-file button {
+  display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%;
+  background: none; color: var(--muted);
+}
+.answer-file button:hover { color: var(--text); }
+.answer-badge {
+  flex-shrink: 0; padding: 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+  font-size: var(--fs-xs); font-weight: 500;
+}
+.chat-files { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.chat-item.mine .chat-files { justify-content: flex-end; }
+.chat-files a, .chat-files button {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg); color: var(--text); font: inherit; font-size: var(--fs-xs); text-decoration: none; cursor: pointer;
+}
+.chat-files a:hover, .chat-files button:hover { border-color: var(--accent); color: var(--accent); }

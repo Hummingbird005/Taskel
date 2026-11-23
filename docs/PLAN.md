@@ -23,7 +23,7 @@ Decisions taken along the way are recorded here so they are not asked again.
 - The API serves them inline only for those types, decided from the file's content, not from the type the
   uploader declared. SVG and everything else stay download-only. PDF uses the browser's own viewer: no new package.
 
-## PR 3 · Distribute, conversation, sending back, reply on closing
+## PR 3 · Distribute, conversation, sending back, reply on closing (done: #29)
 
 - **Distribuie**, next to the state buttons on an open task of yours. **Direcționează** stays as it is
   (it hands the task over; distributing keeps you responsible).
@@ -41,6 +41,16 @@ Decisions taken along the way are recorded here so they are not asked again.
   sending back, closing). The distributor sees all of it; each recipient sees the email and their own exchange.
 - **Larger task window** (about 1000px, two columns: details on the left, the conversation with a reply box on the
   right); one column on phones.
+
+## PR 3b · The reply carries the history; files with the answer
+
+Asked on 2026-11-23, after PR 3.
+
+- The reply to the person who brought the email from Outlook is formatted like a mail thread (HTML and text): the
+  answer, the files sent with answers, the history in Taskel, and the original email quoted. A reply to the email's
+  sender carries no internal history or colleagues' files.
+- Whoever answers can attach files to the answer; on a copy they reach the distributor's task and the conversation,
+  and they go with the email reply (up to 20 MB; larger ones are named and stay in Taskel).
 
 ## PR 4 · Managers: their team's tasks and due dates
 

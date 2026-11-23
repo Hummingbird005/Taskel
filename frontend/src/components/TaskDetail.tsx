@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Attachment, AttachmentLimits } from '../api/attachments'
-import { DEFAULT_ATTACHMENT_LIMITS } from '../api/attachments'
+import { attachmentsApi, checkFiles, DEFAULT_ATTACHMENT_LIMITS, uploadErrorText } from '../api/attachments'
+import { ApiError } from '../api/client'
 import type { GroupListItem } from '../api/groups'
 import type { TaskDraft, TaskItem, TaskState, TaskTarget } from '../api/tasks'
 import type { UserSummary } from '../api/users'
@@ -22,7 +23,8 @@ import TaskTrail from './TaskTrail'
  */
 export interface TaskActions {
   save: (draft: TaskDraft) => Promise<string | null>
-  complete: (response: string | null) => Promise<string | null>
+  /** Completes the task; `attachmentIds` are files of the task sent with the answer. */
+  complete: (response: string | null, attachmentIds?: string[]) => Promise<string | null>
   wait: (reason: string) => Promise<string | null>
   resume: () => Promise<string | null>
   reopen: () => Promise<string | null>
@@ -54,9 +56,15 @@ interface Props {
 }
 
 /** The request that moves a task to `next`. */
-function stateAction(actions: TaskActions, task: TaskItem, next: TaskState, text: string): Promise<string | null> {
+function stateAction(
+  actions: TaskActions,
+  task: TaskItem,
+  next: TaskState,
+  text: string,
+  answerFiles: string[],
+): Promise<string | null> {
   if (next === 'waiting') return actions.wait(text)
-  if (next === 'completed') return actions.complete(text || null)
+  if (next === 'completed') return actions.complete(text || null, answerFiles)
   return task.state === 'waiting' ? actions.resume() : actions.reopen()
 }
 
@@ -84,6 +92,9 @@ export default function TaskDetail({
   const dialog = useRef<HTMLDialogElement>(null)
   const [mode, setMode] = useState<'view' | 'edit' | 'forward' | 'distribute'>('view')
   const [message, setMessage] = useState('')
+  // Files uploaded to go with the answer, sent with it when the task is completed.
+  const [answerFiles, setAnswerFiles] = useState<Attachment[]>([])
+  const [uploading, setUploading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -114,7 +125,37 @@ export default function TaskDetail({
       setError(problem)
       return
     }
-    if (await run(next, () => stateAction(actions, task, next, text))) setMessage('')
+    const files = next === 'completed' ? answerFiles.map((f) => f.id) : []
+    if (await run(next, () => stateAction(actions, task, next, text, files))) {
+      setMessage('')
+      if (next === 'completed') setAnswerFiles([])
+    }
+  }
+
+  /** Uploads files to the task, to be sent with the answer. */
+  async function addAnswerFiles(picked: File[]) {
+    if (!actions || picked.length === 0) return
+    const invalid = checkFiles(picked, task.attachments.length, attachmentLimits)
+    if (invalid) {
+      setError(invalid)
+      return
+    }
+    setError(null)
+    let all = task.attachments
+    for (const file of picked) {
+      setUploading(file.name)
+      try {
+        const added = await attachmentsApi.upload(task.id, file)
+        all = [...all, added]
+        actions.attachmentsChanged(all)
+        setAnswerFiles((prev) => [...prev, added])
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) onSessionExpired?.()
+        else setError(uploadErrorText(err, file.name, attachmentLimits))
+        break
+      }
+    }
+    setUploading(null)
   }
 
   async function remove() {
@@ -225,6 +266,12 @@ export default function TaskDetail({
                 run('claim', claim)
               }}
               onDistribute={() => setMode('distribute')}
+              answerFiles={answerFiles}
+              uploading={uploading}
+              onAddAnswerFiles={(files) => {
+                addAnswerFiles(files)
+              }}
+              onDropAnswerFile={(id) => setAnswerFiles((prev) => prev.filter((f) => f.id !== id))}
             />
           </div>
           {actions && (
@@ -316,6 +363,10 @@ function DetailView({
   onState,
   onClaim,
   onDistribute,
+  answerFiles,
+  uploading,
+  onAddAnswerFiles,
+  onDropAnswerFile,
 }: {
   task: TaskItem
   today: string
@@ -331,6 +382,10 @@ function DetailView({
   onState: (state: TaskState) => void
   onClaim: (claim: () => Promise<string | null>) => void
   onDistribute: () => void
+  answerFiles: Attachment[]
+  uploading: string | null
+  onAddAnswerFiles: (files: File[]) => void
+  onDropAnswerFile: (id: string) => void
 }) {
   const canWork = Boolean(actions) && (task.access === 'creator' || task.access === 'assignee')
   return (
@@ -379,6 +434,10 @@ function DetailView({
           onMessage={onMessage}
           onState={onState}
           onDistribute={canDistribute(task) ? onDistribute : undefined}
+          answerFiles={answerFiles}
+          uploading={uploading}
+          onAddAnswerFiles={onAddAnswerFiles}
+          onDropAnswerFile={onDropAnswerFile}
         />
       )}
       {actions && task.access === 'group' && (

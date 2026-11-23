@@ -47,7 +47,9 @@ public static class ReplyComposer
             text.Append("\n———— Istoricul în Taskel ————\n");
             foreach (var line in history)
             {
-                text.Append(When(line.At)).Append(" · ").Append(line.Who).Append(' ').Append(line.What).Append('\n');
+                text.Append(When(line.At)).Append(" · ");
+                if (line.Who.Length > 0) text.Append(line.Who).Append(' ');
+                text.Append(line.What).Append('\n');
                 if (!string.IsNullOrWhiteSpace(line.Text))
                     foreach (var part in line.Text.Trim().Split('\n')) text.Append("    ").Append(part).Append('\n');
             }
@@ -125,7 +127,9 @@ public static class ReplyComposer
             foreach (var line in history)
             {
                 html.Append("<div style=\"margin:0 0 10px\"><span style=\"color:#777;font-size:12px\">").Append(E(When(line.At)))
-                    .Append("</span><br><b>").Append(E(line.Who)).Append("</b> ").Append(E(line.What));
+                    .Append("</span><br>");
+                if (line.Who.Length > 0) html.Append("<b>").Append(E(line.Who)).Append("</b> ");
+                html.Append(E(line.What));
                 if (!string.IsNullOrWhiteSpace(line.Text))
                 {
                     html.Append("<div style=\"margin:4px 0 0;padding:6px 10px;background:#f4f5f7;border-radius:6px\">")

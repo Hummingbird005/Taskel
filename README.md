@@ -684,6 +684,24 @@ response:
   completing again needs a new response and sends a new reply.
 - Tasks added by hand, and email tasks without a usable sender address, complete without a response.
 
+**What the reply contains.** It is sent as text and HTML, like a mail thread:
+
+- **To a colleague** (the person who brought the email from Outlook, when someone else closes the task): who closed
+  it, the answer, the files sent with answers, then **the history in Taskel** (who brought the email in and to whom,
+  instructions, forwards and returns, distribution, questions, answers, sending back, in order, in Romanian time),
+  and the original email quoted.
+- **To the email's sender** (when the person who brought it in closes it): the answer, the files attached to this
+  answer only, and their own email quoted. Nothing internal (history, colleagues' answers or files) goes outside.
+
+**Files with the answer.** Whoever answers can attach files to the answer: **Atașează la răspuns**, next to the
+answer field (`attachmentIds` in `complete`, files of the task). They are marked **la răspuns** in the task's files.
+On a distributed copy they go, with the answer, to the distributor's task and show under the answer in the
+conversation. The reply carries them, up to 20 MB in all; larger files are named in the reply and stay in Taskel.
+
+| | |
+|---|---|
+| ![Answer field with a file attached to the answer](docs/screenshots/answer-files.png) | ![The reply in a mail program: the answer, the history in Taskel and the original email](docs/screenshots/reply-history.png) |
+
 ### Email (SMTP) configuration
 
 Replies and notifications are sent from one mailbox, configured on the server in the `Email:Smtp` section, or by

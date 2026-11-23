@@ -53,6 +53,8 @@ export interface TaskMessage {
   at: string
   /** On a distributed task: the copy the message concerns, and who has it. */
   related: { taskId: string; recipient: string } | null
+  /** Files that came with an answer, as listed on the task being read. */
+  attachments: Attachment[] | null
 }
 
 /** Who a task goes to: a user, a group, or nobody else (both null). */
@@ -161,8 +163,11 @@ export const tasksApi = {
    * Completes a task. For email tasks the response is required and is emailed to the sender; for a copy it is the
    * answer. A distributed task with copies still open needs `closeDistributions`, which closes them too.
    */
-  complete: (id: string, response: string | null, closeDistributions = false) =>
-    request<TaskItem>(`/tasks/${id}/complete`, { method: 'POST', body: JSON.stringify({ response, closeDistributions }) }),
+  complete: (id: string, response: string | null, closeDistributions = false, attachmentIds: string[] = []) =>
+    request<TaskItem>(`/tasks/${id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ response, closeDistributions, attachmentIds }),
+    }),
   /** Gives a copy of the task to each recipient (user ids, or "group:" and a group id); the task waits for them. */
   distribute: (id: string, recipients: string[], message: string | null, dueDate: string | null) =>
     request<TaskItem>(`/tasks/${id}/distribute`, { method: 'POST', body: JSON.stringify({ recipients, message, dueDate }) }),

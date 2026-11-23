@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { ApiError } from '../api/client'
+import { attachmentsApi, previewKind, type Attachment } from '../api/attachments'
 import { tasksApi, type TaskItem, type TaskMessage } from '../api/tasks'
+import AttachmentViewer from './AttachmentViewer'
 import { LIMITS, validateNotes } from '../lib/validation'
 import Icon, { type IconName } from './Icon'
 
@@ -21,6 +23,8 @@ interface Entry {
   /** What happened, after the name: "a distribuit task-ul către Andrei". Empty for a plain message. */
   what: string
   text: string | null
+  /** Files that came with an answer. */
+  files?: Attachment[]
   icon: IconName
   /** Written by the person looking: shown on the right. */
   mine: boolean
@@ -117,7 +121,9 @@ export default function Conversation({ task, currentUserId, canWrite, onSessionE
   const [to, setTo] = useState(task.distributions?.length === 1 ? task.distributions[0].taskId : '')
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const [viewing, setViewing] = useState<Attachment | null>(null)
   const end = useRef<HTMLLIElement>(null)
+  const urlOf = (file: Attachment) => attachmentsApi.downloadUrl(task.id, file.id)
 
   // Read again whenever the task changes: an answer, a send-back or a new distribution adds to the conversation.
   const version = `${task.state}|${task.completedAt}|${task.distributions?.map((d) => d.state).join()}`
@@ -156,6 +162,7 @@ export default function Conversation({ task, currentUserId, canWrite, onSessionE
       at: m.at,
       who: m.author?.displayName ?? null,
       text: m.text,
+      files: m.attachments ?? undefined,
       mine: Boolean(m.author && m.author.id === currentUserId),
       ...describe(m, onCopy),
     })),
@@ -214,6 +221,25 @@ export default function Conversation({ task, currentUserId, canWrite, onSessionE
               <time dateTime={entry.at}>{TIME.format(new Date(entry.at))}</time>
             </div>
             {entry.text && <p className="chat-bubble">{entry.text}</p>}
+            {entry.files && (
+              <ul className="chat-files">
+                {entry.files.map((file) => (
+                  <li key={file.id}>
+                    {previewKind(file.fileName) ? (
+                      <button type="button" onClick={() => setViewing(file)} title={`Deschide ${file.fileName}`}>
+                        <Icon name="eye" size={13} />
+                        {file.fileName}
+                      </button>
+                    ) : (
+                      <a href={urlOf(file)} download={file.fileName} title={`Descarcă ${file.fileName}`}>
+                        <Icon name="paperclip" size={13} />
+                        {file.fileName}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </li>
         ))}
         {messages === null && !failed && <li className="chat-item event muted">Se încarcă…</li>}
@@ -221,6 +247,7 @@ export default function Conversation({ task, currentUserId, canWrite, onSessionE
         <li ref={end} aria-hidden="true" />
       </ol>
 
+      {viewing && <AttachmentViewer files={[viewing]} start={0} urlOf={urlOf} onClose={() => setViewing(null)} />}
       {canWrite && (
         <form className="chat-compose" onSubmit={send} noValidate>
           {!onCopy && copies.length > 0 && (
