@@ -181,34 +181,102 @@ public class TaskNotifier(
             : ([], null);
     }
 
-    /// <summary>The email one person gets. Written in Romanian, like the interface.</summary>
+    /// <summary>
+    /// The email one person gets: a short text, and the same as a card in HTML, with a button that opens the task.
+    /// Written in Romanian, like the interface.
+    /// </summary>
     public static EmailMessage Compose(TaskItem task, User recipient, User actor, Group? group,
         TaskNotificationReason reason, string? note, string? publicUrl)
     {
         var actorName = NameOf(actor);
+        var what = WhatHappened(group, reason);
+        var noteLabel = reason switch
+        {
+            TaskNotificationReason.Returned => "Rezolvarea lui ",
+            TaskNotificationReason.Answered or TaskNotificationReason.AllAnswered => "Răspunsul lui ",
+            TaskNotificationReason.DueDateChanged => "Termenul, schimbat de ",
+            TaskNotificationReason.Rescheduled => "Ce a schimbat ",
+            _ => "Mesaj de la "
+        } + actorName;
+        var text = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        var link = LinkTo(task, publicUrl);
+
         var body = new StringBuilder();
         body.Append("Bună, ").Append(NameOf(recipient)).Append(",\n\n");
-        body.Append(actorName).Append(' ').Append(WhatHappened(group, reason)).Append("\n\n");
+        body.Append(actorName).Append(' ').Append(what).Append("\n\n");
         AppendFacts(body, task);
-        if (!string.IsNullOrWhiteSpace(note))
-            body.Append(reason switch
-                {
-                    TaskNotificationReason.Returned => "Rezolvarea lui ",
-                    TaskNotificationReason.Answered or TaskNotificationReason.AllAnswered => "Răspunsul lui ",
-                    TaskNotificationReason.DueDateChanged => "Termenul, schimbat de ",
-                    TaskNotificationReason.Rescheduled => "Ce a schimbat ",
-                    _ => "Mesaj de la "
-                })
-                .Append(actorName).Append(note.Trim().Contains('\n') ? ":\n" : ": ").Append(note.Trim()).Append('\n');
+        if (text is not null) body.Append(noteLabel).Append(text.Contains('\n') ? ":\n" : ": ").Append(text).Append('\n');
+        if (link is not null) body.Append("\nDeschide în Taskel: ").Append(link).Append('\n');
+        body.Append("\n--\n").Append(Footer).Append('\n');
 
-        var url = publicUrl?.Trim();
-        if (!string.IsNullOrEmpty(url)) body.Append("\nDeschide Taskel: ").Append(url).Append('\n');
+        var html = Card(task, recipient, actorName, what, reason, noteLabel, text, link);
+        return new EmailMessage(recipient.Email, SubjectOf(task, group, reason), body.ToString(), html);
+    }
 
-        body.Append("\n--\nPrimești acest email pentru că ai un cont în Taskel. ")
-            .Append("Poți opri notificările din Taskel, la Integrări → Notificări pe email.\n");
+    private const string Footer =
+        "Primești acest email pentru că ai un cont în Taskel. Poți opri notificările din Taskel, la Integrări → Notificări pe email.";
 
-        var subject = SubjectOf(task, group, reason);
-        return new EmailMessage(recipient.Email, subject, body.ToString());
+    /// <summary>The address that opens the task in Taskel; null when Taskel's address is not set.</summary>
+    public static string? LinkTo(TaskItem task, string? publicUrl)
+    {
+        var url = publicUrl?.Trim().TrimEnd('/');
+        return string.IsNullOrEmpty(url) ? null : $"{url}/?task={task.Id}";
+    }
+
+    /// <summary>The notification as a card: what happened, the task's title and facts, the message, a button.</summary>
+    private static string Card(TaskItem task, User recipient, string actorName, string what, TaskNotificationReason reason,
+        string noteLabel, string? note, string? link)
+    {
+        static string E(string text) => System.Net.WebUtility.HtmlEncode(text);
+        static string Lines(string text) => E(text).Replace("\n", "<br>");
+        const string font = "font-family:Segoe UI,Arial,sans-serif;color:#1b1b1f";
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var facts = new List<(string Label, string Value, bool Alert)>();
+        if (task.DueDate is { } due)
+        {
+            var late = !task.IsCompleted && due <= today;
+            facts.Add(task.StartDate is { } start && start != due
+                ? ("Interval", $"{Date(start)} – {Date(due)}", late)
+                : ("Termen", due == today ? $"azi, {Date(due)}" : Date(due), late));
+        }
+        var priority = task.Priority switch { TaskPriority.High => "Ridicată", TaskPriority.Low => "Scăzută", _ => "Medie" };
+        facts.Add(("Prioritate", task.PriorityLevel is { } level ? $"{priority} · nivel {level}" : priority, task.Priority == TaskPriority.High));
+        if (reason == TaskNotificationReason.Distributed) facts.Add(("Răspunsul tău", $"ajunge la {actorName}", false));
+        if (task.Attachments.Count > 0)
+            facts.Add(("Fișiere", string.Join(", ", task.Attachments.Where(a => !a.WithAnswer).Select(a => a.FileName).DefaultIfEmpty("—")), false));
+
+        var html = new StringBuilder();
+        html.Append("<!DOCTYPE html><html><body style=\"margin:0;padding:24px 12px;background:#f4f5f7;").Append(font).Append("\">")
+            .Append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr><td align=\"center\">")
+            .Append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:520px;background:#ffffff;border:1px solid #e1e2e6;border-radius:10px\">")
+            .Append("<tr><td style=\"padding:14px 22px;border-bottom:1px solid #ececef;font-size:15px;font-weight:600\">")
+            .Append("<span style=\"display:inline-block;width:22px;height:22px;line-height:22px;margin-right:8px;border-radius:5px;background:#0b0b0c;color:#ffffff;text-align:center;font-size:13px\">&#10003;</span>Taskel</td></tr>")
+            .Append("<tr><td style=\"padding:20px 22px 6px\">")
+            .Append("<p style=\"margin:0 0 4px;font-size:13px;color:#55555c\">Bună, ").Append(E(NameOf(recipient))).Append(". ")
+            .Append(E(actorName)).Append(' ').Append(E(what)).Append("</p>")
+            .Append("<h1 style=\"margin:0 0 14px;font-size:20px;line-height:1.3\">").Append(E(task.Title)).Append("</h1>")
+            .Append("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 16px;font-size:14px\">");
+        foreach (var (label, value, alert) in facts)
+        {
+            html.Append("<tr><td style=\"padding:3px 16px 3px 0;color:#6b6b73;white-space:nowrap\">").Append(E(label)).Append("</td>")
+                .Append("<td style=\"padding:3px 0;font-weight:500;").Append(alert ? "color:#b42318" : "").Append("\">").Append(E(value)).Append("</td></tr>");
+        }
+        html.Append("</table>");
+        if (note is not null)
+        {
+            html.Append("<div style=\"margin:0 0 18px;padding:12px 14px;border-radius:8px;background:#f4f5f7;font-size:14px;line-height:1.5\">")
+                .Append("<div style=\"margin:0 0 4px;font-size:12.5px;color:#6b6b73\">").Append(E(noteLabel)).Append("</div>")
+                .Append(Lines(note)).Append("</div>");
+        }
+        if (link is not null)
+        {
+            html.Append("<p style=\"margin:0 0 18px\"><a href=\"").Append(E(link))
+                .Append("\" style=\"display:inline-block;padding:10px 18px;border-radius:6px;background:#0b0b0c;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none\">Deschide în Taskel</a></p>");
+        }
+        html.Append("</td></tr><tr><td style=\"padding:12px 22px 16px;border-top:1px solid #ececef;color:#8a8a92;font-size:12px;line-height:1.5\">")
+            .Append(E(Footer)).Append("</td></tr></table></td></tr></table></body></html>");
+        return html.ToString();
     }
 
     private static string SubjectOf(TaskItem task, Group? group, TaskNotificationReason reason)
@@ -249,7 +317,7 @@ public class TaskNotifier(
                 return "ți-a replanificat un task de care răspunzi.";
             case TaskNotificationReason.Distributed:
                 return group is null
-                    ? "ți-a distribuit un task în Taskel. Când îl finalizezi, răspunsul tău ajunge la el."
+                    ? "ți-a distribuit un task în Taskel. Când îl finalizezi, răspunsul tău ajunge înapoi la această persoană."
                     : "a distribuit un task grupului " + group.Name
                       + ", din care faci parte. Îl vede tot grupul, până când unul dintre voi îl preia.";
         }

@@ -88,6 +88,15 @@ Asked on 2026-11-23, after PR 3.
 - **Doar trimite**: an answer sent without completing the task (`POST /api/tasks/{id}/reply`), by email, to the
   distributor, or to whoever gave the task.
 
+## PR 8 · Emails like a mail program (branch feature/mail-emails)
+
+- Replies are written as a mail program writes them: the answer on top, then the earlier messages quoted newest
+  first ("Pe …, X a scris:"), down to the original email, with the date Outlook gave.
+- They leave from Taskel's mailbox under the name of the person answering ("Ion Popescu prin Taskel"), with that
+  person as Reply-To.
+- Notifications are an HTML card with a **Deschide în Taskel** button that opens the task (`?task=<id>`).
+- The inbox-like task list (step 2 of the proposal) is left for later.
+
 ## For every PR
 
 API tests, a browser check, READMEs, manuals (PDF) and screenshots updated. The VBA code cannot run here: its

@@ -353,15 +353,21 @@
 </figure>
 <h4>Ce conține răspunsul pe email</h4>
 <ul>
-  <li><b>Către colegul care a adus emailul din Outlook</b>: cine a finalizat, răspunsul, fișierele trimise la răspunsuri, apoi <b>istoricul din Taskel</b> (cui a fost dat, indicațiile, distribuirea, întrebările, răspunsurile) și emailul original citat. Arată ca un fir de discuție, în aceeași conversație din Outlook.</li>
+  <li>Arată ca un răspuns obișnuit: sus răspunsul tău, dedesubt ce s-a scris înainte, <b>citat</b>, de la cel mai nou la cel mai vechi („Pe 24 nov. 2026, la 11:30, Andrei Stan a scris (răspuns în Taskel):”), până la emailul original („Pe 23 nov. 2026, la 09:12, Ana Popa a scris:”).</li>
+  <li><b>Către colegul care a adus emailul din Outlook</b>: un prim rând cu cine a finalizat task-ul (sau a răspuns, dacă rămâne deschis), răspunsul, fișierele trimise la răspunsuri, apoi tot ce s-a scris în Taskel: indicațiile, distribuirea, întrebările, răspunsurile, fiecare citat. La final, emailul original.</li>
   <li><b>Către expeditorul emailului</b> (clientul): doar răspunsul tău, fișierele atașate acum și emailul lui citat. Nimic din discuțiile interne nu pleacă în afara firmei.</li>
   <li>Fișierele care depășesc împreună 20 MB nu se atașează: sunt doar numite în email și rămân în Taskel.</li>
 </ul>
 <figure>
   <img src="../../screenshots/reply-history.png" alt="Răspunsul primit pe email, cu istoricul">
-  <figcaption>Răspunsul primit în Outlook de colegul care a adus emailul: răspunsul, istoricul din Taskel și emailul original.</figcaption>
+  <figcaption>Răspunsul primit de colegul care a adus emailul: de la „Maria Ionescu prin Taskel”, răspunsul, mesajele de dinainte citate și emailul original.</figcaption>
 </figure>
-<div class="warn"><strong>Atenție</strong>Răspunsul pleacă de pe adresa de email a aplicației, nu de pe adresa ta. Dacă trimiterea eșuează, task-ul rămâne deschis și primești un mesaj de eroare; încearcă din nou sau anunță administratorul.</div>
+<figure>
+  <img src="../../screenshots/reply-client.png" alt="Răspunsul primit de client">
+  <figcaption>Răspunsul primit de client: de la „Ion Popescu prin Taskel”, cu răspunsurile clientului direcționate către Ion.</figcaption>
+</figure>
+<div class="tip"><strong>De la cine pare că vine</strong>Răspunsul pleacă de pe adresa de email a aplicației, dar <b>cu numele tău</b>: „Ion Popescu prin Taskel”. Dacă cel care îl primește răspunde înapoi, emailul lui ajunge <b>direct la tine</b>, nu la Taskel.</div>
+<div class="warn"><strong>Atenție</strong>Dacă trimiterea eșuează, task-ul rămâne deschis și primești un mesaj de eroare; încearcă din nou sau anunță administratorul.</div>
 <h3>Instalarea macro-ului în Outlook</h3>
 <p>Macro-ul funcționează în <b>Outlook clasic pentru Windows</b>. Nu funcționează în „noul Outlook”, în Outlook pe web sau pe Mac. Fișierele <code>TaskelOutlook.bas</code> și <code>TaskelSendForm.txt</code> le primești de la administrator.</p>
 <ol class="steps">
@@ -386,7 +392,11 @@
   <li>un task direcționat de tine cu întoarcere a fost rezolvat și revine la tine;</li>
   <li>un task este dat unui grup din care faci parte.</li>
 </ul>
-<p>Emailul conține titlul, termenul, prioritatea, mesajul celui care ți l-a trimis și un link către aplicație. Nu primești email pentru propriile acțiuni.</p>
+<p>Emailul arată ca un <b>card</b>: ce s-a întâmplat („Maria Ionescu ți-a distribuit un task”), titlul task-ului, termenul (cu roșu dacă e azi sau a trecut), prioritatea și nivelul, la cine ajunge răspunsul tău, mesajul primit și butonul <b class="ui">Deschide în Taskel</b>. Butonul deschide direct task-ul în aplicație (după conectare, dacă nu ești conectat). Nu primești email pentru propriile acțiuni.</p>
+<figure>
+  <img src="../../screenshots/notification-card.png" alt="O notificare pe email">
+  <figcaption>O notificare: task-ul distribuit, termenul, mesajul și butonul care îl deschide în Taskel.</figcaption>
+</figure>
 <p>Notificările sunt pornite implicit. Le oprești sau le repornești din <b class="ui">Integrări → Notificări pe email</b>, cu bifa <b class="ui">Trimite-mi un email când primesc un task</b>. Dacă sub bifă scrie că trimiterea de emailuri nu este configurată, serverul nu trimite deocamdată nimic; alegerea ta se păstrează.</p>
 
 <h2>Personalizare</h2>

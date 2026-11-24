@@ -84,14 +84,13 @@ public class SendWithoutCompletingTests(TaskelApiFactory factory)
         await ReplyAsync(andrei, taskId, "Mai am nevoie de o zi.");
 
         var first = Assert.Single(factory.Emails.SentTo(ionUser.Email));
-        Assert.StartsWith($"{andreiUser.DisplayName} a răspuns în Taskel la task-ul „Cerere de ofertă”, care rămâne deschis:", first.Body);
+        Assert.StartsWith($"✓ {andreiUser.DisplayName} a răspuns în Taskel la task-ul „Cerere de ofertă”, care rămâne deschis.", first.Body);
         Assert.False((await andrei.GetApiAsync<TaskResponse>($"/api/tasks/{taskId}"))!.IsCompleted);
 
         Assert.Equal(HttpStatusCode.OK,
             (await andrei.PostApiAsync($"/api/tasks/{taskId}/complete", new { response = "Gata: 120 lei." })).StatusCode);
         var last = factory.Emails.SentTo(ionUser.Email)[^1];
-        Assert.Contains($"a răspuns pe email către {ionUser.Email}:", last.Body);
-        Assert.Contains("Mai am nevoie de o zi.", last.Body);
+        Assert.Contains($"{andreiUser.DisplayName} a scris (trimis pe email către {ionUser.DisplayName}):\n> Mai am nevoie de o zi.", last.Body);
     }
 
     [Fact]

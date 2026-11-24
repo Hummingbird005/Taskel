@@ -52,7 +52,9 @@ public class SmtpEmailSender(IntegrationSettings settings, ILogger<SmtpEmailSend
     public static MimeMessage BuildMessage(ReplyEmail reply, SmtpOptions smtp)
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(smtp.FromName ?? string.Empty, smtp.EffectiveFromAddress!));
+        message.From.Add(new MailboxAddress(FromNameFor(reply.OnBehalfOf, smtp), smtp.EffectiveFromAddress!));
+        if (reply.OnBehalfOf is { } person && MailboxAddress.TryParse(person.Email, out var own))
+            message.ReplyTo.Add(new MailboxAddress(person.Name, own.Address));
         message.To.Add(MailboxAddress.Parse(reply.To));
         message.Subject = ReplySubject(reply.Subject);
         if (!string.IsNullOrEmpty(reply.InReplyToMessageId))
@@ -83,12 +85,21 @@ public class SmtpEmailSender(IntegrationSettings settings, ILogger<SmtpEmailSend
     public static MimeMessage BuildMessage(EmailMessage email, SmtpOptions smtp)
     {
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(smtp.FromName ?? string.Empty, smtp.EffectiveFromAddress!));
+        message.From.Add(new MailboxAddress(string.IsNullOrWhiteSpace(smtp.FromName) ? "Taskel" : smtp.FromName, smtp.EffectiveFromAddress!));
         message.To.Add(MailboxAddress.Parse(email.To));
         message.Subject = email.Subject.ReplaceLineEndings(" ").Trim();
         message.Headers.Add("Auto-Submitted", "auto-generated");
-        message.Body = new TextPart("plain") { Text = email.Body };
+        message.Body = email.HtmlBody is null
+            ? new TextPart("plain") { Text = email.Body }
+            : new BodyBuilder { TextBody = email.Body, HtmlBody = email.HtmlBody }.ToMessageBody();
         return message;
+    }
+
+    /// <summary>"Ion Popescu prin Taskel": the person, and the name Taskel sends under ("Taskel" when none is set).</summary>
+    public static string FromNameFor(Sender? person, SmtpOptions smtp)
+    {
+        var taskel = string.IsNullOrWhiteSpace(smtp.FromName) ? "Taskel" : smtp.FromName.Trim();
+        return person is null || string.IsNullOrWhiteSpace(person.Name) ? smtp.FromName ?? string.Empty : $"{person.Name.Trim()} prin {taskel}";
     }
 
     private static string ReplySubject(string? original)

@@ -25,6 +25,8 @@ export interface ThreadMessage {
   files: Attachment[]
   /** The email or message the task started from: always shown open, first. */
   original?: boolean
+  /** The time to show, when it is not `at`: when the original email came. */
+  shownAt?: string
   /** For an answer to a distributed task the reader can still send back: the copy and who has it. */
   sendBack?: { copyId: string; holder: string }
 }
@@ -45,17 +47,20 @@ export type ThreadItem = ThreadMessage | ThreadEvent
 const user = (u: { id: string; displayName: string }): Party => ({ id: u.id, name: u.displayName })
 
 /** "De la: Ana Client <ana@client.example>" on the first line of a task made from an email: the sender, and the rest. */
-export function emailSender(task: TaskItem): { from: Party; body: string | null } | null {
-  const description = task.description ?? ''
-  const match = /^De la: (.*?)\s*<([^>]+)>\s*\r?\n/.exec(description)
+export function emailSender(task: TaskItem): { from: Party; body: string | null; received: string | null } | null {
+  let rest = task.description ?? ''
+  const match = /^De la: (.*?)\s*<([^>]+)>\s*\r?\n/.exec(rest)
   // A copy of an email task carries the email too, without its sender's address on the task.
   if (!match && !task.sourceEmailAddress) return null
-  if (!match) return { from: { name: task.sourceEmailAddress!, email: task.sourceEmailAddress! }, body: description || null }
+  if (match) rest = rest.slice(match[0].length)
+  // "Primit: 2026-11-23 09:12", when Outlook gave the time the email came: the sender's local time.
+  const received = /^Primit: (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})\s*(?:\r?\n|$)/.exec(rest)
+  if (received) rest = rest.slice(received[0].length)
+  const body = rest.replace(/^\s+/, '') || null
+  const at = received ? `${received[1]}T${received[2]}:00` : null
+  if (!match) return { from: { name: task.sourceEmailAddress!, email: task.sourceEmailAddress! }, body, received: at }
   const name = match[1].trim().replace(/^"|"$/g, '')
-  return {
-    from: { name: name || match[2], email: match[2] },
-    body: description.slice(match[0].length).replace(/^\s+/, '') || null,
-  }
+  return { from: { name: name || match[2], email: match[2] }, body, received: at }
 }
 
 /** Who answers for the task now: the person it is assigned to, or its group, or nobody else. */
@@ -83,7 +88,9 @@ export function buildThread(task: TaskItem, messages: TaskMessage[], canSendBack
   items.push({
     type: 'message',
     key: 'original',
+    // When the email came, if known; ordering still follows when the task was made.
     at: task.createdAt,
+    shownAt: email?.received ?? undefined,
     from: email?.from ?? user(task.createdBy),
     to: email && !onCopy ? [user(task.createdBy)] : onCopy ? [] : holderOf(task),
     badge: email ? { text: 'Email extern', tone: 'ext' } : undefined,

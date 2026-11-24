@@ -59,7 +59,13 @@ public class NotificationTests(TaskelApiFactory factory)
         Assert.Contains("Task: Pregătește oferta", mail.Body);
         Assert.Contains("Termen: 14 martie 2031", mail.Body);
         Assert.Contains("Prioritate: ridicată", mail.Body);
-        Assert.Contains("Deschide Taskel: https://taskel.test.invalid", mail.Body);
+        Assert.Contains("Deschide în Taskel: https://taskel.test.invalid/?task=", mail.Body);
+        // The same as a card, with a button that opens the task.
+        Assert.NotNull(mail.HtmlBody);
+        Assert.Contains("Pregătește oferta</h1>", mail.HtmlBody);
+        Assert.Contains("14 martie 2031", mail.HtmlBody);
+        Assert.Contains(">Deschide în Taskel</a>", mail.HtmlBody);
+        Assert.Contains("href=\"https://taskel.test.invalid/?task=", mail.HtmlBody);
         Assert.Contains("Poți opri notificările", mail.Body);
         Assert.DoesNotContain("Note care nu pleacă", mail.Body);
         Assert.Empty(factory.Emails.NotificationsTo(aliceUser.Email));
@@ -251,7 +257,8 @@ public class NotificationTests(TaskelApiFactory factory)
         var mail = TaskNotifier.Compose(task, new User { Email = "a@example.com" }, new User { Email = "b@example.com" },
             null, TaskNotificationReason.Assigned, null, publicUrl: "  ");
 
-        Assert.DoesNotContain("Deschide Taskel", mail.Body);
+        Assert.DoesNotContain("Deschide în Taskel", mail.Body);
+        Assert.DoesNotContain("Deschide în Taskel</a>", mail.HtmlBody);
         // Accounts without a display name are addressed by email.
         Assert.Contains("Bună, a@example.com,", mail.Body);
         Assert.Contains("b@example.com ți-a alocat", mail.Body);
