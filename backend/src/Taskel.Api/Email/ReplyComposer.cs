@@ -30,10 +30,14 @@ public static class ReplyComposer
     /// <param name="withHistory">Whether the reply goes inside the company and may show what happened in Taskel.</param>
     /// <param name="attached">Names of the files sent with the reply.</param>
     /// <param name="tooLarge">Names of answer files too large to send, kept in Taskel.</param>
+    /// <param name="completed">False for an answer sent while the task stays open.</param>
     public static (string Text, string Html) Compose(TaskItem task, User closedBy, string response,
-        IReadOnlyList<TaskMessage> messages, bool withHistory, IReadOnlyList<string> attached, IReadOnlyList<string> tooLarge)
+        IReadOnlyList<TaskMessage> messages, bool withHistory, IReadOnlyList<string> attached, IReadOnlyList<string> tooLarge,
+        bool completed = true)
     {
-        var intro = withHistory ? $"{NameOf(closedBy)} a finalizat în Taskel task-ul „{task.Title}”:" : null;
+        var intro = !withHistory ? null
+            : completed ? $"{NameOf(closedBy)} a finalizat în Taskel task-ul „{task.Title}”:"
+            : $"{NameOf(closedBy)} a răspuns în Taskel la task-ul „{task.Title}”, care rămâne deschis:";
         var history = withHistory ? History(task, messages) : [];
 
         var text = new StringBuilder();
@@ -95,6 +99,8 @@ public static class ReplyComposer
                 TaskMessageKind.Closed => $"a închis task-ul lui {to}.",
                 TaskMessageKind.DueDateChanged => "a schimbat termenul:",
                 TaskMessageKind.Rescheduled => "a replanificat task-ul:",
+                TaskMessageKind.Replied when message.SentTo is not null => $"a răspuns pe email către {message.SentTo}:",
+                TaskMessageKind.Replied => "a răspuns:",
                 _ => to is not null && to != who ? $"către {to}:" : "a scris:"
             };
             lines.Add(new Line(message.At, message.Kind == TaskMessageKind.AllAnswered ? "" : who, what, message.Text));

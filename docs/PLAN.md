@@ -77,6 +77,17 @@ Asked on 2026-11-23, after PR 3.
 - **Every such move needs a reason**: it stays in the task's history with what changed, and the person is emailed the
   details. The same applies to moving a task from its details (the former "move the due date").
 
+## PR 7 · The task as a mail thread (branch feature/mail-thread)
+
+- The task dialog reads like a modern mail app instead of a chat:
+  - the subject with a line of facts;
+  - a toolbar (Răspunde, Distribuie, Direcționează, Pune în așteptare / Redeschide);
+  - one thread with the original email as a mail, messages as cards, events as thin lines, older messages folded;
+  - the reply at the end.
+- The "Deschis" state button is gone: on hold or completed, **Redeschide** reopens.
+- **Doar trimite**: an answer sent without completing the task (`POST /api/tasks/{id}/reply`), by email, to the
+  distributor, or to whoever gave the task.
+
 ## For every PR
 
 API tests, a browser check, READMEs, manuals (PDF) and screenshots updated. The VBA code cannot run here: its

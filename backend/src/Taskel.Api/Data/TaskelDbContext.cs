@@ -152,6 +152,7 @@ public class TaskelDbContext(DbContextOptions<TaskelDbContext> options) : DbCont
             message.ToTable("task_messages");
             message.HasKey(m => m.Id);
             message.Property(m => m.Text).HasMaxLength(4000);
+            message.Property(m => m.SentTo).HasMaxLength(320);
             message.HasOne<TaskItem>().WithMany().HasForeignKey(m => m.TaskId).OnDelete(DeleteBehavior.Cascade);
             message.HasOne(m => m.RelatedTask).WithMany().HasForeignKey(m => m.RelatedTaskId).OnDelete(DeleteBehavior.SetNull);
             message.HasOne(m => m.Author).WithMany().HasForeignKey(m => m.AuthorId).OnDelete(DeleteBehavior.SetNull);

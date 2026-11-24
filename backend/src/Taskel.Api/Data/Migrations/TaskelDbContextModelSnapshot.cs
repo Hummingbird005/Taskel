@@ -374,6 +374,10 @@ namespace Taskel.Api.Data.Migrations
                     b.Property<Guid?>("RelatedTaskId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("SentTo")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
                     b.Property<Guid>("TaskId")
                         .HasColumnType("uuid");
 

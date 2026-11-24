@@ -37,6 +37,16 @@ export function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+/** When a message was written, as a mail app shows it: "18:20" today, "13 nov., 18:20" this year, else with the year. */
+export function formatMailTime(iso: string, now: Date = new Date()): string {
+  const at = new Date(iso)
+  const time = at.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' })
+  if (at.toDateString() === now.toDateString()) return time
+  const sameYear = at.getFullYear() === now.getFullYear()
+  const day = at.toLocaleDateString(LOCALE, sameYear ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' })
+  return `${day}, ${time}`
+}
+
 /** Date and time of a moment, e.g. "13 nov. 2026, 18:20". */
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString(LOCALE, {
