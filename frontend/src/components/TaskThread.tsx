@@ -231,7 +231,7 @@ function MailCard({
           </div>
           {to && <div className="mail-to">către {to}</div>}
         </div>
-        <time dateTime={message.at}>{formatMailTime(message.at)}</time>
+        <time dateTime={message.shownAt ?? message.at}>{formatMailTime(message.shownAt ?? message.at)}</time>
       </header>
       {message.text ? (
         <div className="mail-text">{message.text}</div>

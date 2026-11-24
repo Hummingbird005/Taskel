@@ -47,6 +47,20 @@ interface Props {
   onSessionExpired: () => void
 }
 
+/**
+ * The task named in the address (`?task=<id>`), as the links in Taskel's emails give it. Read once: the address is
+ * cleaned at once, so reloading the page does not open it again.
+ */
+function taskFromLink(): string | null {
+  const params = new URLSearchParams(window.location.search)
+  const id = params.get('task')
+  if (!id) return null
+  params.delete('task')
+  const rest = params.toString()
+  window.history.replaceState(null, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
+  return /^[0-9a-f-]{36}$/i.test(id) ? id : null
+}
+
 /** The signed-in app: sidebar with views, the dashboard or task list for the selected view, and the composer. */
 export default function Workspace({ user, onUserChanged, onLogout, onSessionExpired }: Props) {
   const [tasks, setTasks] = useState<TaskItem[]>([])
@@ -126,7 +140,13 @@ export default function Workspace({ user, onUserChanged, onLogout, onSessionExpi
         const needsAttention = loaded.some(
           (t) => isMine(t) && !t.isCompleted && t.dueDate !== null && t.dueDate <= now,
         )
-        setAlertOpen(loadedSettings.showDueAlert && needsAttention)
+        // A link from an email ("Deschide în Taskel") opens its task, instead of the reminder.
+        const linked = taskFromLink()
+        if (linked) {
+          if (loaded.some((t) => t.id === linked)) setOpenId(linked)
+          else setNotice('Task-ul din link nu mai este în listele tale: a fost șters sau a trecut la altcineva.')
+        }
+        setAlertOpen(!linked && loadedSettings.showDueAlert && needsAttention)
       })
       .catch((err) => {
         if (cancelled) return

@@ -22,6 +22,36 @@ public class SmtpMessageTests
     }
 
     [Fact]
+    public void A_Reply_On_Behalf_Of_Someone_Shows_Their_Name_And_Comes_Back_To_Them()
+    {
+        var message = SmtpEmailSender.BuildMessage(
+            new ReplyEmail("ana@example.com", "Ofertă", "Gata.", null, OnBehalfOf: new Sender("Ion Popescu", "ion@firma.example")), Smtp);
+
+        // Still from Taskel's address, which is the one allowed to send; under the person's name.
+        Assert.Equal("me@example.com", message.From.Mailboxes.Single().Address);
+        Assert.Equal("Ion Popescu prin Taskel", message.From.Mailboxes.Single().Name);
+        var replyTo = message.ReplyTo.Mailboxes.Single();
+        Assert.Equal("ion@firma.example", replyTo.Address);
+        Assert.Equal("Ion Popescu", replyTo.Name);
+
+        var unnamed = SmtpEmailSender.BuildMessage(
+            new ReplyEmail("ana@example.com", "Ofertă", "Gata.", null, OnBehalfOf: new Sender("Ion", "ion@firma.example")),
+            new SmtpOptions { Host = "smtp.example.com", Username = "me@example.com" });
+        Assert.Equal("Ion prin Taskel", unnamed.From.Mailboxes.Single().Name);
+    }
+
+    [Fact]
+    public void A_Notification_With_Html_Carries_Both_Versions()
+    {
+        var message = SmtpEmailSender.BuildMessage(new EmailMessage("ana@example.com", "Task nou: X", "Text.", "<p>Card</p>"), Smtp);
+
+        Assert.Equal("Text.", message.TextBody);
+        Assert.Equal("<p>Card</p>", message.HtmlBody);
+        Assert.Equal("auto-generated", message.Headers["Auto-Submitted"]);
+        Assert.Empty(message.ReplyTo);
+    }
+
+    [Fact]
     public void A_Formatted_Reply_Carries_Text_Html_And_Files()
     {
         var reply = new ReplyEmail("ion@example.com", "Ofertă", "Gata.", "<abc@mail.example.com>", "<p>Gata.</p>",

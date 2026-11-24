@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using Taskel.Api.Controllers;
+using Taskel.Api.Email;
 using Taskel.Api.Models;
 
 namespace Taskel.Api.Tests;
@@ -65,17 +66,17 @@ public class ReplyHistoryTests(TaskelApiFactory factory)
         Assert.Empty(factory.Emails.SentTo(sender));
         var reply = Assert.Single(factory.Emails.SentTo(ionUser.Email));
         Assert.Equal(MessageId, reply.InReplyToMessageId);
-        Assert.StartsWith($"{andreiUser.DisplayName} a finalizat în Taskel task-ul „Cerere ofertă 2027”:", reply.Body);
+        Assert.StartsWith($"✓ {andreiUser.DisplayName} a finalizat în Taskel task-ul „Cerere ofertă 2027”.", reply.Body);
+        Assert.Equal(new Sender(andreiUser.DisplayName!, andreiUser.Email), reply.OnBehalfOf);
         Assert.Contains("Oferta e atașată: 120 lei/licență.", reply.Body);
-        Assert.Contains("Istoricul în Taskel", reply.Body);
-        Assert.Contains($"{ionUser.DisplayName} a adus emailul în Taskel și i l-a dat lui {andreiUser.DisplayName}.", reply.Body);
-        Assert.Contains("Indicații: Răspunde-i până vineri.", reply.Body);
-        Assert.Contains("Am cerut prețurile de la furnizor.", reply.Body);
-        Assert.Contains("Emailul original", reply.Body);
-        Assert.Contains($"> De la: Ana Client <{sender}>", reply.Body);
-        Assert.Contains("> vă rog o ofertă pentru 20 de licențe.", reply.Body);
+        // What came before, quoted newest first as a mail program does, down to the original email.
+        var note = reply.Body.IndexOf($"{andreiUser.DisplayName} a scris (notă în Taskel):\n> Am cerut prețurile de la furnizor.", StringComparison.Ordinal);
+        var guidance = reply.Body.IndexOf($"{ionUser.DisplayName} a scris (indicații):\n> Răspunde-i până vineri.", StringComparison.Ordinal);
+        var original = reply.Body.IndexOf($"Ana Client <{sender}> a scris:\n> Bună ziua,\n> vă rog o ofertă pentru 20 de licențe.", StringComparison.Ordinal);
+        Assert.True(note > 0 && guidance > note && original > guidance, reply.Body);
+        Assert.DoesNotContain("De la:", reply.Body);
         Assert.Contains("<blockquote", reply.HtmlBody);
-        Assert.Contains("Istoricul în Taskel", reply.HtmlBody);
+        Assert.Contains("a scris (indicații):", reply.HtmlBody);
 
         // Only the file sent with the answer; the email's own files stay out.
         var file = Assert.Single(reply.Attachments!);
@@ -115,7 +116,8 @@ public class ReplyHistoryTests(TaskelApiFactory factory)
         await OkAsync(CompleteAsync(maria, taskId, "Oferta finală: 120 lei/licență."));
 
         var reply = Assert.Single(factory.Emails.SentTo(ionUser.Email));
-        Assert.Contains($"{mariaUser.DisplayName} a distribuit task-ul către {andreiUser.DisplayName}.", reply.Body);
+        Assert.Contains($"{mariaUser.DisplayName} a scris (distribuit către {andreiUser.DisplayName}):\n> Prețurile, te rog.", reply.Body);
+        Assert.Contains($"{andreiUser.DisplayName} a scris (răspuns în Taskel):", reply.Body);
         Assert.Contains("Lista de prețuri e atașată.", reply.Body);
         Assert.Equal("preturi.xlsx", Assert.Single(reply.Attachments!).FileName);
     }
@@ -138,11 +140,12 @@ public class ReplyHistoryTests(TaskelApiFactory factory)
         await OkAsync(CompleteAsync(ion, taskId, "Vă trimitem oferta atașată.", forClient.Id));
 
         var reply = Assert.Single(factory.Emails.SentTo(sender));
-        Assert.DoesNotContain("Istoricul", reply.Body);
+        Assert.DoesNotContain("a scris (", reply.Body);
+        Assert.DoesNotContain("✓", reply.Body);
         Assert.DoesNotContain("Marja e 12%", reply.Body);
         Assert.DoesNotContain("Intern:", reply.HtmlBody);
         Assert.StartsWith("Vă trimitem oferta atașată.", reply.Body);
-        Assert.Contains($"> De la: Ana Client <{sender}>", reply.Body);
+        Assert.Contains($"Ana Client <{sender}> a scris:\n> Bună ziua,", reply.Body);
         Assert.Equal("oferta-client.pdf", Assert.Single(reply.Attachments!).FileName);
     }
 

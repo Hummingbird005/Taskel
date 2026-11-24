@@ -7,14 +7,21 @@ namespace Taskel.Api.Email;
 /// <param name="InReplyToMessageId">Message-ID of the original email, when known.</param>
 /// <param name="HtmlBody">The same, formatted, for mail programs that show HTML.</param>
 /// <param name="Attachments">Files sent with the reply.</param>
+/// <param name="OnBehalfOf">
+/// The person answering. The email still leaves from Taskel's address, under their name ("Ion Popescu prin Taskel"),
+/// and an answer to it goes to their own address (Reply-To).
+/// </param>
 public record ReplyEmail(string To, string? Subject, string Body, string? InReplyToMessageId, string? HtmlBody = null,
-    IReadOnlyList<ReplyAttachment>? Attachments = null);
+    IReadOnlyList<ReplyAttachment>? Attachments = null, Sender? OnBehalfOf = null);
+
+/// <summary>Someone Taskel writes on behalf of: their name and their own address.</summary>
+public record Sender(string Name, string Email);
 
 /// <summary>A file attached to a reply; opened when the message is built.</summary>
 public record ReplyAttachment(string FileName, string ContentType, Func<Stream?> Open);
 
-/// <summary>A plain-text email Taskel sends on its own behalf, such as a notification.</summary>
-public record EmailMessage(string To, string Subject, string Body);
+/// <summary>An email Taskel sends on its own behalf, such as a notification: plain text, and optionally HTML.</summary>
+public record EmailMessage(string To, string Subject, string Body, string? HtmlBody = null);
 
 public interface IEmailSender
 {

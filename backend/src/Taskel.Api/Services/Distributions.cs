@@ -137,7 +137,7 @@ public class Distributions(TaskelDbContext db, TaskNotifier notifier)
         }
         await db.SaveChangesAsync(ct);
         foreach (var copy in open.Where(c => c.AssigneeId is not null))
-            await notifier.TellAsync(parent, copy.AssigneeId!.Value, actorId, TaskNotificationReason.Closed, null, ct);
+            await notifier.TellAsync(copy, copy.AssigneeId!.Value, actorId, TaskNotificationReason.Closed, null, ct);
     }
 
     /// <summary>
@@ -259,8 +259,9 @@ public class Distributions(TaskelDbContext db, TaskNotifier notifier)
 
         if (tell is { } recipient)
         {
-            var thread = await db.Tasks.AsNoTracking().FirstAsync(t => t.Id == message.TaskId, ct);
-            await notifier.TellAsync(thread, recipient, actorId, TaskNotificationReason.Message, text, ct);
+            // Told about the task they can open: the copy for whoever has it, the task it came from for the distributor.
+            var about = toCopy ?? await db.Tasks.AsNoTracking().FirstAsync(t => t.Id == message.TaskId, ct);
+            await notifier.TellAsync(about, recipient, actorId, TaskNotificationReason.Message, text, ct);
         }
         return message;
     }

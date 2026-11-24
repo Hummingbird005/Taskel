@@ -466,7 +466,8 @@ public class TasksController(
         try
         {
             await emailSender.SendReplyAsync(
-                new ReplyEmail(to, task.SourceEmailSubject, text, task.SourceEmailMessageId, html, files), ct);
+                new ReplyEmail(to, task.SourceEmailSubject, text, task.SourceEmailMessageId, html, files,
+                    new Sender(string.IsNullOrWhiteSpace(closedBy.DisplayName) ? closedBy.Email : closedBy.DisplayName, closedBy.Email)), ct);
             return null;
         }
         catch (EmailNotConfiguredException)

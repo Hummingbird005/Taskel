@@ -755,14 +755,21 @@ response:
   completing again needs a new response and sends a new reply.
 - Tasks added by hand, and email tasks without a usable sender address, complete without a response.
 
-**What the reply contains.** It is sent as text and HTML, like a mail thread:
+**What the reply contains.** It is written as a mail program writes a reply, in text and HTML: the answer on top,
+then what came before it, quoted newest first ("Pe 24 nov. 2026, la 11:30, Andrei Stan a scris (răspuns în
+Taskel):"), down to the original email ("Pe 23 nov. 2026, la 09:12, Ana Popa <ana@…> a scris:", with the date
+Outlook gave).
 
-- **To a colleague** (the person who brought the email from Outlook, when someone else closes the task): who closed
-  it, the answer, the files sent with answers, then **the history in Taskel** (who brought the email in and to whom,
-  instructions, forwards and returns, distribution, questions, answers, sending back, in order, in Romanian time),
-  and the original email quoted.
-- **To the email's sender** (when the person who brought it in closes it): the answer, the files attached to this
+- **To a colleague** (the person who brought the email from Outlook, when someone else answers): a first line
+  saying who closed the task (or answered it, while it stays open), the answer and the files sent with answers.
+  Then every message written in Taskel, each quoted with its role: instructions, forwards with a note, distribution,
+  questions, answers, sending back, earlier answers by email. Then the original email.
+- **To the email's sender** (when the person who brought it in answers): the answer, the files attached to this
   answer only, and their own email quoted. Nothing internal (history, colleagues' answers or files) goes outside.
+
+**Who it comes from.** Replies leave from Taskel's mailbox, which is the one allowed to send, under the name of the
+person answering: **"Ion Popescu prin Taskel"** (or "… prin" the configured `FromName`). Their own address is set as
+**Reply-To**, so when the client answers back, the email goes straight to Ion, not to Taskel.
 
 **Files with the answer.** Whoever answers can attach files to the answer: **Atașează la răspuns**, next to the
 answer field (`attachmentIds` in `complete`, files of the task). They are marked **la răspuns** in the task's files.
@@ -771,7 +778,8 @@ conversation. The reply carries them, up to 20 MB in all; larger files are named
 
 | | |
 |---|---|
-| ![Answer field with a file attached to the answer](docs/screenshots/answer-files.png) | ![The reply in a mail program: the answer, the history in Taskel and the original email](docs/screenshots/reply-history.png) |
+| ![Answer field with a file attached to the answer](docs/screenshots/answer-files.png) | ![The reply to a colleague in a mail program: from Maria Ionescu prin Taskel, the answer, the earlier messages quoted, and the original email](docs/screenshots/reply-history.png) |
+| ![The reply to the client: from Ion Popescu prin Taskel, with Reply-To Ion, the answer and the client's email quoted](docs/screenshots/reply-client.png) | |
 
 ### Email (SMTP) configuration
 
@@ -786,7 +794,7 @@ an administrator in **Setări sistem → Server de email**, which replaces it (s
 | `Username`    | `Email__Smtp__Username`      | Usually the full email address                           |
 | `Password`    | `Email__Smtp__Password`      | For Gmail, an [app password](https://support.google.com/accounts/answer/185833), not the account password |
 | `FromAddress` | `Email__Smtp__FromAddress`   | Optional; defaults to `Username`                         |
-| `FromName`    | `Email__Smtp__FromName`      | Optional display name                                    |
+| `FromName`    | `Email__Smtp__FromName`      | Optional display name; "Taskel" when empty. Replies show "<person> prin <FromName>" |
 | `RequireTls`  | `Email__Smtp__RequireTls`    | Default `true`. `false` only for a local test server without TLS |
 
 Keep the password out of `appsettings.json`. For local development use user secrets:
@@ -881,8 +889,18 @@ An email goes out when:
 The person who did it is never emailed, and neither is anyone for a task they keep for themselves. Taking a
 group task, handing it back, editing and completing are not announced.
 
-The email is plain text, in Romanian, with the task's title, due date or interval, priority (when not medium)
-and, if set, a link to Taskel. The task's notes are not included.
+The email, in Romanian, comes as a **card** in HTML (and the same as plain text):
+- what happened ("Maria Ionescu ți-a distribuit un task");
+- the task's title;
+- its due date or interval (red when due today or late), priority and level;
+- for a distributed task, who the answer goes to;
+- the message that came with it;
+- a **Deschide în Taskel** button.
+
+The button opens the task directly: the link is `PublicUrl/?task=<id>`, and the interface opens that task when it
+loads (after signing in, if needed), instead of the due-date reminder. The task's own notes are not included.
+
+![A notification as a card: Maria Ionescu distributed a task, the title, due date, priority, who the answer goes to, her message and the Deschide în Taskel button](docs/screenshots/notification-card.png)
 
 Each user can turn the emails off under **Integrări → Notificări pe email** (`GET`/`PUT /api/notifications`).
 They are on by default, including for existing accounts.
@@ -890,7 +908,7 @@ They are on by default, including for existing accounts.
 | Setting     | Environment variable                 | Notes                                                    |
 |-------------|--------------------------------------|----------------------------------------------------------|
 | `Enabled`   | `Email__Notifications__Enabled`      | Default `true`. `false` stops notifications for everyone |
-| `PublicUrl` | `Email__Notifications__PublicUrl`    | Optional. Address of the Taskel interface, added to the emails as a link |
+| `PublicUrl` | `Email__Notifications__PublicUrl`    | Optional. Address of the Taskel interface; the emails' **Deschide în Taskel** button opens the task there |
 
 Things to know:
 
