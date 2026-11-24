@@ -12,9 +12,9 @@ The interface is in Romanian; code, API and documentation are in English.
 |---|---|
 | **Team workload** for managers: each person in the department<br>![Team screen with totals and a table of people with open, overdue and completed counts](docs/screenshots/team.png) | **A team member's tasks**, in full, read only<br>![A team member's open and recently completed tasks, with notes](docs/screenshots/team-member.png) |
 | **Team calendar**: open tasks per person and day, four weeks at a time<br>![Heat map of tasks per person and day, with the tasks of the selected day listed below](docs/screenshots/team-calendar.png) | **One person's calendar**, with their tasks on each day<br>![Four-week calendar of one person's tasks](docs/screenshots/team-calendar-person.png) |
-| **New task**, in a dialog opened from **Task nou**: title, message, dates, priority, tags, who it is for, files<br>![New task dialog with a title, a message, an interval, priority, tags, an assignee chosen by search and an attached file](docs/screenshots/new-task.png) | **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) |
+| **New task**, in a dialog opened from **Task nou**: title, message, dates, priority and level, tags, who it is for, files<br>![New task dialog with a message, an interval, priority Ridicată and level 1, a tag, an assignee chosen by search with a workload warning, and an attached file](docs/screenshots/new-task.png) | **Delegated tasks**: what you assigned to others<br>![Delegate view listing tasks assigned to other people](docs/screenshots/delegated.png) |
 | **Tasks for a group**: every member sees them until one takes them<br>![De preluat view with two group tasks and a Preia button on each](docs/screenshots/claimable.png) | **Choosing who a task is for**, by searching names, emails and groups<br>![The assignee field with two people matching the letters typed](docs/screenshots/assign-search.png) |
-| **Forwarding** a received task to someone else, with a message<br>![Forward form with the recipient, a message and a workload warning](docs/screenshots/forward.png) | **Forwarded tasks** stay readable, with the path they took<br>![Direcționate view showing a completed task, who has it now and its path](docs/screenshots/forwarded.png) |
+| **Forwarding** a received task to someone else, with a message<br>![Forward form in the task dialog: the recipient, a message, the Revine la mine checkbox and a workload warning](docs/screenshots/forward.png) | **Forwarded tasks** stay readable, with the path they took<br>![Direcționate view showing a completed task, who has it now and its path](docs/screenshots/forwarded.png) |
 | **Groups**, managed by administrators and managers<br>![Groups screen listing Active Directory groups and a form for a new group with members](docs/screenshots/groups.png) | **Sign in** with Keycloak, a domain or a local account<br>![Sign-in screen with a Keycloak button above the tabs for domain account and local account](docs/screenshots/signin.png) |
 | **System settings**, for administrators: mail server, Active Directory and Keycloak, each with a test<br>![The mail server panel with its fields, the status line and the result of a test message](docs/screenshots/settings-email.png) | **Active Directory test**: what Taskel reads for an account, before saving<br>![The Active Directory panel with a successful test sign-in showing the name, department and groups](docs/screenshots/settings-directory.png) |
 | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) |
@@ -563,6 +563,11 @@ The view has two modes:
   - Every move opens a dialog that asks for the reason, where the day and the level can still be adjusted.
   - The same dialog opens from each card's button, for the keyboard and for touch screens.
   - In a task opened from Task-urile echipei or Echipă, the **Termen și nivel, ca manager** box does the same.
+
+| | |
+|---|---|
+| ![Kanban board of one person's tasks: overdue, the days of a week with level badges on the cards, and Fără termen](docs/screenshots/team-board.png) | ![Moving a card: the change of level shown, and the required reason](docs/screenshots/team-move-reason.png) |
+
 It does not give the manager access to the tasks themselves: they cannot edit, complete or delete them.
 
 A manager can only name their own department (`403` otherwise) and a manager without a department sees nobody.
@@ -843,7 +848,7 @@ browser, never run as a page of Taskel. Large PDF files are read in parts (HTTP 
 
 | | |
 |---|---|
-| ![Files of a task: an eye before files that can be viewed, and a download button](docs/screenshots/attachments-list.png) | ![A picture in the viewer, with zoom, download, previous and next](docs/screenshots/attachment-viewer.png) |
+| ![A task's files: as tiles under the message they came with, and the full list with an eye before files that can be viewed and a download button](docs/screenshots/attachments-list.png) | ![A picture in the viewer, with zoom, download, previous and next](docs/screenshots/attachment-viewer.png) |
 
 ### Limits and settings
 
