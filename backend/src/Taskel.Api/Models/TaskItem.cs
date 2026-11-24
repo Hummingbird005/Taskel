@@ -191,6 +191,11 @@ public record CompleteTaskRequest(
     bool CloseDistributions = false,
     [MaxLength(20)] List<Guid>? AttachmentIds = null);
 
+/// <summary>An answer sent without completing the task, with files of the task.</summary>
+public record ReplyTaskRequest(
+    [Required, StringLength(4000, MinimumLength = 1), SafeText(Multiline = true)] string Response,
+    [MaxLength(20)] List<Guid>? AttachmentIds = null);
+
 /// <summary>Where a task stands.</summary>
 public enum TaskState
 {

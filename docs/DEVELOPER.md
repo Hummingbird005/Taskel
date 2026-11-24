@@ -268,9 +268,13 @@ from `taskActions(context, task)`: each action calls the API, replaces the task 
 resolves to a Romanian error message or null. Without `actions` the dialog is read only, which is how forwarded
 tasks and a manager's view of their people's tasks are shown.
 
-The state buttons at the bottom of the dialog share one message field: it is the reason for **În așteptare**
-(required), and the resolution for **Finalizat** (required, and emailed, for tasks from an email). The server's
-rule for states is in `TaskItem.State` and the `wait`, `resume` and `complete` actions of `TasksController`.
+The dialog is a mail thread. `buildThread` (`lib/thread.ts`) turns the task and its conversation
+(`GET /api/tasks/{id}/conversation`) into messages and events, oldest first; `TaskThread` draws them, folding older
+messages (`foldedKeys`). `ReplyBox` writes the answer at the end: `replyTargets` (`lib/replyTargets.ts`) says who it
+goes to, and its split button completes the task (`complete`) or only sends (`POST /api/tasks/{id}/reply`), or
+writes a message (`POST /api/tasks/{id}/messages`). The toolbar holds Răspunde, Distribuie, Direcționează and
+Pune în așteptare (`WaitForm`, the reason required). The server's rule for states is in `TaskItem.State` and the
+`wait`, `resume`, `complete` and `reply` actions of `TasksController`.
 
 ### Adding a task, in the interface
 

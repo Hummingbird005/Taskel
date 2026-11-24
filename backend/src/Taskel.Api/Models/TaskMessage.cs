@@ -23,7 +23,12 @@ public enum TaskMessageKind
     /// <summary>
     /// A manager moved the task to another day or level; the text says from what to what, and why.
     /// </summary>
-    Rescheduled
+    Rescheduled,
+    /// <summary>
+    /// Someone working on the task sent an answer without completing it: by email (<see cref="TaskMessage.SentTo"/>),
+    /// to whoever distributed it, or to whoever gave it to them.
+    /// </summary>
+    Replied
 }
 
 /// <summary>
@@ -42,6 +47,8 @@ public class TaskMessage
     public User? Author { get; set; }
     public TaskMessageKind Kind { get; set; }
     public string? Text { get; set; }
+    /// <summary>For an answer sent by email: the address it went to.</summary>
+    public string? SentTo { get; set; }
     /// <summary>Stored to the microsecond, PostgreSQL's precision, so the order is the same when read back.</summary>
     public DateTime At { get; set; } = DateTime.UnixEpoch.AddTicks((DateTime.UtcNow - DateTime.UnixEpoch).Ticks / 10 * 10);
 }
@@ -81,16 +88,18 @@ public record PostMessageRequest(
 
 /// <param name="Related">The copy of a distributed task the message concerns, and who has it.</param>
 /// <param name="Attachments">Files that came with an answer, as the reader reaches them on their own task.</param>
+/// <param name="SentTo">For an answer sent by email, the address it went to.</param>
 public record TaskMessageResponse(
     Guid Id, TaskMessageKind Kind, UserSummary? Author, string? Text, DateTime At, RelatedCopy? Related,
-    IReadOnlyList<AttachmentResponse>? Attachments = null)
+    IReadOnlyList<AttachmentResponse>? Attachments = null, string? SentTo = null)
 {
     public static TaskMessageResponse From(TaskMessage message, IEnumerable<TaskAttachment>? files = null) => new(
         message.Id, message.Kind,
         message.Author is null ? null : UserSummary.From(message.Author),
         message.Text, message.At,
         message.RelatedTask is { } copy ? new RelatedCopy(copy.Id, RecipientName(copy)) : null,
-        files?.Select(AttachmentResponse.From).ToList() is { Count: > 0 } list ? list : null);
+        files?.Select(AttachmentResponse.From).ToList() is { Count: > 0 } list ? list : null,
+        message.SentTo);
 
     private static string RecipientName(TaskItem copy) =>
         copy.Assignee is { } user ? user.DisplayName ?? user.Email

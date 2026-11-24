@@ -18,11 +18,11 @@ The interface is in Romanian; code, API and documentation are in English.
 | **Groups**, managed by administrators and managers<br>![Groups screen listing Active Directory groups and a form for a new group with members](docs/screenshots/groups.png) | **Sign in** with Keycloak, a domain or a local account<br>![Sign-in screen with a Keycloak button above the tabs for domain account and local account](docs/screenshots/signin.png) |
 | **System settings**, for administrators: mail server, Active Directory and Keycloak, each with a test<br>![The mail server panel with its fields, the status line and the result of a test message](docs/screenshots/settings-email.png) | **Active Directory test**: what Taskel reads for an account, before saving<br>![The Active Directory panel with a successful test sign-in showing the name, department and groups](docs/screenshots/settings-directory.png) |
 | **Roles and departments**, for administrators<br>![Users screen with a role and a department for each account](docs/screenshots/users.png) | **Reminder on opening the app**, when tasks are overdue or due today<br>![Reminder dialog listing overdue and due-today tasks](docs/screenshots/reminder.png) |
-| **Task list**: titles grouped by due date, with a state mark and the key facts; a row opens the task<br>![Task list grouped under Overdue, Today, Tomorrow, Later and No due date, one task on hold with a clock](docs/screenshots/tasks.png) | **Reply on completion** for tasks created from emails<br>![Response form shown when completing an email task](docs/screenshots/reply.png) |
+| **Task list**: titles grouped by due date, with a state mark and the key facts; a row opens the task<br>![Task list grouped under Overdue, Today, Tomorrow, Later and No due date, one task on hold with a clock](docs/screenshots/tasks.png) | **Replying** to a task from an email, at the end of its thread: send and complete, or only send<br>![Reply box addressed to a colleague, with a file attached and the send button with its arrow](docs/screenshots/reply.png) |
 | **Customizable dashboard**: add, remove and reorder widgets<br>![Dashboard in customize mode with move and remove controls](docs/screenshots/customize.png) | **Dark theme**<br>![Dashboard in the dark theme](docs/screenshots/dashboard-dark.png) |
 | **Mobile**<br><img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="48%"> <img src="docs/screenshots/mobile-tasks.png" alt="Task list on a phone" width="48%"> | **Email notifications** when a task reaches you, with a switch for each user<br>![Integrări screen with the email notification checkbox](docs/screenshots/notifications.png) |
-| **Opening a task**: its message, details and files, and the buttons that change its state<br>![Task dialog with the title, the message, due date and priority, files, a resolution field and the Deschis, În așteptare and Finalizat buttons](docs/screenshots/task-detail.png) | **On hold**, with the reason it waits<br>![Task dialog showing an amber note: on hold since a date, waiting for the legal department](docs/screenshots/task-waiting.png) |
-| **Completed**, with the resolution written when it was done<br>![Task dialog with a green note: completed on a date, with the resolution](docs/screenshots/task-done.png) | **New task on a phone**, full screen<br><img src="docs/screenshots/mobile-new-task.png" alt="New task dialog on a phone, with the assignee search open" width="48%"> <img src="docs/screenshots/mobile-task.png" alt="A task opened on a phone, on hold" width="48%"> |
+| **Opening a task**, as a mail thread: the subject and its facts, the actions, the email it started from, and the reply<br>![Task dialog: the subject, a line of facts, the Răspunde, Distribuie, Direcționează and Pune în așteptare buttons, the client's email, the instructions and the reply box](docs/screenshots/task-detail.png) | **On hold**, with the reason it waits<br>![Task dialog on hold: the reason at the end of the thread, Redeschide and Schimbă motivul in the toolbar](docs/screenshots/task-waiting.png) |
+| **Completed**, with the answer as the last message<br>![Task dialog of a completed task: the message it started from and the answer marked Finalizat](docs/screenshots/task-done.png) | **New task on a phone**, full screen<br><img src="docs/screenshots/mobile-new-task.png" alt="New task dialog on a phone, with the assignee search open" width="48%"> <img src="docs/screenshots/mobile-task.png" alt="A task opened on a phone, on hold" width="48%"> |
 | **Arctic Frost** theme: frosted glass over soft pastel shapes<br>![Dashboard in the Arctic Frost theme, with translucent cards over a pale blue and lavender background](docs/screenshots/frost-dashboard.png) | **Arctic Frost**, task list<br>![Task list in the Arctic Frost theme](docs/screenshots/frost-tasks.png) |
 | **Amber Glass** theme: smoked glass in a warm, lamp-lit room<br>![Dashboard in the Amber Glass theme, dark translucent cards over amber and orange light](docs/screenshots/amber-dashboard.png) | **Amber Glass**, task list<br>![Task list in the Amber Glass theme](docs/screenshots/amber-tasks.png) |
 | **Loading**: skeletons in the shape of the content<br>![Dashboard with grey placeholder cards while it loads](docs/screenshots/loading.png) | **Empty state**: what is missing and why<br>![Empty Direcționate view with an icon, a title and an explanation](docs/screenshots/empty.png) |
@@ -212,6 +212,7 @@ For other setups, see `frontend/.env.example` and `Cors:AllowedOrigins` in `back
 | POST   | `/api/tasks/{id}/claim` | ✓ | Take a task that waits on one of your groups   |
 | POST   | `/api/tasks/{id}/release` | ✓ | Hand a task taken from a group back to it    |
 | POST   | `/api/tasks/{id}/complete` | ✓ | Complete a task, with a response (required for email tasks) |
+| POST   | `/api/tasks/{id}/reply` | ✓ | Send an answer without completing the task (by email, to the distributor, or to whoever gave it) |
 | POST   | `/api/tasks/{id}/wait` | ✓ | Put a task on hold, with a required reason |
 | POST   | `/api/tasks/{id}/resume` | ✓ | Take a task off hold |
 | DELETE | `/api/tasks/{id}`    | ✓    | Delete a task                                 |
@@ -357,17 +358,35 @@ installation. The search runs in the browser over that list, which is fine for h
 ### Working on a task: open, on hold, completed
 
 Lists show each task's **title** with a mark for its state and a line of facts (due date, high priority, who has
-it, files). Clicking anywhere on the row opens the task: its title and **message**, the details, the files and
-the path it took.
+it, files). Clicking anywhere on the row opens the task as a **mail thread**:
 
-At the bottom, the people working on the task (its creator and its assignee) write a message and press one of
-the state buttons:
+- **The header**: the title as the subject, and one line with the state, due date, level, priority, tags and who
+  the task is from and for.
+- **The toolbar**, for the people working on the task (its creator and its assignee): **Răspunde**, **Distribuie**,
+  **Direcționează**, **Pune în așteptare** (with the reason, required). On hold, **Redeschide** and **Schimbă
+  motivul**; completed, **Redeschide**; a group's task, **Preia task-ul**.
+- **The thread**, oldest first:
+  - the email (sender, address, "către") or the message the task started from, with its files as tiles;
+  - instructions, forwards with a note, the distribution, questions and answers, each as a message card;
+  - what happened to the task (brought from an email, everyone answered, moved by a manager) as thin lines between
+    the messages.
+  Older messages fold to one line, and runs of three or more into "N mesaje mai vechi".
+- **The reply**, at the end of the thread. **Către** says who it goes to:
+  - the email's sender, or the colleague who brought the email;
+  - whoever distributed the copy, or forwarded the task and asked for it back;
+  - whoever gave the task;
+  - on a distributed task, also one of the people it went to, or a **Notă pe task**.
+  The green button sends and completes (**Trimite și finalizează**; **Finalizează** for a note). Its arrow offers
+  **Doar trimite**: the answer goes the same way, with its files, and the task stays open
+  (`POST /api/tasks/{id}/reply`, see below). Ctrl+Enter sends and completes.
 
-| Button | Colour | What it does |
-|---|---|---|
-| **Deschis** / **Reia lucrul** / **Redeschide** | blue | Back to open: takes a task off hold, or reopens a completed one |
-| **În așteptare** | amber | Puts the task on hold. **The message is required**: it is the reason, shown to everyone who can see the task. Pressed again, it updates the reason |
-| **Finalizat** | green | Completes the task. The message is kept as its resolution; for a task from an email it is required and is emailed as the reply |
+The states, and how a task gets there:
+
+| State | Reached with |
+|---|---|
+| **Deschis** | Creating the task; **Redeschide** from on hold or completed |
+| **În așteptare** | **Pune în așteptare**. The reason is required, shown to everyone who can see the task; **Schimbă motivul** updates it |
+| **Finalizat** | The green button of the reply. The text is kept as the resolution; for a task from an email it is required and is emailed as the reply |
 
 In the lists, an open task has an empty ring, a task on hold a clock and an **În așteptare** label, and a
 completed task a **green tick**. Completed titles are not struck through.
@@ -437,7 +456,7 @@ Someone who received a task can pass it on to another user or to a group (`POST 
 ### Distributing
 
 The person responsible for a task (its assignee, or its creator while it is with nobody else) can **distribute**
-it: **Distribuie**, next to the state buttons. Unlike forwarding, the task stays theirs.
+it: **Distribuie**, in the task's toolbar. Unlike forwarding, the task stays theirs.
 
 - `POST /api/tasks/{id}/distribute` with `recipients` (user ids, or `group:` and a group id; at most 50), an
   optional `message` (up to 2000 characters) and `dueDate` (the task's own by default). Each recipient gets a
@@ -462,12 +481,23 @@ it: **Distribuie**, next to the state buttons. Unlike forwarding, the task stays
 **Conversation.** `GET /api/tasks/{id}/conversation` returns the task's messages, oldest first: distribution,
 answers, sending back, closing, and notes (`POST /api/tasks/{id}/messages`). The distributor reads every
 exchange; each recipient reads their own (on their copy). Notes are written by those who work on the task; the
-other side of an exchange is emailed. The interface shows the conversation beside the task, in a wider dialog,
-together with the task's own history (created, forwarded, sent back, completed).
+other side of an exchange is emailed. The interface weaves the conversation into the task's thread, together with
+the task's own history (created, forwarded, sent back, completed). Each answer of a distribution is a message with
+its files and, while it can be sent back, a **Revino** button.
+
+**Sending without completing.** `POST /api/tasks/{id}/reply` with `response` (required, up to 4000 characters) and
+`attachmentIds` (files of the task) sends an answer and keeps the task open. It goes where completing would send
+one:
+- by email for a task from an email (the same reply, in the original email's thread; the intro says the task
+  stays open, and only the files chosen now go with it);
+- on a copy, to the distributor's task, with its files;
+- to whoever forwarded the task and asked for it back, or to whoever gave it, who is emailed.
+It is kept in the conversation as `replied` (with `sentTo` for an email), and later replies list it in their
+history. A task that is the caller's own and did not come from an email has no one to answer (`409`).
 
 | | |
 |---|---|
-| ![Distributed task: on hold, its copies and the conversation beside it](docs/screenshots/distributed.png) | ![A copy: where it came from, the exchange with the distributor, and the answer to write](docs/screenshots/distributed-copy.png) |
+| ![Distributed task as a thread: the answers of two colleagues, each with Revino, and the reply to write](docs/screenshots/distributed.png) | ![A copy: the email, the distribution message, a question sent without completing, and the answer with a file](docs/screenshots/distributed-copy.png) |
 
 Each task in the API carries `access`, what the caller may do with it: `creator` (everything), `assignee`
 (edit, complete, forward), `group` (read and take) or `viewer` (read).

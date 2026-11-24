@@ -134,48 +134,60 @@
 <p><b>Un clic oriunde pe rând deschide task-ul.</b></p>
 
 <h2>Lucrul pe un task</h2>
-<p>Fereastra task-ului arată titlul, detaliile, mesajul, fișierele și traseul, iar în partea de jos câmpul de mesaj și butoanele de stare.</p>
+<p>Un task se deschide ca un <b>fir de mail</b>, la fel ca într-o aplicație de email:</p>
+<ul>
+  <li><b>Sus</b>: titlul, ca subiect, și un rând cu starea, termenul, nivelul, prioritatea, etichetele și de la cine vine task-ul.</li>
+  <li><b>Bara de acțiuni</b>: <b class="ui">Răspunde</b>, <b class="ui">Distribuie</b>, <b class="ui">Direcționează</b> și <b class="ui">Pune în așteptare</b>.</li>
+  <li><b>Firul</b>, de sus în jos, în ordinea în care s-au întâmplat:
+    <ul>
+      <li>emailul sau mesajul de la care a pornit task-ul, cu fișierele lui;</li>
+      <li>indicațiile, direcționările, distribuirea, întrebările și răspunsurile, fiecare ca un mesaj cu expeditor, „către” și oră;</li>
+      <li>ce s-a întâmplat cu task-ul (adus din email, au răspuns toți, replanificat), ca rânduri subțiri între mesaje.</li>
+    </ul>
+    Mesajele mai vechi se strâng într-un rând („3 mesaje mai vechi · Arată-le”); un clic le deschide.</li>
+  <li><b>Jos, răspunsul</b>: <b class="ui">Către</b> arată cui pleacă și cum, apoi textul, fișierele atașate și butonul de trimitere.</li>
+</ul>
 <figure>
-  <img src="../../screenshots/task-detail.png" alt="Un task deschis">
-  <figcaption>Un task deschis: detalii sus, mesajul de rezolvare și butoanele de stare jos.</figcaption>
+  <img src="../../screenshots/task-detail.png" alt="Un task deschis ca fir de mail">
+  <figcaption>Un task venit din email: emailul clientului, cine l-a adus, indicațiile și răspunsul de scris.</figcaption>
 </figure>
 <h3>Cele trei stări</h3>
 <table>
-  <tr><th style="width:22%">Stare</th><th>Când o folosești</th><th style="width:34%">Ce trebuie să scrii</th></tr>
-  <tr><td><span class="state open">Deschis</span></td><td>Se lucrează la task. Este starea de pornire.</td><td>Nimic.</td></tr>
-  <tr><td><span class="state waiting">În așteptare</span></td><td>Nu poți continua până nu se întâmplă altceva: un răspuns, o aprobare, o livrare.</td><td><b>Motivul este obligatoriu</b> (cel mult 1000 de caractere).</td></tr>
-  <tr><td><span class="state done">Finalizat</span></td><td>Ai terminat.</td><td>Mesajul de rezolvare este opțional, dar recomandat. Pentru task-urile venite din email, răspunsul este obligatoriu.</td></tr>
+  <tr><th style="width:22%">Stare</th><th>Când</th><th style="width:34%">Cum ajungi aici</th></tr>
+  <tr><td><span class="state open">Deschis</span></td><td>Se lucrează la task. Este starea de pornire.</td><td>Singur, la creare; din așteptare sau din finalizat, cu <b class="ui">Redeschide</b>.</td></tr>
+  <tr><td><span class="state waiting">În așteptare</span></td><td>Nu poți continua până nu se întâmplă altceva: un răspuns, o aprobare, o livrare.</td><td><b class="ui">Pune în așteptare</b>, cu <b>motivul obligatoriu</b> (cel mult 1000 de caractere).</td></tr>
+  <tr><td><span class="state done">Finalizat</span></td><td>Ai terminat.</td><td>Butonul verde de la răspuns. Pentru task-urile venite din email, răspunsul este obligatoriu.</td></tr>
 </table>
 <h3>Punerea în așteptare</h3>
 <ol class="steps">
-  <li>Scrie motivul în câmpul <b class="ui">Mesaj de rezolvare</b> (de exemplu „Aștept avizul departamentului juridic”).</li>
-  <li>Apasă <b class="ui">În așteptare</b>.</li>
+  <li>Apasă <b class="ui">Pune în așteptare</b> în bara de acțiuni.</li>
+  <li>Scrie ce aștepți (de exemplu „Aștept avizul departamentului juridic”) și apasă <b class="ui">Pune în așteptare</b>.</li>
 </ol>
-<p>Task-ul rămâne în listele tale ca task deschis, marcat cu un ceas, iar motivul apare într-o casetă galbenă. Când poți continua, apasă <b class="ui">Reia lucrul</b>. Ca să schimbi motivul, scrie-l pe cel nou și apasă <b class="ui">Schimbă motivul</b>.</p>
+<p>Task-ul rămâne în listele tale, marcat cu un ceas, iar motivul apare la finalul firului. Când poți continua, apasă <b class="ui">Redeschide</b>. Ca să schimbi motivul, apasă <b class="ui">Schimbă motivul</b>.</p>
 <figure>
   <img src="../../screenshots/task-waiting.png" alt="Task în așteptare">
-  <figcaption>Un task în așteptare, cu motivul și data de la care așteaptă.</figcaption>
+  <figcaption>Un task în așteptare: motivul la finalul firului, <b>Redeschide</b> și <b>Schimbă motivul</b> în bară.</figcaption>
 </figure>
-<h3>Finalizarea</h3>
-<ol class="steps">
-  <li>Scrie, dacă vrei, ce s-a rezolvat.</li>
-  <li>Apasă <b class="ui">Finalizat</b>.</li>
-</ol>
-<p>Task-ul trece la <b class="ui">Finalizate</b>, iar mesajul tău rămâne vizibil într-o casetă verde, cu data finalizării. Dacă te-ai grăbit, apasă <b class="ui">Redeschide</b>.</p>
+<h3>Răspunsul și finalizarea</h3>
+<p>La <b class="ui">Către</b> vezi cui pleacă răspunsul: cui i-l datorezi (expeditorul emailului, colegul care ți-a dat sau ți-a distribuit task-ul) sau, la un task al tău, <b class="ui">Notă pe task</b>. Butonul verde are două variante:</p>
+<ul>
+  <li><b class="ui">Trimite și finalizează</b> (sau <b class="ui">Finalizează</b>, la o notă): trimite răspunsul și închide task-ul.</li>
+  <li>Din săgeata de lângă el, <b class="ui">Doar trimite</b>: răspunsul pleacă la fel, cu fișierele, dar task-ul <b>rămâne deschis</b>. Folosește-l pentru o întrebare, o confirmare de primire sau un răspuns parțial. La o notă, varianta este <b class="ui">Adaugă doar nota</b>.</li>
+</ul>
+<p>Ctrl+Enter trimite și finalizează. Task-ul finalizat trece la <b class="ui">Finalizate</b>, iar răspunsul rămâne ultimul mesaj din fir. Dacă te-ai grăbit, apasă <b class="ui">Redeschide</b>.</p>
 <figure>
   <img src="../../screenshots/task-done.png" alt="Task finalizat">
-  <figcaption>Un task finalizat, cu mesajul de rezolvare.</figcaption>
+  <figcaption>Un task finalizat, cu răspunsul la finalul firului.</figcaption>
 </figure>
 <h3>Butoanele din antetul ferestrei</h3>
 <table>
   <tr><th style="width:30%">Buton</th><th>Ce face</th><th style="width:28%">Cine îl vede</th></tr>
   <tr><td>Creion · <b class="ui">Editează</b></td><td>Schimbi titlul, mesajul, datele, prioritatea, etichetele. Creatorul poate schimba și persoana.</td><td>Creatorul și responsabilul</td></tr>
-  <tr><td>Săgeată · <b class="ui">Direcționează</b></td><td>Dai task-ul primit mai departe, altei persoane sau unui grup.</td><td>Responsabilul</td></tr>
   <tr><td>Persoane · <b class="ui">Dă înapoi grupului</b></td><td>Renunți la un task preluat dintr-un grup; îl poate lua alt membru.</td><td>Cine l-a preluat</td></tr>
   <tr><td>Coș · <b class="ui">Șterge</b></td><td>Șterge definitiv task-ul, cu fișierele lui. Nu poate fi recuperat.</td><td>Doar creatorul</td></tr>
 </table>
 <h3>Fișierele</h3>
-<p>În secțiunea <b class="ui">Fișiere</b> adaugi documente cu <b class="ui">Adaugă fișier</b>, le deschizi sau le descarci cu un clic pe nume și le ștergi cu „×”.</p>
+<p>Fișierele apar în fir, ca miniaturi, sub mesajul cu care au venit: cele ale emailului sub email, cele trimise cu un răspuns sub acel răspuns. Lista completă e la finalul ferestrei, în <b class="ui">Fișiere</b>, unde adaugi documente cu <b class="ui">Adaugă fișier</b> și le ștergi cu „×”.</p>
 <ul>
   <li><b>PDF-urile și imaginile</b> (PNG, JPG, GIF, WEBP), marcate cu un ochi, se deschid peste task, fără să le descarci. În fereastra de vizualizare treci la fișierul anterior sau următor cu săgețile (și de la tastatură, ← →), mărești imaginile cu + și − (0 sau un clic pe imagine le potrivește în fereastră) și le poți descărca cu butonul de descărcare. Fereastra se închide cu „×” sau cu Esc.</li>
   <li><b>Celelalte fișiere</b> (Word, Excel, arhive etc.) se descarcă pe calculator la clic.</li>
@@ -186,7 +198,7 @@
 </figure>
 <p>Dacă un fișier nu poate fi afișat (de exemplu, are extensia unei imagini, dar nu e o imagine), fereastra spune asta și îți oferă descărcarea.</p>
 <h3>Traseul</h3>
-<p>Dacă task-ul a trecut pe la mai multe persoane, secțiunea <b class="ui">Traseu</b> arată cine l-a dat cui, când și cu ce mesaj.</p>
+<p>Dacă task-ul a trecut pe la mai multe persoane, firul arată cine l-a dat cui, când și cu ce mesaj: fiecare direcționare e un rând sau, când are un mesaj, un mesaj în fir.</p>
 
 <h2>Lucrul cu colegii</h2>
 <h3>Alocarea unui task</h3>
@@ -209,7 +221,7 @@
 </figure>
 <h3>Direcționarea unui task primit</h3>
 <ol class="steps">
-  <li>Deschide task-ul primit și apasă butonul <b class="ui">Direcționează</b> din antet.</li>
+  <li>Deschide task-ul primit și apasă <b class="ui">Direcționează</b> în bara de acțiuni.</li>
   <li>Caută persoana sau grupul la <b class="ui">Direcționează către</b>.</li>
   <li>Scrie, opțional, un mesaj pentru cine îl primește (cel mult 500 de caractere).</li>
   <li>Lasă bifat <b class="ui">Revine la mine după finalizare</b> dacă vrei ca task-ul să se întoarcă la tine când e rezolvat; debifează-l ca să îl dai de tot.</li>
@@ -223,32 +235,31 @@
 <h3>Distribuirea unui task</h3>
 <p>Când un task te privește pe tine, dar ai nevoie de răspunsuri de la colegi, îl <b>distribui</b>. Spre deosebire de direcționare, task-ul rămâne la tine: fiecare coleg primește o copie, tu aștepți răspunsurile și închizi task-ul la final.</p>
 <ol class="steps">
-  <li>Deschide task-ul și apasă <b class="ui">Distribuie</b>, în stânga butoanelor de stare.</li>
+  <li>Deschide task-ul și apasă <b class="ui">Distribuie</b> în bara de acțiuni.</li>
   <li>La <b class="ui">Către</b> caută și alege una sau mai multe persoane ori grupuri; apar ca etichete.</li>
   <li>Scrie, opțional, un mesaj pentru ei și schimbă, dacă vrei, termenul (implicit, cel al task-ului).</li>
   <li>Apasă <b class="ui">Distribuie</b>.</li>
 </ol>
-<p>Fiecare primește task-ul lui, deschis, cu mesajul tău, cu fișierele și cu emailul original. Task-ul tău trece <b>În așteptare</b>, iar în fereastra lui vezi lista <b class="ui">Distribuit către</b>: cine a răspuns și ce.</p>
+<p>Fiecare primește task-ul lui, deschis, cu mesajul tău, cu fișierele și cu emailul original. Task-ul tău trece <b>În așteptare</b>. Bara de acțiuni arată câți au răspuns, iar fiecare răspuns intră în fir ca un mesaj „A răspuns”, cu fișierele lui.</p>
 <figure>
   <img src="../../screenshots/distributed.png" alt="Un task distribuit">
-  <figcaption>Un task distribuit: în așteptare, copiile și conversația alături.</figcaption>
+  <figcaption>Un task distribuit: răspunsurile colegilor în fir, fiecare cu <b>Revino</b>, și răspunsul tău de scris.</figcaption>
 </figure>
-<p><b>Dacă ai primit o copie</b>, vezi sus „Distribuit de …”. Poți scrie în conversație, de exemplu o întrebare, iar la final apeși <b class="ui">Trimite răspunsul</b>, cu răspunsul scris obligatoriu. Răspunsul ajunge la cel care ți-a distribuit task-ul, nu la clientul din email.</p>
+<p><b>Dacă ai primit o copie</b>, vezi sus „Distribuit de …”, iar în fir emailul și mesajul celui care ți l-a distribuit. Pentru o întrebare folosești <b class="ui">Doar trimite</b>; la final apeși <b class="ui">Trimite și finalizează</b>, cu răspunsul scris obligatoriu. Răspunsul ajunge la cel care ți-a distribuit task-ul, nu la clientul din email.</p>
 <figure>
   <img src="../../screenshots/distributed-copy.png" alt="O copie primită">
-  <figcaption>O copie primită: de unde vine, conversația și răspunsul de trimis.</figcaption>
+  <figcaption>O copie primită: emailul, mesajul de la distribuire, o întrebare trimisă și răspunsul cu fișier.</figcaption>
 </figure>
 <ul>
   <li>Când au răspuns <b>toți</b>, task-ul tău redevine <b>Deschis</b> singur și primești un email („Toți au răspuns”).</li>
-  <li>Dacă un răspuns nu e suficient, apeși <b class="ui">Revino</b> în dreptul persoanei și scrii ce mai trebuie: task-ul ei se redeschide, iar al tău așteaptă din nou.</li>
+  <li>Dacă un răspuns nu e suficient, apeși <b class="ui">Revino</b> sub el și scrii ce mai trebuie: task-ul ei se redeschide, iar al tău așteaptă din nou.</li>
   <li>La final închizi tu task-ul, cu mesajul tău. <b>Abia atunci</b> pleacă răspunsul pe email: către expeditor, dacă tu ai adus emailul din Outlook, sau către colegul care ți l-a trimis.</li>
   <li>Dacă îl închizi înainte să răspundă toți, Taskel te întreabă întâi; task-urile rămase deschise se închid, iar colegii sunt anunțați.</li>
 </ul>
 
-<h3>Conversația task-ului</h3>
-<p>În dreapta ferestrei unui task e <b class="ui">Conversația</b>: tot ce s-a întâmplat cu el, în ordine. Apar acolo de unde a venit, direcționările, distribuirea, întrebările, răspunsurile, trimiterile înapoi și închiderea. Mesajele tale apar în dreapta, cu albastru.</p>
+<h3>Mesajele din fir</h3>
 <ul>
-  <li>Scrii jos și apeși săgeata (sau Ctrl+Enter). Pe un task distribuit alegi întâi <b class="ui">Către</b> cine e mesajul; „Notă pe task” rămâne doar pe task-ul tău.</li>
+  <li>Pe un task distribuit, la <b class="ui">Către</b> poți alege și unul dintre colegi (un mesaj doar pentru el) sau <b class="ui">Notă pe task</b> (rămâne doar în Taskel).</li>
   <li>Cel căruia îi scrii primește un email cu mesajul.</li>
   <li>Fiecare coleg vede doar schimbul lui cu tine, nu și răspunsurile celorlalți.</li>
 </ul>
@@ -256,7 +267,7 @@
 <h3>Task-ul care revine la tine</h3>
 <p>Cu <b class="ui">Revine la mine după finalizare</b> bifat, cel care primește task-ul nu îl poate închide de tot. Când apasă <b class="ui">Rezolvat, înapoi la …</b>, scrie obligatoriu ce a rezolvat, iar task-ul:</p>
 <ul>
-  <li>se întoarce la tine, deschis, cu mesajul lui în <b class="ui">Traseu</b>;</li>
+  <li>se întoarce la tine, deschis, cu mesajul lui în fir;</li>
   <li>îți este anunțat pe email („Task rezolvat, înapoi la tine”);</li>
   <li>poate fi închis de tine cu un mesaj al tău, sau direcționat din nou.</li>
 </ul>
@@ -325,17 +336,17 @@
 <p>Sub câmpul <b class="ui">Către</b> vezi câți destinatari ai ales sau ce nume nu e recunoscut; un nume nerecunoscut oprește trimiterea până îl corectezi. Emailul trimis primește în Outlook categoria <b>Taskel</b>, pe care macro-ul o creează singur prima dată.</p>
 <p>Task-urile apar la tine în <b class="ui">Delegate</b>. Destinatarii le pot rezolva sau le pot direcționa mai departe, cu întoarcere (vezi „Task-ul care revine la tine”).</p>
 <h3>Finalizarea cu răspuns</h3>
-<p>Un task venit din email se finalizează doar scriind un răspuns. La apăsarea butonului <b class="ui">Trimite și finalizează</b>, Taskel trimite textul pe email, ca răspuns la mesajul inițial, apoi marchează task-ul finalizat. Câmpul arată mereu unde pleacă răspunsul:</p>
+<p>Un task venit din email se finalizează doar scriind un răspuns. La apăsarea butonului <b class="ui">Trimite și finalizează</b>, Taskel trimite textul pe email, ca răspuns la mesajul inițial, apoi marchează task-ul finalizat. Cu <b class="ui">Doar trimite</b>, răspunsul pleacă la fel, dar task-ul rămâne deschis: poți trimite, de exemplu, o confirmare de primire, iar oferta mai târziu. <b class="ui">Către</b> arată mereu unde pleacă răspunsul:</p>
 <ul>
   <li>dacă task-ul este al tău (l-ai adus tu din Outlook), răspunsul merge la <b>expeditorul emailului</b>;</li>
   <li>dacă l-ai primit de la colegul care l-a adus din Outlook, răspunsul merge la <b>acel coleg</b>, în aceeași conversație din Outlook. Fiecare destinatar trimite răspunsul lui.</li>
 </ul>
 <figure>
   <img src="../../screenshots/reply.png" alt="Răspunsul la un task din email">
-  <figcaption>Un task din email: câmpul de jos este răspunsul către expeditor.</figcaption>
+  <figcaption>Răspunsul la un task din email, cu un fișier atașat; din săgeată, <b>Doar trimite</b>.</figcaption>
 </figure>
 <h4>Fișiere la răspuns</h4>
-<p>Sub câmpul de răspuns, <b class="ui">Atașează la răspuns</b> adaugă fișiere care pleacă împreună cu răspunsul. În lista de fișiere a task-ului apar marcate <b>la răspuns</b>. La o copie distribuită, fișierele ajung la cel care ți-a distribuit task-ul și apar sub răspunsul tău în conversație.</p>
+<p>Agrafa din colțul răspunsului (<b class="ui">Atașează la răspuns</b>) adaugă fișiere care pleacă împreună cu el; le scoți cu „×” de pe miniatură. În lista de fișiere a task-ului apar marcate <b>la răspuns</b>. La o copie distribuită, fișierele ajung la cel care ți-a distribuit task-ul și apar sub răspunsul tău în fir.</p>
 <figure>
   <img src="../../screenshots/answer-files.png" alt="Fișier atașat la răspuns">
   <figcaption>Un fișier atașat la răspuns, înainte de trimitere.</figcaption>

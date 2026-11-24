@@ -41,7 +41,7 @@ export interface Distribution {
 }
 
 /** What a message in a task's conversation records. */
-export type TaskMessageKind = 'note' | 'distributed' | 'answered' | 'allAnswered' | 'sentBack' | 'closed' | 'dueDateChanged' | 'rescheduled'
+export type TaskMessageKind = 'note' | 'distributed' | 'answered' | 'allAnswered' | 'sentBack' | 'closed' | 'dueDateChanged' | 'rescheduled' | 'replied'
 
 /** One entry in a task's conversation. */
 export interface TaskMessage {
@@ -55,6 +55,8 @@ export interface TaskMessage {
   related: { taskId: string; recipient: string } | null
   /** Files that came with an answer, as listed on the task being read. */
   attachments: Attachment[] | null
+  /** For an answer sent by email without completing the task: the address it went to. */
+  sentTo?: string | null
 }
 
 /** Who a task goes to: a user, a group, or nobody else (both null). */
@@ -185,5 +187,11 @@ export const tasksApi = {
   /** Writes in the conversation; on a distributed task, to one copy's exchange when `relatedTaskId` is given. */
   postMessage: (id: string, text: string, relatedTaskId: string | null) =>
     request<TaskMessage>(`/tasks/${id}/messages`, { method: 'POST', body: JSON.stringify({ text, relatedTaskId }) }),
+  /**
+   * Sends an answer without completing the task, to where completing it would send one (the email reply, whoever
+   * distributed or forwarded it, or whoever gave it). `attachmentIds` are files of the task sent with it.
+   */
+  reply: (id: string, response: string, attachmentIds: string[]) =>
+    request<TaskMessage>(`/tasks/${id}/reply`, { method: 'POST', body: JSON.stringify({ response, attachmentIds }) }),
   remove: (id: string) => request<void>(`/tasks/${id}`, { method: 'DELETE' }),
 }

@@ -355,6 +355,54 @@ public class TasksController(
         return Ok(TaskResponse.From(task, access));
     }
 
+    /// <summary>
+    /// Sends an answer without completing the task, to where completing it would send one: by email for a task that
+    /// came from an email, to whoever distributed a copy, to whoever forwarded it and asked for it back, or to whoever
+    /// gave it. The answer stays in the task's conversation, with the files chosen; the task stays open.
+    /// </summary>
+    [HttpPost("{id:guid}/reply")]
+    public async Task<ActionResult<TaskMessageResponse>> Reply(Guid id, ReplyTaskRequest request, CancellationToken ct)
+    {
+        var userId = User.GetUserId();
+        var found = await LoadAsync(id, ct);
+        if (found is null) return NotFound();
+        var (task, access) = found.Value;
+        if (!CanWork(access)) return ReadOnly(access);
+        if (task.IsCompleted)
+            return Problem(statusCode: StatusCodes.Status409Conflict, title: "This task is already completed.");
+        var fileIds = request.AttachmentIds ?? [];
+        if (fileIds.Any(fileId => task.Attachments.All(a => a.Id != fileId)))
+        {
+            ModelState.AddModelError(nameof(request.AttachmentIds), "Only files of this task can be attached to its answer.");
+            return ValidationProblem(ModelState);
+        }
+        var text = request.Response.Trim().Replace("\r\n", "\n");
+
+        TaskMessage message;
+        if (task.ParentTaskId is not null && access == TaskAccess.Assignee)
+        {
+            message = await distributions.CopyRepliedAsync(task, userId, text, fileIds, ct);
+        }
+        else
+        {
+            var pending = access == TaskAccess.Assignee ? task.PendingReturn() : null;
+            var replyTo = pending is null ? task.ReplyAddressFor(access) : null;
+            Guid? tell = pending?.FromUserId ?? (replyTo is null && access == TaskAccess.Assignee ? task.UserId : null);
+            if (replyTo is null && tell is null)
+            {
+                return Problem(statusCode: StatusCodes.Status409Conflict,
+                    title: "There is no one to answer: this task is yours and did not come from an email.");
+            }
+            if (replyTo is not null
+                && await SendCompletionReplyAsync(task, access, replyTo, text, fileIds, ct, completed: false) is { } failure)
+                return failure;
+
+            message = await distributions.RepliedAsync(task, userId, text, fileIds, replyTo, tell, ct);
+        }
+        var files = await distributions.AnswerFilesAsync(task.Id, ct);
+        return Ok(TaskMessageResponse.From(message, files[message.Id]));
+    }
+
     /// <summary>Sends the task back to whoever forwarded it and asked for it back, with the resolution.</summary>
     private async Task<ActionResult<TaskResponse>> ReturnAsync(
         TaskItem task, TaskForward pending, Guid userId, string? response, CancellationToken ct)
@@ -387,14 +435,16 @@ public class TasksController(
     /// email quoted. Null when it was sent; otherwise the answer to give.
     /// </summary>
     private async Task<ObjectResult?> SendCompletionReplyAsync(
-        TaskItem task, TaskAccess access, string to, string response, IReadOnlyCollection<Guid> answerFiles, CancellationToken ct)
+        TaskItem task, TaskAccess access, string to, string response, IReadOnlyCollection<Guid> answerFiles, CancellationToken ct,
+        bool completed = true)
     {
         var internalReply = access != TaskAccess.Creator;
         var closedBy = (internalReply ? task.Assignee : task.Owner) ?? throw new InvalidOperationException("Task people are not loaded.");
         var messages = internalReply ? await distributions.ConversationAsync(task.Id, ct) : [];
 
         var candidates = task.Attachments
-            .Where(a => internalReply ? a.WithAnswer : answerFiles.Contains(a.Id))
+            // An answer sent while the task stays open carries only the files chosen for it.
+            .Where(a => internalReply && completed ? a.WithAnswer : answerFiles.Contains(a.Id))
             .OrderBy(a => a.UploadedAt)
             .ToList();
         var sent = new List<TaskAttachment>();
@@ -411,7 +461,7 @@ public class TasksController(
         }
 
         var (text, html) = ReplyComposer.Compose(task, closedBy, response, messages, internalReply,
-            [.. sent.Select(f => f.FileName)], tooLarge);
+            [.. sent.Select(f => f.FileName)], tooLarge, completed);
         var files = sent.Select(f => new ReplyAttachment(f.FileName, f.ContentType, () => attachments.Open(f.StoredName))).ToList();
         try
         {
@@ -422,12 +472,13 @@ public class TasksController(
         catch (EmailNotConfiguredException)
         {
             return Problem(statusCode: StatusCodes.Status503ServiceUnavailable,
-                title: "Email sending is not set up on the Taskel server, so the reply cannot be sent. The task was not completed.");
+                title: "Email sending is not set up on the Taskel server, so the reply cannot be sent."
+                       + (completed ? " The task was not completed." : ""));
         }
         catch (EmailSendException)
         {
             return Problem(statusCode: StatusCodes.Status502BadGateway,
-                title: "The reply email could not be sent. The task was not completed. Try again.");
+                title: "The reply email could not be sent." + (completed ? " The task was not completed." : "") + " Try again.");
         }
     }
 

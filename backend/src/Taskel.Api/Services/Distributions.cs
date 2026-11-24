@@ -87,23 +87,8 @@ public class Distributions(TaskelDbContext db, TaskNotifier notifier)
             Kind = byRecipient ? TaskMessageKind.Answered : TaskMessageKind.Closed, Text = answer
         };
         db.TaskMessages.Add(message);
-        // The files attached to this answer go with it to the distributor's task (shared, not copied on disk).
-        foreach (var file in copy.Attachments.Where(a => a.WithAnswer && a.AnswerMessageId is null))
-        {
-            file.AnswerMessageId = message.Id;
-            db.Attachments.Add(new TaskAttachment
-            {
-                TaskId = parentId,
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                Size = file.Size,
-                StoredName = file.StoredName,
-                UploadedById = file.UploadedById,
-                UploadedAt = file.UploadedAt,
-                WithAnswer = true,
-                AnswerMessageId = message.Id
-            });
-        }
+        // The files attached to this answer go with it to the distributor's task.
+        ShareWith(parentId, copy.Attachments.Where(a => a.WithAnswer && a.AnswerMessageId is null), message.Id);
         var wasWaiting = parent.WaitingReason?.StartsWith(WaitingPrefix, StringComparison.Ordinal) == true;
         await SyncAsync(parent, ct);
         var allAnswered = wasWaiting && parent.WaitingReason is null && !parent.IsCompleted;
@@ -169,6 +154,80 @@ public class Distributions(TaskelDbContext db, TaskNotifier notifier)
     }
 
     /// <summary>
+    /// An answer on a copy sent without completing it: it joins the exchange with the distributor, on the task it came
+    /// from, with the files chosen, and the distributor is told. The copy stays open.
+    /// </summary>
+    public async Task<TaskMessage> CopyRepliedAsync(TaskItem copy, Guid actorId, string text, IReadOnlyCollection<Guid> fileIds,
+        CancellationToken ct)
+    {
+        var parentId = copy.ParentTaskId ?? throw new InvalidOperationException("Not a copy.");
+        var message = new TaskMessage
+        {
+            TaskId = parentId, RelatedTaskId = copy.Id, AuthorId = actorId, Kind = TaskMessageKind.Replied, Text = text
+        };
+        db.TaskMessages.Add(message);
+        ShareWith(parentId, copy.Attachments.Where(a => fileIds.Contains(a.Id) && a.AnswerMessageId is null), message.Id);
+        await db.SaveChangesAsync(ct);
+        await LoadAsync(message, ct);
+        var parent = await db.Tasks.AsNoTracking().FirstAsync(t => t.Id == parentId, ct);
+        await notifier.TellAsync(parent, copy.UserId, actorId, TaskNotificationReason.Message, text, ct);
+        return message;
+    }
+
+    /// <summary>
+    /// An answer sent without completing a task that is not a copy: kept in its conversation with the files chosen.
+    /// <paramref name="sentTo"/> is the address it was emailed to; <paramref name="tell"/>, the person told by email.
+    /// </summary>
+    public async Task<TaskMessage> RepliedAsync(TaskItem task, Guid actorId, string text, IReadOnlyCollection<Guid> fileIds,
+        string? sentTo, Guid? tell, CancellationToken ct)
+    {
+        var message = new TaskMessage { TaskId = task.Id, AuthorId = actorId, Kind = TaskMessageKind.Replied, Text = text, SentTo = sentTo };
+        db.TaskMessages.Add(message);
+        foreach (var file in task.Attachments.Where(a => fileIds.Contains(a.Id)))
+        {
+            file.WithAnswer = true;
+            file.AnswerMessageId = message.Id;
+        }
+        await db.SaveChangesAsync(ct);
+        await LoadAsync(message, ct);
+        if (tell is { } recipient) await notifier.TellAsync(task, recipient, actorId, TaskNotificationReason.Message, text, ct);
+        return message;
+    }
+
+    /// <summary>
+    /// Gives files of a copy to the task it came from, with an answer: shared, not copied on disk. The copy's own
+    /// files are marked as sent with that answer.
+    /// </summary>
+    private void ShareWith(Guid parentId, IEnumerable<TaskAttachment> files, Guid messageId)
+    {
+        foreach (var file in files)
+        {
+            file.WithAnswer = true;
+            file.AnswerMessageId = messageId;
+            db.Attachments.Add(new TaskAttachment
+            {
+                TaskId = parentId,
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                Size = file.Size,
+                StoredName = file.StoredName,
+                UploadedById = file.UploadedById,
+                UploadedAt = file.UploadedAt,
+                WithAnswer = true,
+                AnswerMessageId = messageId
+            });
+        }
+    }
+
+    /// <summary>Loads what a message is shown with: its author and the copy it concerns.</summary>
+    public async Task LoadAsync(TaskMessage message, CancellationToken ct)
+    {
+        await db.Entry(message).Reference(m => m.Author).LoadAsync(ct);
+        if (message.RelatedTaskId is not null)
+            await db.Entry(message).Reference(m => m.RelatedTask).Query().Include(t => t.Assignee).Include(t => t.Group).LoadAsync(ct);
+    }
+
+    /// <summary>
     /// Adds a message to a task's conversation. On a copy, it joins the exchange with the distributor, on the task
     /// it came from; on the distributed task, it goes to one copy's exchange, or stays a note on the task. The other
     /// side of an exchange is told by email.
@@ -196,11 +255,7 @@ public class Distributions(TaskelDbContext db, TaskNotifier notifier)
         message.Text = text;
         db.TaskMessages.Add(message);
         await db.SaveChangesAsync(ct);
-        await db.Entry(message).Reference(m => m.Author).LoadAsync(ct);
-        if (message.RelatedTaskId is not null)
-        {
-            await db.Entry(message).Reference(m => m.RelatedTask).Query().Include(t => t.Assignee).Include(t => t.Group).LoadAsync(ct);
-        }
+        await LoadAsync(message, ct);
 
         if (tell is { } recipient)
         {
