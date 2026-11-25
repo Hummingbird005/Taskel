@@ -171,7 +171,8 @@ Tasks sent by the old macro still get a reply, but it may not be threaded with t
 | Could not reach Taskel                | Check that the Taskel API is running and the address is right; run **ConfigureTaskel** again. |
 | Taskel rejected the API token         | The token was revoked or mistyped. Create a new one and run **ConfigureTaskel**. |
 | Nothing happens when clicking the button | Macros are disabled. Repeat step 2 and restart Outlook.                  |
-| The recipients window does not open   | The form is missing or not named `TaskelSendForm` (step 5); each email then becomes your own task. |
+| "The window for choosing who gets the emails (TaskelSendForm) could not be opened" | The form is missing, not named exactly `TaskelSendForm` (step 5), or failed while opening (the message gives the error). Check its **(Name)**, delete its code, paste the whole `TaskelSendForm.txt` again and run **Debug → Compile**. Answer **No** to send nothing, **Yes** to send the emails as your own tasks. |
+| "This Taskel server cannot list the people…" | The server is older than the recipients window, or **ConfigureTaskel** points to an old one. Update the server or fix the address. |
 | Compile error in the form             | Only part of `TaskelSendForm.txt` was pasted, or the form's old code was not deleted first. Paste the whole file again. |
 
 ## Notes on the macro

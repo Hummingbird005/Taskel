@@ -378,6 +378,8 @@
   <li>Apasă <b>Alt+F8</b>, rulează <b>ConfigureTaskel</b>, introdu adresa aplicației (aceeași ca în browser) și lipește tokenul. Trebuie să apară „Connected to Taskel.”</li>
   <li>Clic dreapta pe panglică → <b>Customize the Ribbon…</b>, creează un grup nou în fila <b>Home (Mail)</b> și adaugă macro-ul <code>Project1.TaskelOutlook.SendToTaskel</code>. Redenumește-l „Send to Taskel”.</li>
 </ol>
+<div class="tip"><strong>Dacă nu apare fereastra de trimitere</strong>Când fereastra <code>TaskelSendForm</code> nu se poate deschide (lipsește, are alt nume sau codul ei e incomplet), macro-ul spune de ce, cu eroarea primită, și te întreabă dacă trimiți totuși emailul ca task al tău. <b>Nu</b> nu trimite nimic. Verifică numele formularului, lipește din nou tot <code>TaskelSendForm.txt</code> și rulează <b>Debug → Compile</b>.</div>
+<div class="tip"><strong>Actualizarea macro-ului</strong>În editor (Alt+F11), clic dreapta pe modulul <b>TaskelOutlook</b> → <b>Remove TaskelOutlook…</b> → <b>No</b> (fără export), apoi <b>File → Import File…</b> cu fișierul nou. La formular: <b>F7</b> pe <code>TaskelSendForm</code>, șterge tot codul și lipește din nou <code>TaskelSendForm.txt</code>. Apasă <b>Ctrl+S</b>.</div>
 <figure>
   <img src="../../screenshots/integrations.png" alt="Ecranul Integrări">
   <figcaption>Ecranul <b>Integrări</b>: notificările pe email, cele două variante pentru Outlook și token-urile API.</figcaption>

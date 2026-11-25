@@ -11,7 +11,9 @@ Option Explicit
 '                      with the files attached to it. With the
 '                      TaskelSendForm window installed, it first asks who
 '                      gets the emails (one task for each), by when, and
-'                      for instructions for them. Each email sent is then
+'                      for instructions for them. If the window cannot
+'                      open, it says why and asks before sending the
+'                      emails as tasks of your own. Each email sent is then
 '                      marked with the Outlook category "Taskel".
 '   ConfigureTaskel  - set the Taskel address and API token
 '
@@ -38,7 +40,8 @@ Private Const TASKEL_CATEGORY As String = "Taskel"
 Private Const TASKEL_CATEGORY_COLOR As Long = 9
 
 ' Who gets the emails during one run of SendToTaskel, as chosen in the
-' TaskelSendForm window. Without the window, each email is a task of your own.
+' TaskelSendForm window. Without the window (and only after asking), each email
+' is a task of your own.
 Private distributing As Boolean
 Private recipientsJson As String
 Private instructionsText As String
@@ -185,13 +188,16 @@ End Function
 
 ' Shows the TaskelSendForm window, once for all the selected emails, and
 ' keeps what was chosen there. Returns False when the user gave up.
-' Without the window (it is installed separately), or with a Taskel too old
-' to list recipients, the emails become tasks of your own as before.
+' When the window cannot open (it is installed separately, and an error while
+' it opens would otherwise go unnoticed), or Taskel is too old to list
+' recipients, it says why and asks before sending the emails as tasks of
+' your own: they are never sent that way without a word.
 Private Function AskRecipients(ByVal mailCount As Long) As Boolean
     Dim form As Object
     Dim status As Long
     Dim detail As String
     Dim response As String
+    Dim openError As String
 
     distributing = False
     recipientsJson = "[]"
@@ -201,14 +207,26 @@ Private Function AskRecipients(ByVal mailCount As Long) As Boolean
 
     On Error Resume Next
     Set form = VBA.UserForms.Add("TaskelSendForm")
+    If Err.Number <> 0 Then openError = Err.Description & " (error " & Err.Number & ")"
     On Error GoTo 0
-    If form Is Nothing Then Exit Function
+    If form Is Nothing Then
+        AskRecipients = SendAsOwnTasks( _
+            "The window for choosing who gets the emails (TaskelSendForm) could not be opened:" & vbCrLf & _
+            "    " & IIf(Len(openError) > 0, openError, "unknown error") & vbCrLf & vbCrLf & _
+            "Check in the VBA editor (Alt+F11) that a UserForm whose (Name) is exactly TaskelSendForm " & _
+            "is in the same project as this macro, and that its code is the whole TaskelSendForm.txt " & _
+            "(delete the old code, paste the file again, then Debug > Compile).")
+        Exit Function
+    End If
 
     If Not SendRequest("GET", "/api/outlook/recipients", "", status, detail, response) Then
         MsgBox FailureText(status, detail), vbExclamation, APP_NAME
         AskRecipients = False
     ElseIf status = 404 Then
-        ' Taskel before recipients could be chosen: keep the old behaviour.
+        ' Taskel before recipients could be chosen.
+        AskRecipients = SendAsOwnTasks( _
+            "This Taskel server cannot list the people to send emails to: it is an older version " & _
+            "(or the address in ConfigureTaskel points to an older one).")
     ElseIf status <> 200 Then
         MsgBox FailureText(status, detail), vbExclamation, APP_NAME
         AskRecipients = False
@@ -230,6 +248,14 @@ Private Function AskRecipients(ByVal mailCount As Long) As Boolean
     End If
 
     Unload form
+End Function
+
+' Says why recipients cannot be chosen, and asks whether to send the emails
+' as tasks of your own instead. True when the user agrees.
+Private Function SendAsOwnTasks(ByVal reason As String) As Boolean
+    SendAsOwnTasks = (MsgBox(reason & vbCrLf & vbCrLf & _
+        "Send the selected emails to Taskel as tasks of your own, without choosing recipients?", _
+        vbYesNo + vbExclamation + vbDefaultButton2, APP_NAME) = vbYes)
 End Function
 
 ' ---------------------------------------------------------------------------
