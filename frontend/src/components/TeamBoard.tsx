@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type DragEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import type { TaskItem } from '../api/tasks'
 import type { Reschedule } from '../api/team'
 import { addDaysIso, daysFrom, formatDueDate, formatRange, formatWeekday, isWeekend } from '../lib/dates'
@@ -97,13 +97,16 @@ export default function TeamBoard({ tasks, today, onOpen, onReschedule }: Props)
   const undatedShown = undatedOpen || dragged !== null
   // Overdue and the week share the width; no scrolling sideways.
   // Weekends are usually empty: they take less room, unless they have work.
-  const gridColumns = columns
-    .map((column) =>
-      column.key === 'none'
-        ? undatedShown ? 'minmax(0, 1fr)' : '40px'
-        : column.tone === 'weekend' && column.tasks.length === 0 ? 'minmax(0, 0.6fr)' : 'minmax(0, 1fr)',
-    )
-    .join(' ')
+  const template = (min: number) =>
+    columns
+      .map((column) =>
+        column.key === 'none'
+          ? undatedShown ? `minmax(${min}px, 1fr)` : '40px'
+          : column.tone === 'weekend' && column.tasks.length === 0 ? `minmax(${Math.round(min * 0.6)}px, 0.6fr)` : `minmax(${min}px, 1fr)`,
+      )
+      .join(' ')
+  // On a wide screen everything fits; on a narrow one (a tablet) columns keep a readable width and the board scrolls.
+  const boardStyle = { gridTemplateColumns: template(0), '--board-narrow': template(150) } as CSSProperties
 
   function over(e: DragEvent, column: Column, zone: Target['zone'], index: number) {
     if (!dragged || !column.droppable) return
@@ -176,7 +179,7 @@ export default function TeamBoard({ tasks, today, onOpen, onReschedule }: Props)
         </p>
       )}
 
-      <div className="board-columns" style={{ gridTemplateColumns: gridColumns }}>
+      <div className="board-columns" style={boardStyle}>
         {columns.map((column) => {
           if (column.key === 'none' && !undatedShown) {
             return (
