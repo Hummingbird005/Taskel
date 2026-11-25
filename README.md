@@ -558,6 +558,9 @@ The view has two modes:
 - **Listă**: the list described above.
 - **Kanban**: one person's open tasks as cards, in a column per day (overdue, a week at a time, no due date). Within
   a day, the cards with a level come first, then those without one.
+  - The board takes the whole width and the height left on screen: overdue and the week fit side by side with no
+    sideways scrolling, and a full column scrolls by itself. Empty weekend days are narrower. "Fără termen" is a
+    narrow strip on the right, with its count, until it is opened or a card is dragged.
   - Dragging a card up or down within a day changes its level; dragging it onto another day changes its due date;
     dropping it under "Fără nivel" removes its level.
   - Every move opens a dialog that asks for the reason, where the day and the level can still be adjusted.
