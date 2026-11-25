@@ -3,6 +3,7 @@ import { attachmentsApi, previewKind, type Attachment } from '../api/attachments
 import type { TaskItem } from '../api/tasks'
 import { formatMailTime } from '../lib/dates'
 import { formatBytes } from '../lib/text'
+import { avatar } from '../lib/avatar'
 import { foldedKeys, type Party, type ThreadItem, type ThreadMessage } from '../lib/thread'
 import { LIMITS, validateNotes } from '../lib/validation'
 import AttachmentViewer from './AttachmentViewer'
@@ -16,17 +17,6 @@ interface Props {
   attachmentUrl?: (attachment: Attachment) => string
   /** Sends one answered copy back with a message; left out when the reader cannot. */
   onSendBack?: (copyId: string, message: string) => Promise<string | null>
-}
-
-const AVATAR_COLOURS = ['#7c3aed', '#0e7490', '#c2410c', '#1d4ed8', '#047857', '#be185d', '#4d7c0f', '#9333ea']
-
-/** Two letters and a colour that stays the same for the same person. */
-function avatar(party: Party): { letters: string; colour: string } {
-  const words = party.name.replace(/[<>@].*$/, '').trim().split(/\s+/).filter(Boolean)
-  const letters = ((words[0]?.[0] ?? '?') + (words.length > 1 ? words[words.length - 1][0] : (words[0]?.[1] ?? ''))).toUpperCase()
-  let hash = 0
-  for (const ch of party.id ?? party.email ?? party.name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0
-  return { letters, colour: AVATAR_COLOURS[hash % AVATAR_COLOURS.length] }
 }
 
 function Avatar({ party, small = false }: { party: Party; small?: boolean }) {
