@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useRef, useState, type DragEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
 import type { TaskItem } from '../api/tasks'
 import type { Reschedule } from '../api/team'
 import { addDaysIso, daysFrom, formatDueDate, formatRange, formatWeekday, isWeekend } from '../lib/dates'
+import { avatar } from '../lib/avatar'
 import { compareWithinDay, isOverdue } from '../lib/taskViews'
 import Icon from './Icon'
 import RescheduleForm from './RescheduleForm'
@@ -90,7 +91,22 @@ export default function TeamBoard({ tasks, today, onOpen, onReschedule }: Props)
   const [target, setTarget] = useState<Target | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // "Fără termen" stays a narrow strip on the right until opened, or while a card is dragged.
+  const [undatedOpen, setUndatedOpen] = useState(false)
   const columns = columnsFor(tasks, from, today)
+  const undatedShown = undatedOpen || dragged !== null
+  // Overdue and the week share the width; no scrolling sideways.
+  // Weekends are usually empty: they take less room, unless they have work.
+  const template = (min: number) =>
+    columns
+      .map((column) =>
+        column.key === 'none'
+          ? undatedShown ? `minmax(${min}px, 1fr)` : '40px'
+          : column.tone === 'weekend' && column.tasks.length === 0 ? `minmax(${Math.round(min * 0.6)}px, 0.6fr)` : `minmax(${min}px, 1fr)`,
+      )
+      .join(' ')
+  // On a wide screen everything fits; on a narrow one (a tablet) columns keep a readable width and the board scrolls.
+  const boardStyle = { gridTemplateColumns: template(0), '--board-narrow': template(150) } as CSSProperties
 
   function over(e: DragEvent, column: Column, zone: Target['zone'], index: number) {
     if (!dragged || !column.droppable) return
@@ -163,8 +179,23 @@ export default function TeamBoard({ tasks, today, onOpen, onReschedule }: Props)
         </p>
       )}
 
-      <div className="board-columns">
+      <div className="board-columns" style={boardStyle}>
         {columns.map((column) => {
+          if (column.key === 'none' && !undatedShown) {
+            return (
+              <button
+                key={column.key}
+                type="button"
+                className="board-column board-column-folded"
+                onClick={() => setUndatedOpen(true)}
+                title="Arată task-urile fără termen"
+                aria-label={`Fără termen, ${column.tasks.length} task-uri: arată-le`}
+              >
+                <span className="board-folded-count">{column.tasks.length}</span>
+                <span className="board-folded-title">Fără termen</span>
+              </button>
+            )
+          }
           const levelled = column.tasks.filter((t) => t.priorityLevel != null)
           const free = column.tasks.filter((t) => t.priorityLevel == null)
           const marker = (zone: Target['zone'], index: number) =>
@@ -202,13 +233,22 @@ export default function TeamBoard({ tasks, today, onOpen, onReschedule }: Props)
             >
               <header className="board-column-head">
                 <h3>
-                  {column.title} <span className="divider-count">{column.tasks.length}</span>
+                  {column.title}
+                  {column.subtitle && <small>{column.subtitle}</small>}
                 </h3>
-                {column.subtitle && <span className="muted">{column.subtitle}</span>}
+                <span className="board-count" aria-label={`${column.tasks.length} task-uri`}>
+                  {column.tasks.length}
+                </span>
+                {column.key === 'none' && undatedOpen && (
+                  <button type="button" className="board-fold" onClick={() => setUndatedOpen(false)} aria-label="Strânge coloana Fără termen" title="Strânge">
+                    <Icon name="chevronRight" size={14} />
+                  </button>
+                )}
               </header>
+              <div className="board-column-body">
               {column.key !== 'overdue' && (
                 <ol
-                  className="board-zone levels"
+                  className={`board-zone levels${levelled.length === 0 && !dragged ? ' empty' : ''}`}
                   aria-label="Cu nivel"
                   onDragOver={(e) => over(e, column, 'levels', levelled.length)}
                 >
@@ -219,20 +259,21 @@ export default function TeamBoard({ tasks, today, onOpen, onReschedule }: Props)
                     </Fragment>
                   ))}
                   {marker('levels', levelled.length)}
-                  {levelled.length === 0 && <li className="board-hint">Trage aici pentru un nivel</li>}
+                  {levelled.length === 0 && dragged && <li className="board-hint">Aici, cu nivel</li>}
                 </ol>
               )}
               <ul
-                className="board-zone free"
+                className={`board-zone free${levelled.length === 0 && !dragged ? ' alone' : ''}`}
                 aria-label={column.key === 'overdue' ? 'Task-uri întârziate' : 'Fără nivel'}
                 onDragOver={(e) => over(e, column, 'free', free.length)}
               >
-                {column.key !== 'overdue' && <li className="board-zone-title">Fără nivel</li>}
+                {column.key !== 'overdue' && (levelled.length > 0 || dragged) && <li className="board-zone-title">Fără nivel</li>}
                 {(column.key === 'overdue' ? column.tasks : free).map((task, index) => card(task, 'free', index))}
                 {column.key !== 'overdue' && target?.column === column.key && target.zone === 'free' && (
                   <li className="board-marker" aria-hidden="true" />
                 )}
               </ul>
+              </div>
             </section>
           )
         })}
@@ -260,11 +301,25 @@ interface CardProps {
   onMove: () => void
 }
 
+const PRIORITY: Record<TaskItem['priority'], { label: string; icon: 'priorityHigh' | 'priorityMedium' | 'priorityLow' }> = {
+  high: { label: 'Prioritate ridicată', icon: 'priorityHigh' },
+  medium: { label: 'Prioritate medie', icon: 'priorityMedium' },
+  low: { label: 'Prioritate scăzută', icon: 'priorityLow' },
+}
+
+/**
+ * A task as a card: its title, then a line of small labels (level, late, interval, on hold) and, on the right, its
+ * priority and who gave it.
+ */
 function BoardCard({ task, today, dragging, onDragStart, onDragEnd, onDragOver, onOpen, onMove }: CardProps) {
   const overdue = isOverdue(task, today)
+  const priority = PRIORITY[task.priority]
+  const from = avatar({ id: task.createdBy.id, name: task.createdBy.displayName })
+  // The board is one person's: an avatar only says who gave them the task, when it was someone else.
+  const givenBy = task.assignee !== null && task.assignee.id !== task.createdBy.id
   return (
     <li
-      className={['board-card', dragging ? 'is-dragging' : '', `priority-${task.priority}`].filter(Boolean).join(' ')}
+      className={['board-card', dragging ? 'is-dragging' : ''].filter(Boolean).join(' ')}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'move'
@@ -275,38 +330,42 @@ function BoardCard({ task, today, dragging, onDragStart, onDragEnd, onDragOver, 
       onDragOver={onDragOver}
     >
       <button type="button" className="board-card-open" onClick={onOpen}>
-        {task.priorityLevel != null && <span className="level-badge">{task.priorityLevel}</span>}
         <span className="board-card-title">{task.title}</span>
       </button>
-      <div className="board-card-meta">
-        {task.priority === 'high' && (
-          <span className="chip priority-high">
-            <Icon name="flag" size={12} />
-            Ridicată
+      <div className="board-card-foot">
+        <span className="board-card-labels">
+          {task.priorityLevel != null && (
+            <span className="board-lozenge level" title={`Nivelul ${task.priorityLevel}: ordinea în zi`}>
+              <span className="board-lozenge-word">Nivel </span>
+              {task.priorityLevel}
+            </span>
+          )}
+          {overdue && task.dueDate && <span className="board-lozenge danger">{formatDueDate(task.dueDate)}</span>}
+          {task.startDate && task.dueDate && task.startDate !== task.dueDate && !overdue && (
+            <span className="board-lozenge">{formatRange(task.startDate, task.dueDate)}</span>
+          )}
+          {task.state === 'waiting' && (
+            <span className="board-lozenge warn" title={`În așteptare: ${task.waitingReason ?? ''}`}>
+              În așteptare
+            </span>
+          )}
+        </span>
+        {/* Medium is most tasks: only what stands out is marked. */}
+        {task.priority !== 'medium' && (
+          <span className={`board-priority ${task.priority}`} title={priority.label}>
+            <Icon name={priority.icon} size={14} />
+            <span className="visually-hidden">{priority.label}</span>
           </span>
         )}
-        {task.state === 'waiting' && (
-          <span className="chip waiting" title={task.waitingReason ?? undefined}>
-            <Icon name="clock" size={12} />
-            În așteptare
+        {givenBy && (
+          <span className="board-avatar" style={{ background: from.colour }} title={`De la ${task.createdBy.displayName}`}>
+            {from.letters}
           </span>
         )}
-        {overdue && task.dueDate && (
-          <span className="chip due overdue">
-            <Icon name="calendar" size={12} />
-            {formatDueDate(task.dueDate)}
-          </span>
-        )}
-        {task.startDate && task.dueDate && task.startDate !== task.dueDate && !overdue && (
-          <span className="chip due">
-            <Icon name="calendar" size={12} />
-            {formatRange(task.startDate, task.dueDate)}
-          </span>
-        )}
-        <button type="button" className="board-card-move" onClick={onMove} aria-label={`Mută „${task.title}”`} title="Mută: alt termen sau alt nivel">
-          <Icon name="forward" size={14} />
-        </button>
       </div>
+      <button type="button" className="board-card-move" onClick={onMove} aria-label={`Mută „${task.title}”`} title="Mută: alt termen sau alt nivel">
+        <Icon name="forward" size={14} />
+      </button>
     </li>
   )
 }

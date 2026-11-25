@@ -158,7 +158,7 @@ export default function TeamTasks({ user, today, onSessionExpired }: Props) {
         )}
         <p className="muted team-tasks-hint">
           {mode === 'board'
-            ? 'Trage un card mai sus sau mai jos ca să-i schimbi nivelul, ori pe altă zi ca să-i muți termenul. Fiecare mutare cere un motiv, pe care persoana îl primește pe email.'
+            ? 'Trage cardurile: în sus sau în jos schimbi nivelul, pe altă zi schimbi termenul. Fiecare mutare cere un motiv, trimis persoanei pe email.'
             : 'Deschide un task ca să-l citești sau să-l muți. Fiecare mutare cere un motiv, pe care persoana responsabilă îl primește pe email.'}
         </p>
       </div>
