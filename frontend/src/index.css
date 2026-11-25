@@ -1570,7 +1570,6 @@ dialog::backdrop { background: rgb(11 11 12 / 0.6); }
   .board-column-folded { flex: 0 0 44px; max-height: 70dvh; }
   .move-dialog-body { padding: var(--s4); }
 }
-}
 
 /* Priority level: the task's place in its day, before the title. */
 .level-badge {
